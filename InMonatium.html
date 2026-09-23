@@ -579,8 +579,9 @@
         const worldX = (mouseX - cameraX) / scale;
         const worldY = (mouseY - cameraY) / scale;
 
-        mouseGridCol = Math.floor(worldX / CELL_SIZE) - 1;
-        mouseGridRow = Math.floor(worldY / CELL_SIZE) - 1;
+        // 🔧 [수정 1] 불필요한 -1 오프셋 제거하여 그리드 좌표 오차 해결
+        mouseGridCol = Math.floor(worldX / CELL_SIZE);
+        mouseGridRow = Math.floor(worldY / CELL_SIZE);
 
         if (isPanning) {
             cameraX = e.clientX - startX;
@@ -614,7 +615,9 @@
             el.classList.add('hidden-placement');
         });
 
+        const buildingContainer = document.getElementById('building-dom-container');
         canvas.style.transform = 'translateX(0)';
+        if (buildingContainer) buildingContainer.style.transform = 'translateX(0)';
 
         const cancelBar = document.getElementById('placement-cancel-bar');
         const cancelText = document.getElementById('placement-cancel-text');
@@ -632,7 +635,9 @@
         if (cancelBar) cancelBar.classList.add('hidden');
 
         if (isBlueprintMode) {
+            const buildingContainer = document.getElementById('building-dom-container');
             canvas.style.transform = 'translateX(10vw)';
+            if (buildingContainer) buildingContainer.style.transform = 'translateX(10vw)';
         }
 
         document.querySelectorAll('.ui-fade-layer').forEach(el => {
@@ -671,6 +676,8 @@
 
     btnBlueprint.addEventListener('click', () => {
         isBlueprintMode = !isBlueprintMode;
+        const buildingContainer = document.getElementById('building-dom-container');
+
         if (isBlueprintMode) {
             btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
             btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
@@ -678,7 +685,11 @@
             blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
 
             hideableUiGroup.style.display = 'none';
+
+            // 🔧 [수정 2] Canvas뿐만 아니라 건물 DOM 컨테이너도 함께 10vw 이동
             canvas.style.transform = 'translateX(10vw)';
+            if (buildingContainer) buildingContainer.style.transform = 'translateX(10vw)';
+
             craftPanelFrame.classList.add('active');
 
             updateResourceContainerPosition();
@@ -695,7 +706,11 @@
             blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
             hideableUiGroup.style.display = 'block';
+
+            // 🔧 [수정 2] 복원 시에도 건물 DOM 컨테이너 동기화
             canvas.style.transform = 'translateX(0)';
+            if (buildingContainer) buildingContainer.style.transform = 'translateX(0)';
+
             craftPanelFrame.classList.remove('active');
 
             resourceContainer.style.top = 'auto';
@@ -714,6 +729,11 @@
         locationTitle.innerText = "모나티엄 외곽";
         locationBadge.innerText = "외부 지역";
         locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30";
+
+        // 🔧 [수정 3] 외곽 지역 진입 시 건물 DOM 숨김 및 액션 메뉴 닫기
+        const buildingContainer = document.getElementById('building-dom-container');
+        if (buildingContainer) buildingContainer.classList.add('hidden');
+        closeActionMenu();
     });
 
     btnToggleInner.addEventListener('click', () => {
@@ -724,6 +744,10 @@
         locationTitle.innerText = "모나티엄 내부";
         locationBadge.innerText = "내부 지역";
         locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30";
+
+        // 🔧 [수정 3] 내부 지역 귀환 시 건물 DOM 다시 보이기
+        const buildingContainer = document.getElementById('building-dom-container');
+        if (buildingContainer) buildingContainer.classList.remove('hidden');
     });
 
     document.getElementById('btn-reset-cam').addEventListener('click', resetCamera);
