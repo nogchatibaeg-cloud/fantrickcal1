@@ -112,6 +112,57 @@
             return null;
         }
 
+        // 전역 최상위 문서 타겟 설정 (iframe 고려)
+        const targetDoc = (window.parent && window.parent.document) ? window.parent.document : document;
+
+        // 글로벌 툴팁 요소 싱글톤 관리
+        function getGlobalTooltip() {
+            let el = targetDoc.getElementById('craft-global-tooltip');
+            if (!el) {
+                el = targetDoc.createElement('div');
+                el.id = 'craft-global-tooltip';
+                el.className = 'fixed w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-[9999] pointer-events-none backdrop-blur-md hidden transition-opacity duration-150';
+                targetDoc.body.appendChild(el);
+            }
+            return el;
+        }
+
+        function showTooltip(e, building) {
+            const tooltip = getGlobalTooltip();
+            tooltip.innerHTML = `
+                <div class="font-extrabold text-xs ${building.text} mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                    <i class="${building.icon}"></i> ${building.name}
+                </div>
+                <div class="text-[10px] text-slate-300 leading-relaxed">${building.desc}</div>
+                <div class="mt-2 pt-1 border-t border-slate-800 text-[9px] text-teal-400 font-semibold">${building.effect}</div>
+            `;
+
+            // 마우스 위치 및 아이템 좌표를 기반으로 부모 창 기준 위치 계산
+            const rect = e.currentTarget.getBoundingClientRect();
+            
+            // iframe 내부일 경우 frameElement 좌표 계산 추가
+            let frameLeft = 0;
+            let frameTop = 0;
+            if (window.frameElement && window.parent) {
+                const fRect = window.frameElement.getBoundingClientRect();
+                frameLeft = fRect.left;
+                frameTop = fRect.top;
+            }
+
+            const left = frameLeft + rect.right + 12; // 아이템 오른쪽에 배치
+            const top = frameTop + rect.top + (rect.height / 2); // 세로 중앙 정렬
+
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            tooltip.style.transform = 'translateY(-50%)';
+            tooltip.classList.remove('hidden');
+        }
+
+        function hideTooltip() {
+            const tooltip = getGlobalTooltip();
+            tooltip.classList.add('hidden');
+        }
+
         function renderCraftList() {
             const listEl = document.getElementById('craft-list');
             if (!listEl) return;
@@ -126,7 +177,7 @@
                 const disabledClass = isTechDisabled ? 'opacity-40 grayscale pointer-events-none bg-slate-900/50' : 'bg-slate-800/80';
 
                 return `
-                <div class="group relative ${disabledClass} border border-slate-700 ${b.hoverBorder} rounded-xl p-2.5 flex items-center justify-between transition-all cursor-pointer">
+                <div class="craft-item group relative ${disabledClass} border border-slate-700 ${b.hoverBorder} rounded-xl p-2.5 flex items-center justify-between transition-all cursor-pointer" data-id="${b.id}">
                     <div class="flex items-center gap-2.5 truncate">
                         <div class="w-9 h-9 ${b.bg} border ${b.border} rounded-lg flex items-center justify-center ${b.text} text-base shrink-0 group-hover:scale-105 transition-transform">
                             <i class="${b.icon}"></i>
@@ -142,21 +193,22 @@
                     <button onclick="startPlacement('${b.id}')" ${isTechDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-black text-[10px] rounded-lg shadow-md transition-all shrink-0">
                         ${isTechDisabled ? '잠김' : '제작'}
                     </button>
-
-                    <!-- Hover Tooltip (PlayerResource와 동일한 우측 중앙 팝업 방식 적용) -->
-                    <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
-                        <div class="font-extrabold text-xs ${b.text} mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
-                            <i class="${b.icon}"></i> ${b.name}
-                        </div>
-                        <div class="text-[10px] text-slate-300 leading-relaxed">${b.desc}</div>
-                        <div class="mt-2 pt-1 border-t border-slate-800 text-[9px] text-teal-400 font-semibold">${b.effect}</div>
-                    </div>
                 </div>
                 `;
             }).join('');
+
+            // 이벤트 핸들러 바인딩
+            listEl.querySelectorAll('.craft-item').forEach(item => {
+                const bData = BUILDINGS_DATA.find(b => b.id === item.dataset.id);
+                if (bData) {
+                    item.addEventListener('mouseenter', (e) => showTooltip(e, bData));
+                    item.addEventListener('mouseleave', hideTooltip);
+                }
+            });
         }
 
         function startPlacement(buildingId) {
+            hideTooltip();
             const building = BUILDINGS_DATA.find(b => b.id === buildingId);
             if (!building) return;
 
@@ -194,7 +246,6 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             renderCraftList();
-            // 상위 창 데이터 할당 타이밍 대비 반복 확인
             let checks = 0;
             const timer = setInterval(() => {
                 renderCraftList();
