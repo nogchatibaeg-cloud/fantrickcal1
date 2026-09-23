@@ -181,6 +181,16 @@
         { id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G" }
     ];
 
+    // 건물 iframe 대신 부모 문서에서 직접 렌더링하기 위한 아이콘 매핑
+    // (potato1~5.html 의 아이콘 클래스와 동일하게 유지)
+    const BUILDING_ICON_MAP = {
+        potato1: 'fa-solid fa-industry',
+        potato2: 'fa-solid fa-plug-circle-bolt',
+        potato3: 'fa-solid fa-bolt',
+        potato4: 'fa-solid fa-battery-full',
+        potato5: 'fa-solid fa-kitchen-set'
+    };
+
     const GRID_COLS = 50;
     const GRID_ROWS = 25;
     const CELL_SIZE = 160;
@@ -403,35 +413,60 @@
         animationFrameId = requestAnimationFrame(render);
     }
 
+    // 건물 1개에 대한 DOM 요소 생성 (iframe 없이 직접 렌더링 -> Tailwind/FontAwesome 재로딩 방지)
+    function createBuildingElement(b) {
+        const bx = b.col * CELL_SIZE;
+        const by = b.row * CELL_SIZE;
+        const bw = CELL_SIZE * 2;
+        const bh = CELL_SIZE * 2;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'building-iframe-wrapper';
+        wrapper.style.left = `${bx}px`;
+        wrapper.style.top = `${by}px`;
+        wrapper.style.width = `${bw}px`;
+        wrapper.style.height = `${bh}px`;
+
+        const icon = BUILDING_ICON_MAP[b.data.id] || 'fa-solid fa-question';
+
+        wrapper.innerHTML = `
+            <div class="relative w-full h-full bg-slate-900 border-2 border-amber-400/80 rounded-2xl flex items-center justify-center shadow-xl overflow-visible">
+                <div class="text-amber-400 text-[100px] flex items-center justify-center">
+                    <i class="${icon}"></i>
+                </div>
+                <div class="absolute -bottom-2 -left-2 w-28 h-28 bg-amber-500 border-2 border-slate-950 rounded-full flex items-center justify-center shadow-md text-slate-950 text-[40px] z-10">
+                    <i class="fa-solid fa-database fa-fw"></i>
+                </div>
+            </div>
+        `;
+
+        wrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDelOrMov(b);
+        });
+
+        b._el = wrapper;
+        return wrapper;
+    }
+
+    // 건물 1개만 추가 (다른 건물의 DOM은 건드리지 않음 - 렉 방지 핵심)
+    function addBuildingElement(b) {
+        buildingHtmlLayer.appendChild(createBuildingElement(b));
+    }
+
+    // 건물 1개만 제거 (다른 건물의 DOM은 건드리지 않음 - 렉 방지 핵심)
+    function removeBuildingElement(b) {
+        if (b._el && b._el.parentNode) {
+            b._el.parentNode.removeChild(b._el);
+        }
+        b._el = null;
+    }
+
+    // 초기 로드 등 전체를 다시 그려야 할 때만 사용하는 전체 재생성 함수
+    // (평상시 배치/삭제/이동에는 더 이상 사용하지 않음)
     function syncBuildingHtmlIcons() {
         buildingHtmlLayer.innerHTML = '';
-
-        placedBuildings.forEach((b) => {
-            const bx = b.col * CELL_SIZE;
-            const by = b.row * CELL_SIZE;
-            const bw = CELL_SIZE * 2;
-            const bh = CELL_SIZE * 2;
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'building-iframe-wrapper';
-            wrapper.style.left = `${bx}px`;
-            wrapper.style.top = `${by}px`;
-            wrapper.style.width = `${bw}px`;
-            wrapper.style.height = `${bh}px`;
-
-            const iframe = document.createElement('iframe');
-            iframe.src = `${b.data.id}.html`;
-            iframe.className = 'w-full h-full border-0 pointer-events-none bg-transparent';
-            
-            wrapper.appendChild(iframe);
-
-            wrapper.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openDelOrMov(b);
-            });
-
-            buildingHtmlLayer.appendChild(wrapper);
-        });
+        placedBuildings.forEach((b) => addBuildingElement(b));
     }
 
     function openDelOrMov(building) {
@@ -472,8 +507,8 @@
         if (action === 'delete') {
             const idx = placedBuildings.indexOf(selectedBuildingForAction);
             if (idx !== -1) {
+                removeBuildingElement(selectedBuildingForAction);
                 placedBuildings.splice(idx, 1);
-                syncBuildingHtmlIcons();
             }
             closeDelOrMov();
         } else if (action === 'move') {
@@ -485,7 +520,7 @@
 
             const idx = placedBuildings.indexOf(buildingToMove);
             if (idx !== -1) placedBuildings.splice(idx, 1);
-            syncBuildingHtmlIcons();
+            removeBuildingElement(buildingToMove);
 
             startBuildingPlacement(buildingToMove.data);
         } else if (action === 'close') {
@@ -527,13 +562,14 @@
                     if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
                 }
 
-                placedBuildings.push({
+                const newBuilding = {
                     col: mouseGridCol,
                     row: mouseGridRow,
                     data: currentPlacingBuilding
-                });
+                };
+                placedBuildings.push(newBuilding);
 
-                syncBuildingHtmlIcons();
+                addBuildingElement(newBuilding);
                 finishBuildingPlacement();
             } else {
                 alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
@@ -618,7 +654,7 @@
     window.cancelBuildingPlacement = function() {
         if (isMovingExistingBuilding && originalPlacedBuildingData) {
             placedBuildings.push(originalPlacedBuildingData);
-            syncBuildingHtmlIcons();
+            addBuildingElement(originalPlacedBuildingData);
         }
 
         currentPlacingBuilding = null;
