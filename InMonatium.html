@@ -12,10 +12,12 @@
     <style>
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
         body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
+        /* 배치된 건물 HTML 아이콘 레이어 */
         #building-html-layer {
             transform-origin: 0 0;
             pointer-events: none;
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* <--- 이 줄 추가 */
+            /* CSS transform 이동 시 부드럽게 밀리도록 트랜지션 추가 */
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
         #map-canvas {
             transform-origin: 0 0;
@@ -307,6 +309,7 @@
     // HTML 건물 레이어 카메라 동기화
     function updateBuildingHtmlLayerTransform() {
     if (buildingHtmlLayer) {
+        // 설계도 모드일 때만 translateX(10vw)를 붙여 배경과 완전히 동기화
         const shiftX = isBlueprintMode ? ' translateX(10vw)' : '';
         buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})${shiftX}`;
     }
@@ -688,7 +691,7 @@
         resourceContainer.style.left = `${craftRect.right + 420}px`;
     }
 
-    btnBlueprint.addEventListener('click', () => {
+   btnBlueprint.addEventListener('click', () => {
     if (currentPlacingBuilding) {
         cancelBuildingPlacement();
         return;
@@ -703,12 +706,13 @@
 
         hideableUiGroup.style.display = 'none';
 
-        // 배경 캔버스 + 건물 레이어 동시 이동
+        // 배경 캔버스 이동
         canvas.style.transform = 'translateX(10vw)';
-        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale}) translateX(10vw)`; // <--- 수정
+        
+        // ★ 건물 레이어도 배경과 동일하게 translateX(10vw) 적용
+        updateBuildingHtmlLayerTransform();
 
         craftPanelFrame.classList.add('active');
-
         updateResourceContainerPosition();
 
         const craftIframe = document.getElementById('craft-iframe');
@@ -724,9 +728,11 @@
 
         hideableUiGroup.style.display = 'block';
 
-        // 배경 캔버스 + 건물 레이어 제자리 복귀
+        // 배경 캔버스 제자리 복귀
         canvas.style.transform = 'translateX(0)';
-        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`; // <--- 수정
+        
+        // ★ 건물 레이어도 제자리 복귀
+        updateBuildingHtmlLayerTransform();
 
         craftPanelFrame.classList.remove('active');
 
