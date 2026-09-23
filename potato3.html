@@ -11,16 +11,19 @@
 </head>
 <body class="w-full h-full flex items-center justify-center p-2">
 
-    <div class="relative w-16 h-16 bg-slate-950 border-[5px] border-amber-400 rounded-[22px] flex items-center justify-center shadow-2xl overflow-visible">
+    <!-- 건물 카드 본체 (두꺼운 노란 테두리 + 검은 배경 + 둥근 모서리) -->
+    <div class="relative w-16 h-16 bg-slate-950 border-[5px] border-amber-400 rounded-[20px] flex items-center justify-center shadow-2xl overflow-visible">
+        
+        <!-- 1. 건물 대표 아이콘 (중앙) -->
         <div class="text-amber-400 text-2xl flex items-center justify-center">
-            <i class="fa-solid fa-bolt"></i>
+            <i class="fa-bolt"></i>
         </div>
-        <div class="absolute -top-1.5 -right-1.5 w-6 h-6 bg-slate-950 border border-slate-800 rounded-full flex items-center justify-center text-amber-400 text-[10px] z-10 shadow-md">
+
+        <!-- 3. 우하단 배지 (노란 바탕) -->
+        <div class="absolute -bottom-0.5 -left-0.5 w-5 h-5 bg-amber-400 border border-amber-500 rounded-full flex items-center justify-center text-slate-950 text-[9px] z-10 shadow-md">
             <i class="fa-solid fa-database"></i>
         </div>
-        <div class="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-amber-400 border border-amber-500 rounded-full flex items-center justify-center text-slate-950 text-[9px] z-10 shadow-md">
-            <i class="fa-solid fa-bolt"></i>
-        </div>
+
     </div>
 
 </body>
