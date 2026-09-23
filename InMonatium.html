@@ -43,13 +43,47 @@
         #resource-module-container {
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
+
+        /* 배치된 건물 HTML 아이콘 레이어 */
+        #building-html-layer {
+            transform-origin: 0 0;
+            pointer-events: none;
+        }
+        .building-iframe-wrapper {
+            position: absolute;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .building-iframe-wrapper:hover {
+            transform: scale(1.03);
+            z-index: 30;
+        }
+
+        /* DelOrMov 액션 팝업 프레임 */
+        #del-or-mov-frame {
+            position: absolute;
+            width: 220px;
+            height: 52px;
+            z-index: 100;
+            pointer-events: auto;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
-    <!-- 뷰포트 (캔버스 레이어) -->
+    <!-- 뷰포트 (캔버스 & HTML 레이어) -->
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
         <canvas id="map-canvas" class="absolute top-0 left-0"></canvas>
+
+        <!-- 배치된 건물 전용 HTML DOM 레이어 -->
+        <div id="building-html-layer" class="absolute top-0 left-0 w-full h-full"></div>
+
+        <!-- DelOrMov (철거 / 위치 조정) 팝업 프레임 -->
+        <div id="del-or-mov-frame" class="hidden">
+            <iframe id="del-or-mov-iframe" src="DelOrMov.html" class="w-full h-full border-0 bg-transparent"></iframe>
+        </div>
 
         <!-- 자원 패널 컨테이너 (기본: 좌측 하단 고정) -->
         <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl"></div>
@@ -113,7 +147,7 @@
             </button>
         </div>
 
-        <!-- 화면 중앙 하단 건설 취소 전용 버튼 (건물 배치 중일 때만 표시) -->
+        <!-- 화면 중앙 하단 건설 취소 전용 버튼 -->
         <div id="cancel-placement-container" class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
             <button id="btn-cancel-placement" onclick="cancelBuildingPlacement()" class="btn-ui px-6 py-3 bg-rose-600/90 hover:bg-rose-500 text-white font-black text-xs rounded-2xl shadow-2xl border border-rose-400/40 backdrop-blur-md flex items-center gap-2.5 cursor-pointer">
                 <i class="fa-solid fa-xmark text-sm"></i>
@@ -147,6 +181,8 @@
     const canvas = document.getElementById('map-canvas');
     const ctx = canvas.getContext('2d');
     const viewport = document.getElementById('map-viewport');
+    const buildingHtmlLayer = document.getElementById('building-html-layer');
+    const delOrMovFrame = document.getElementById('del-or-mov-frame');
 
     let scale = 1.0;
     let minScale = 0.2;
@@ -161,6 +197,10 @@
 
     const placedBuildings = [];
     let currentPlacingBuilding = null;
+    let selectedBuildingForAction = null; // DelOrMov와 상호작용할 선택된 건물
+    let isMovingExistingBuilding = false; // 위치 조정 중 여부
+    let originalPlacedBuildingData = null; // 위치 조정 전 원본 데이터
+
     let mouseGridCol = -1;
     let mouseGridRow = -1;
 
@@ -257,11 +297,21 @@
             const minY = canvas.height - scaledH;
             cameraY = Math.max(minY, Math.min(0, cameraY));
         }
+        updateBuildingHtmlLayerTransform();
     }
 
-    function isSpaceOccupied(col, row, width = 2, height = 2) {
+    // HTML 건물 레이어 카메라 동기화
+    function updateBuildingHtmlLayerTransform() {
+        if (buildingHtmlLayer) {
+            buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`;
+        }
+        updateDelOrMovPosition();
+    }
+
+    function isSpaceOccupied(col, row, width = 2, height = 2, ignoreBuilding = null) {
         if (col < 0 || row < 0 || col + width > GRID_COLS || row + height > GRID_ROWS) return true;
         return placedBuildings.some(b => {
+            if (ignoreBuilding && b === ignoreBuilding) return false;
             return (col < b.col + 2 && col + width > b.col &&
                     row < b.row + 2 && row + height > b.row);
         });
@@ -280,7 +330,11 @@
             ctx.strokeStyle = '#94a3b8';
             ctx.lineWidth = 6;
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            buildingHtmlLayer.style.display = 'none';
+            closeDelOrMov();
         } else {
+            buildingHtmlLayer.style.display = 'block';
+
             ctx.fillStyle = '#b45309'; 
             ctx.fillRect(-OUTDOOR_MARGIN, -OUTDOOR_MARGIN, MAP_WIDTH + OUTDOOR_MARGIN * 2, MAP_HEIGHT + OUTDOOR_MARGIN * 2);
 
@@ -309,33 +363,14 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            placedBuildings.forEach(b => {
-                const bx = b.col * CELL_SIZE;
-                const by = b.row * CELL_SIZE;
-                const bw = CELL_SIZE * 2;
-                const bh = CELL_SIZE * 2;
-
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-                ctx.fillRect(bx, by, bw, bh);
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(bx, by, bw, bh);
-
-                ctx.fillStyle = '#fde047';
-                ctx.font = 'bold 24px "Gothic A1"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(b.data.name, bx + bw / 2, by + bh / 2);
-            });
-
-            // 건물 설치 잔상 (하얀색/빨간색)
+            // 건물 배치 잔상 (하얀색/빨간색)
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
                 const bw = CELL_SIZE * 2;
                 const bh = CELL_SIZE * 2;
 
-                const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2);
+                const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, isMovingExistingBuilding ? originalPlacedBuildingData : null);
 
                 ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.4)';
                 ctx.fillRect(gx, gy, bw, bh);
@@ -355,6 +390,107 @@
         requestAnimationFrame(render);
     }
 
+    // HTML 기반 건물 DOM 동적 생성 및 갱신
+    function syncBuildingHtmlIcons() {
+        buildingHtmlLayer.innerHTML = '';
+
+        placedBuildings.forEach((b, index) => {
+            const bx = b.col * CELL_SIZE;
+            const by = b.row * CELL_SIZE;
+            const bw = CELL_SIZE * 2;
+            const bh = CELL_SIZE * 2;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'building-iframe-wrapper';
+            wrapper.style.left = `${bx}px`;
+            wrapper.style.top = `${by}px`;
+            wrapper.style.width = `${bw}px`;
+            wrapper.style.height = `${bh}px`;
+
+            // potato1~potato5 에 해당하는 HTML 아이콘 바인딩
+            const iframe = document.createElement('iframe');
+            iframe.src = `${b.data.id}.html`;
+            iframe.className = 'w-full h-full border-0 pointer-events-none bg-transparent';
+            
+            wrapper.appendChild(iframe);
+
+            // 건물 클릭 시 DelOrMov 액션 팝업 호출
+            wrapper.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDelOrMov(b);
+            });
+
+            buildingHtmlLayer.appendChild(wrapper);
+        });
+    }
+
+    // DelOrMov 메뉴 열기
+    function openDelOrMov(building) {
+        if (currentPlacingBuilding) return; // 배치 중엔 메뉴 안 윔
+        selectedBuildingForAction = building;
+        delOrMovFrame.classList.remove('hidden');
+        updateDelOrMovPosition();
+    }
+
+    // DelOrMov 위치를 선택된 건물 바로 위로 계산하여 갱신
+    function updateDelOrMovPosition() {
+        if (!selectedBuildingForAction || delOrMovFrame.classList.contains('hidden')) return;
+
+        const bx = selectedBuildingForAction.col * CELL_SIZE;
+        const by = selectedBuildingForAction.row * CELL_SIZE;
+        const bw = CELL_SIZE * 2;
+
+        const worldCenterX = bx + (bw / 2);
+        const worldTopY = by;
+
+        const screenX = (worldCenterX * scale) + cameraX;
+        const screenY = (worldTopY * scale) + cameraY;
+
+        delOrMovFrame.style.left = `${screenX - 110}px`; 
+        delOrMovFrame.style.top = `${screenY - 65}px`;  
+    }
+
+    // DelOrMov 닫기
+    function closeDelOrMov() {
+        selectedBuildingForAction = null;
+        delOrMovFrame.classList.add('hidden');
+    }
+
+    // DelOrMov iframe으로부터 postMessage 수신 처리
+    window.addEventListener('message', (e) => {
+        if (!e.data || e.data.type !== 'BUILDING_ACTION') return;
+
+        const action = e.data.action;
+        if (!selectedBuildingForAction) return;
+
+        if (action === 'delete') {
+            // 건물 철거
+            const idx = placedBuildings.indexOf(selectedBuildingForAction);
+            if (idx !== -1) {
+                placedBuildings.splice(idx, 1);
+                syncBuildingHtmlIcons();
+            }
+            closeDelOrMov();
+        } else if (action === 'move') {
+            // 위치 조정
+            const buildingToMove = selectedBuildingForAction;
+            closeDelOrMov();
+
+            isMovingExistingBuilding = true;
+            originalPlacedBuildingData = buildingToMove;
+
+            // 잠시 배치 목록에서 제외
+            const idx = placedBuildings.indexOf(buildingToMove);
+            if (idx !== -1) placedBuildings.splice(idx, 1);
+            syncBuildingHtmlIcons();
+
+            // 배치 모드 가동
+            startBuildingPlacement(buildingToMove.data);
+        } else if (action === 'close') {
+            closeDelOrMov();
+        }
+    });
+
     function resetCamera() {
         calculateMinScale();
         scale = minScale;
@@ -372,13 +508,24 @@
     viewport.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
 
-        if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
-            if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2)) {
-                const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
-                const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+        // 다른 빈 공간 클릭 시 DelOrMov 닫기
+        if (!e.target.closest('#del-or-mov-frame') && !e.target.closest('.building-iframe-wrapper')) {
+            closeDelOrMov();
+        }
 
-                if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
-                if (techRes) techRes.value += 5;
+        if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
+            const ignoreObj = isMovingExistingBuilding ? originalPlacedBuildingData : null;
+            if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, ignoreObj)) {
+                
+                // 새로 신규 설치할 때만 자원 소모 및 기술력 상승
+                if (!isMovingExistingBuilding) {
+                    const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
+                    const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+
+                    if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
+                    if (techRes) techRes.value += 5;
+                    if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+                }
 
                 placedBuildings.push({
                     col: mouseGridCol,
@@ -386,8 +533,7 @@
                     data: currentPlacingBuilding
                 });
 
-                if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
-
+                syncBuildingHtmlIcons();
                 finishBuildingPlacement();
             } else {
                 alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
@@ -425,8 +571,12 @@
 
     // ESC 키 입력 시 건설 취소 처리
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && currentPlacingBuilding) {
-            cancelBuildingPlacement();
+        if (e.key === 'Escape') {
+            if (currentPlacingBuilding) {
+                cancelBuildingPlacement();
+            } else {
+                closeDelOrMov();
+            }
         }
     });
 
@@ -455,6 +605,7 @@
     // ★ 건물을 선택하여 배치를 시작할 때 UI 처리
     window.startBuildingPlacement = function(buildingData) {
         currentPlacingBuilding = buildingData;
+        closeDelOrMov();
 
         // UI 숨김 및 패널 닫기
         craftPanelFrame.classList.remove('active');
@@ -469,13 +620,25 @@
 
     // ★ 건설 취소 로직
     window.cancelBuildingPlacement = function() {
+        // 위치 조정 중 취소한 경우, 이전 원래 위치로 복원
+        if (isMovingExistingBuilding && originalPlacedBuildingData) {
+            placedBuildings.push(originalPlacedBuildingData);
+            syncBuildingHtmlIcons();
+        }
+
         currentPlacingBuilding = null;
+        isMovingExistingBuilding = false;
+        originalPlacedBuildingData = null;
+
         restoreCraftingUI();
     };
 
     // ★ 건설 완료 시 로직
     function finishBuildingPlacement() {
         currentPlacingBuilding = null;
+        isMovingExistingBuilding = false;
+        originalPlacedBuildingData = null;
+
         restoreCraftingUI();
     }
 
@@ -521,7 +684,6 @@
     }
 
     btnBlueprint.addEventListener('click', () => {
-        // 배치 중이라면 깔끔하게 건설 취소부터 진행
         if (currentPlacingBuilding) {
             cancelBuildingPlacement();
             return;
