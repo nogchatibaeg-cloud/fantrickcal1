@@ -1,0 +1,156 @@
+<!-- PlayerResource.html -->
+<script>
+(function() {
+    if (document.getElementById('player-resource-root')) return;
+
+    // 1. InMonatium.html의 모듈 컨테이너가 존재하는지 확인
+    const externalContainer = document.getElementById('resource-module-container');
+    
+    // 외부 컨테이너 유무에 따라 루트 엘리먼트 생성 또는 지정
+    const container = externalContainer || document.createElement('div');
+    container.id = 'player-resource-root';
+    
+    // 외부 컨테이너가 없을 경우 기본 fixed 스타일 적용
+    if (!externalContainer) {
+        container.className = 'fixed bottom-24 left-4 w-36 z-50 pointer-events-auto shadow-2xl transition-transform duration-300 ease-in-out';
+    } else {
+        container.classList.add('w-36', 'pointer-events-auto', 'transition-transform', 'duration-300', 'ease-in-out');
+    }
+    
+    container.innerHTML = `
+        <div class="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-3 relative shadow-2xl">
+            <button id="btn-toggle-resource" class="absolute -right-6 top-1/2 -translate-y-1/2 w-6 h-12 bg-slate-900/95 border-r border-t border-b border-slate-700 text-slate-300 hover:text-amber-400 rounded-r-lg flex items-center justify-center shadow-lg transition-colors cursor-pointer z-30 focus:outline-none">
+                <i id="resource-toggle-icon" class="fa-solid fa-chevron-left text-[10px]"></i>
+            </button>
+            <h3 class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2.5 flex items-center justify-between border-b border-slate-800 pb-1.5">
+                <span>보유 자원</span>
+                <i class="fa-solid fa-boxes-stacked text-amber-500 text-xs"></i>
+            </h3>
+            <div class="space-y-2 text-[11px]" id="resource-list-container">
+            </div>
+        </div>
+    `;
+
+    if (!externalContainer) {
+        document.body.prepend(container);
+    }
+
+    // 2. 보유 자원 데이터 정의
+    window.PLAYER_RESOURCES_DATA = [
+        {
+            id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "",
+            desc: "<b>모성에서도, 지구에서도 끊임없이 발휘되는, 무엇이든 만들 수 있는 기술력이다. 주로 우리 스스로 늘려야 한다.</b><br><br>\"엘프들의 기술력은 우주 제일!\" - 오르",
+            goodRegions: ["elf"], badRegions: []
+        },
+        {
+            id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W", max: 0,
+            desc: "<b>에너지를 여러 방식으로 가공하여 만들어낸, 문명에 그 무엇보다 소중한 자원. 반드시 우리 스스로 늘려야 한다. 저장할 배터리는 필수이다.</b><br><br>이게 ⚡엘레나님⚙️의 협조🤝로 만들어진 '엘레나-노바 테이저건 20🔫'다 순간 전력⚡ 1500볼트에 일회용🗑️인 전기지짐이가 충전 시간⏰ 24시간이고요. 친환경🌱 에너지 이용하고, 심지어 세일🏷️ 기간이ㄱ- 야! 내가 비효율적이라고 말하는거 빼랬지! - 알레트, 아이시아",
+            goodRegions: [], badRegions: []
+        },
+        {
+            id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, unit: "",
+            get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
+            desc: "<b>아무리 배고파도 죽진 않는 세계 같지만, 일단 고통스러운 건 마찬가지라 정상적으로 살기 위해선 반드시 필요하다. 가공해야 하루가 지날 때 먹일 수 있다.</b><br><br>\"돈까스는 없나요?\" - 로네",
+            goodRegions: ["beast"], badRegions: ["spirit", "ghost"]
+        },
+        {
+            id: "leaf", name: "세계수 잎", icon: "fa-solid fa-leaf", color: "text-emerald-400", value: 0, unit: "",
+            desc: "<b>이곳의 세계수는 신적인 존재인 듯 하다. 신비한 현상을 일으킬 수 있다. 주로 요정과 마녀들에게서 얻을 수 있다. 유령들에게선 얻을 수 없다.</b><br><br>\"뭔가 엄청 비싸보이지 말입니다...\" - 칸나",
+            goodRegions: ["fairy", "witch"], badRegions: ["ghost"]
+        },
+        {
+            id: "mana", name: "마력", icon: "fa-solid fa-wand-magic-sparkles", color: "text-purple-400", value: 0, unit: "",
+            desc: "<b>이곳에선 재능에 따라 마법을 쓸 수 있는 듯 하다. 우리의 기술에 접목시킬 수 있다. 주로 마녀들에게서 얻을 수 있다. 수인들에게선 얻을 수 없다.</b><br><br>\"잘만 사용하면... 시장님 최면 마법도...!\" - 아멜리아",
+            goodRegions: ["witch"], badRegions: ["beast"]
+        },
+        {
+            id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, unit: "",
+            get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
+            desc: "<b>이곳은 어디서 나오는지도 모를 광물들이 끊임없이 발생한다. 가공해야 사용 가능한 자재로 인정받는다.</b><br><br>\"용족들이 시끄럽다면서 돌을 던진 적이 있는데, 주워보니 하나하나가 우리집 창문 가격급 보석이었어!\" - 페스타",
+            goodRegions: ["dragon"], badRegions: ["fairy"]
+        },
+        {
+            id: "energy", name: "에너지", icon: "fa-solid fa-bolt", color: "text-cyan-400", value: 0, unit: "",
+            desc: "<b>정령들은 문자 그대로 무한한 에너지를 지니고 있다. 마땅한 에너지원에 생기기 전에는 쓸만해보인다. 반드시 정령들에게서만 얻을 수 있다.</b><br><br>\"냉각기를 불 정령의 화력 발전으로 돌리는 건, 꽤 인지부조화 온단 말이지...\" - 아이시아",
+            goodRegions: ["spirit"], badRegions: ["fairy", "witch", "dragon", "beast", "ghost", "elf"]
+        },
+        {
+            id: "efficiency", name: "효율성", icon: "fa-solid fa-gauge-high", color: "text-rose-400", value: 0, unit: "%",
+            desc: "<b>오직 유령들만이 마음대로 차원문을 열고 닫을 수 있다. 극도로 까다롭지만, 이용할 수만 있다면...! 반드시 유령들에게서만 얻을 수 있다.</b><br><br>\"저저저런 거검증되지도 않은 차차차원문을 드드들어가라고요?!\" - 캐시",
+            goodRegions: ["ghost"], badRegions: ["fairy", "witch", "dragon", "spirit", "beast", "elf"]
+        },
+        {
+            id: "potato", name: "감자", icon: "fa-solid fa-database", color: "text-yellow-600", value: 3000927, unit: "개",
+            desc: "<b>식량 창고에는 감자와, 감자, 그 친구 감자와 그의 가족 감자, 그리고 감자가 있었다... 대략 300만 개가 존재한다.</b><br><br>\"모두를 골든 리트리버 정도 지능으로 만들어 버리는 무시무시한 바이러스의 행성이 있었지... 그곳에서 약 5년... 아니 3년 동안 감자만 먹고 살았다.\" - 헤일리",
+            goodRegions: [], badRegions: []
+        },
+        {
+            id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G",
+            desc: "<b>이곳에선 금본위제를 쓰는 줄 알았는데... 어느날 장식용 금고에 넣어 놓은 애착 게임기를 꺼내려다 골드가 쏟아져 나와 큰일날 뻔 했다. 자연 발생인 듯 하다.</b><br><br>\"제 다음으로 반짝거리며 카메라 렌즈 다음으로 반짝거리네요!\" - 하이디",
+            goodRegions: [], badRegions: []
+        }
+    ];
+
+    // 3. UI 렌더링
+    window.renderPlayerResourcesUI = function() {
+        const listContainer = document.getElementById('resource-list-container');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
+            const displayVal = (typeof res.value === 'number') ? res.value.toLocaleString() : res.value;
+            return `
+            <div class="resource-item group flex items-center justify-between cursor-pointer py-0.5" data-resource-id="${res.id}">
+                <div class="flex items-center gap-1.5 truncate">
+                    <i class="${res.icon} ${res.color} text-[10px] w-3.5 text-center"></i>
+                    <span class="text-slate-300 font-bold truncate text-[10px]">${res.name}</span>
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}${res.unit || ''}</span>
+                
+                <!-- 툴팁 -->
+                <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
+                    <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                        <i class="${res.icon} ${res.color}"></i> ${res.name}
+                    </div>
+                    <div class="text-[11px] leading-relaxed">${res.desc}</div>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        listContainer.querySelectorAll('.resource-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const resId = item.dataset.resourceId;
+                const resData = window.PLAYER_RESOURCES_DATA.find(r => r.id === resId);
+                if (resData && window.highlightRegionsByResource) {
+                    window.highlightRegionsByResource(resData.goodRegions, resData.badRegions);
+                }
+            });
+            item.addEventListener('mouseleave', () => {
+                if (window.resetRegionHighlights) window.resetRegionHighlights();
+            });
+        });
+    };
+
+    // 4. 접기/펼치기 토글 이벤트 로직
+    let isCollapsed = false;
+    const toggleBtn = document.getElementById('btn-toggle-resource');
+    const toggleIcon = document.getElementById('resource-toggle-icon');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isCollapsed = !isCollapsed;
+
+            if (isCollapsed) {
+                container.style.transform = 'translateX(calc(-100% - 1rem))';
+                toggleIcon.className = 'fa-solid fa-chevron-right text-[10px]';
+            } else {
+                container.style.transform = 'translateX(0)';
+                toggleIcon.className = 'fa-solid fa-chevron-left text-[10px]';
+            }
+        });
+    }
+
+    window.renderPlayerResourcesUI();
+})();
+</script>
