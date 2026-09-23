@@ -12,7 +12,11 @@
     <style>
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
         body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
-        
+        #building-html-layer {
+            transform-origin: 0 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* <--- 이 줄 추가 */
+        }
         #map-canvas {
             transform-origin: 0 0;
             cursor: grab;
@@ -302,11 +306,12 @@
 
     // HTML 건물 레이어 카메라 동기화
     function updateBuildingHtmlLayerTransform() {
-        if (buildingHtmlLayer) {
-            buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`;
-        }
-        updateDelOrMovPosition();
+    if (buildingHtmlLayer) {
+        const shiftX = isBlueprintMode ? ' translateX(10vw)' : '';
+        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})${shiftX}`;
     }
+    updateDelOrMovPosition();
+}
 
     function isSpaceOccupied(col, row, width = 2, height = 2, ignoreBuilding = null) {
         if (col < 0 || row < 0 || col + width > GRID_COLS || row + height > GRID_ROWS) return true;
@@ -684,44 +689,52 @@
     }
 
     btnBlueprint.addEventListener('click', () => {
-        if (currentPlacingBuilding) {
-            cancelBuildingPlacement();
-            return;
+    if (currentPlacingBuilding) {
+        cancelBuildingPlacement();
+        return;
+    }
+
+    isBlueprintMode = !isBlueprintMode;
+    if (isBlueprintMode) {
+        btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
+        btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
+        blueprintText.innerText = '설계도 UI (격자 ON)';
+        blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
+
+        hideableUiGroup.style.display = 'none';
+
+        // 배경 캔버스 + 건물 레이어 동시 이동
+        canvas.style.transform = 'translateX(10vw)';
+        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale}) translateX(10vw)`; // <--- 수정
+
+        craftPanelFrame.classList.add('active');
+
+        updateResourceContainerPosition();
+
+        const craftIframe = document.getElementById('craft-iframe');
+        if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
+            craftIframe.contentWindow.renderCraftList();
         }
 
-        isBlueprintMode = !isBlueprintMode;
-        if (isBlueprintMode) {
-            btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
-            btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
-            blueprintText.innerText = '설계도 UI (격자 ON)';
-            blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
+    } else {
+        btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
+        btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
+        blueprintText.innerText = '설계도 UI (격자)';
+        blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
-            hideableUiGroup.style.display = 'none';
-            canvas.style.transform = 'translateX(10vw)';
-            craftPanelFrame.classList.add('active');
+        hideableUiGroup.style.display = 'block';
 
-            updateResourceContainerPosition();
+        // 배경 캔버스 + 건물 레이어 제자리 복귀
+        canvas.style.transform = 'translateX(0)';
+        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`; // <--- 수정
 
-            const craftIframe = document.getElementById('craft-iframe');
-            if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
-                craftIframe.contentWindow.renderCraftList();
-            }
+        craftPanelFrame.classList.remove('active');
 
-        } else {
-            btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
-            btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
-            blueprintText.innerText = '설계도 UI (격자)';
-            blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
-
-            hideableUiGroup.style.display = 'block';
-            canvas.style.transform = 'translateX(0)';
-            craftPanelFrame.classList.remove('active');
-
-            resourceContainer.style.top = 'auto';
-            resourceContainer.style.bottom = '6rem';
-            resourceContainer.style.left = '1.5rem';
-        }
-    });
+        resourceContainer.style.top = 'auto';
+        resourceContainer.style.bottom = '6rem';
+        resourceContainer.style.left = '1.5rem';
+    }
+});
 
     btnToggleOuter.addEventListener('click', () => {
         isOuterRegion = true;
