@@ -12,19 +12,35 @@
     <style>
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
         body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
-        /* 배치된 건물 HTML 아이콘 레이어 */
-        #building-html-layer {
+        
+        /* 맵 이동 컨테이너 (Canvas + HTML 건물이 한 몸으로 함께 트랜스폼됨) */
+        #world-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             transform-origin: 0 0;
             pointer-events: none;
-            /* CSS transform 이동 시 부드럽게 밀리도록 트랜지션 추가 */
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
+
         #map-canvas {
-            transform-origin: 0 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
             cursor: grab;
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
         #map-canvas:active { cursor: grabbing; }
+
+        #building-html-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
 
         .btn-ui { transition: all 0.2s ease; }
         .btn-ui:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
@@ -45,24 +61,18 @@
             pointer-events: auto;
         }
 
-        /* PlayerResource 컨테이너 위치 이동 트랜지션 */
         #resource-module-container {
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        /* 배치된 건물 HTML 아이콘 레이어 */
-        #building-html-layer {
-            transform-origin: 0 0;
-            pointer-events: none;
-        }
         .building-iframe-wrapper {
             position: absolute;
             pointer-events: auto;
             cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.15s ease;
         }
         .building-iframe-wrapper:hover {
-            transform: scale(1.03);
+            transform: scale(1.02);
             z-index: 30;
         }
 
@@ -75,23 +85,31 @@
             pointer-events: auto;
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
+
+        /* 캔버스 및 뷰포트 전체 스무스 이동 애니메이션 */
+        .blueprint-shift {
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
-    <!-- 뷰포트 (캔버스 & HTML 레이어) -->
+    <!-- 뷰포트 -->
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
-        <canvas id="map-canvas" class="absolute top-0 left-0"></canvas>
-
-        <!-- 배치된 건물 전용 HTML DOM 레이어 -->
-        <div id="building-html-layer" class="absolute top-0 left-0 w-full h-full"></div>
+        
+        <!-- 배경/격자 캔버스와 HTML 레이어를 통째로 들고 움직이는 월드 래퍼 -->
+        <div id="world-container" class="blueprint-shift">
+            <canvas id="map-canvas"></canvas>
+            <!-- 배치된 건물 전용 HTML DOM 레이어 -->
+            <div id="building-html-layer"></div>
+        </div>
 
         <!-- DelOrMov (철거 / 위치 조정) 팝업 프레임 -->
         <div id="del-or-mov-frame" class="hidden">
             <iframe id="del-or-mov-iframe" src="DelOrMov.html" class="w-full h-full border-0 bg-transparent"></iframe>
         </div>
 
-        <!-- 자원 패널 컨테이너 (기본: 좌측 하단 고정) -->
+        <!-- 자원 패널 컨테이너 -->
         <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl"></div>
 
         <!-- Craftwiththis.html 연동 프레임 -->
@@ -99,7 +117,7 @@
             <iframe id="craft-iframe" src="Craftwiththis.html" class="w-full h-full border-0 rounded-2xl shadow-2xl bg-transparent"></iframe>
         </div>
 
-        <!-- 숨겨질 UI 요소들 그룹 -->
+        <!-- Hideable UI Group -->
         <div id="hideable-ui-group">
             <div class="absolute top-4 right-4 flex items-center gap-3 z-40 pointer-events-auto" onclick="event.stopPropagation()">
                 <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3 shadow-2xl">
@@ -163,7 +181,6 @@
     </div>
 
 <script>
-    // 전역 데이터 초기 할당
     window.PLAYER_RESOURCES_DATA = [
         { id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "", desc: "기술력입니다." },
         { id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W" },
@@ -187,6 +204,7 @@
     const canvas = document.getElementById('map-canvas');
     const ctx = canvas.getContext('2d');
     const viewport = document.getElementById('map-viewport');
+    const worldContainer = document.getElementById('world-container');
     const buildingHtmlLayer = document.getElementById('building-html-layer');
     const delOrMovFrame = document.getElementById('del-or-mov-frame');
 
@@ -203,9 +221,9 @@
 
     const placedBuildings = [];
     let currentPlacingBuilding = null;
-    let selectedBuildingForAction = null; // DelOrMov와 상호작용할 선택된 건물
-    let isMovingExistingBuilding = false; // 위치 조정 중 여부
-    let originalPlacedBuildingData = null; // 위치 조정 전 원본 데이터
+    let selectedBuildingForAction = null;
+    let isMovingExistingBuilding = false;
+    let originalPlacedBuildingData = null;
 
     let mouseGridCol = -1;
     let mouseGridRow = -1;
@@ -303,18 +321,16 @@
             const minY = canvas.height - scaledH;
             cameraY = Math.max(minY, Math.min(0, cameraY));
         }
-        updateBuildingHtmlLayerTransform();
+        updateWorldTransform();
     }
 
-    // HTML 건물 레이어 카메라 동기화
-    function updateBuildingHtmlLayerTransform() {
-    if (buildingHtmlLayer) {
-        // 설계도 모드일 때만 translateX(10vw)를 붙여 배경과 완전히 동기화
-        const shiftX = isBlueprintMode ? ' translateX(10vw)' : '';
-        buildingHtmlLayer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})${shiftX}`;
+    // ★ 월드 전체(Canvas + Building HTML Layer) 위치/스케일 일체화 동기화
+    function updateWorldTransform() {
+        if (worldContainer) {
+            worldContainer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`;
+        }
+        updateDelOrMovPosition();
     }
-    updateDelOrMovPosition();
-}
 
     function isSpaceOccupied(col, row, width = 2, height = 2, ignoreBuilding = null) {
         if (col < 0 || row < 0 || col + width > GRID_COLS || row + height > GRID_ROWS) return true;
@@ -329,9 +345,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
-        ctx.translate(cameraX, cameraY);
-        ctx.scale(scale, scale);
-
+        // ★ 월드 컨테이너가 변환을 담당하므로 Canvas는 원점 기준(0,0)에 일체화되어 렌더링
         if (isOuterRegion) {
             ctx.fillStyle = '#475569';
             ctx.fillRect(-OUTDOOR_MARGIN * 2, -OUTDOOR_MARGIN * 2, MAP_WIDTH + OUTDOOR_MARGIN * 4, MAP_HEIGHT + OUTDOOR_MARGIN * 4);
@@ -371,7 +385,7 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            // 건물 배치 잔상 (하얀색/빨간색)
+            // 건설 중 잔상 미리보기 (격자에 정확히 Snap)
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
@@ -380,10 +394,10 @@
 
                 const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, isMovingExistingBuilding ? originalPlacedBuildingData : null);
 
-                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.4)';
+                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.45)' : 'rgba(59, 130, 246, 0.45)';
                 ctx.fillRect(gx, gy, bw, bh);
 
-                ctx.strokeStyle = occupied ? '#ef4444' : 'rgba(255, 255, 255, 0.9)';
+                ctx.strokeStyle = occupied ? '#ef4444' : '#60a5fa';
                 ctx.lineWidth = 4;
                 ctx.strokeRect(gx, gy, bw, bh);
             }
@@ -398,11 +412,11 @@
         requestAnimationFrame(render);
     }
 
-    // HTML 기반 건물 DOM 동적 생성 및 갱신
+    // HTML 기반 건물 DOM 동적 생성 및 위치 동기화
     function syncBuildingHtmlIcons() {
         buildingHtmlLayer.innerHTML = '';
 
-        placedBuildings.forEach((b, index) => {
+        placedBuildings.forEach((b) => {
             const bx = b.col * CELL_SIZE;
             const by = b.row * CELL_SIZE;
             const bw = CELL_SIZE * 2;
@@ -415,14 +429,12 @@
             wrapper.style.width = `${bw}px`;
             wrapper.style.height = `${bh}px`;
 
-            // potato1~potato5 에 해당하는 HTML 아이콘 바인딩
             const iframe = document.createElement('iframe');
             iframe.src = `${b.data.id}.html`;
             iframe.className = 'w-full h-full border-0 pointer-events-none bg-transparent';
             
             wrapper.appendChild(iframe);
 
-            // 건물 클릭 시 DelOrMov 액션 팝업 호출
             wrapper.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openDelOrMov(b);
@@ -432,15 +444,13 @@
         });
     }
 
-    // DelOrMov 메뉴 열기
     function openDelOrMov(building) {
-        if (currentPlacingBuilding) return; // 배치 중엔 메뉴 안 윔
+        if (currentPlacingBuilding) return; 
         selectedBuildingForAction = building;
         delOrMovFrame.classList.remove('hidden');
         updateDelOrMovPosition();
     }
 
-    // DelOrMov 위치를 선택된 건물 바로 위로 계산하여 갱신
     function updateDelOrMovPosition() {
         if (!selectedBuildingForAction || delOrMovFrame.classList.contains('hidden')) return;
 
@@ -451,20 +461,21 @@
         const worldCenterX = bx + (bw / 2);
         const worldTopY = by;
 
-        const screenX = (worldCenterX * scale) + cameraX;
+        // 월드 이동 오프셋 계산
+        const shiftX = isBlueprintMode ? (window.innerWidth * 0.1) : 0;
+
+        const screenX = (worldCenterX * scale) + cameraX + shiftX;
         const screenY = (worldTopY * scale) + cameraY;
 
         delOrMovFrame.style.left = `${screenX - 110}px`; 
         delOrMovFrame.style.top = `${screenY - 65}px`;  
     }
 
-    // DelOrMov 닫기
     function closeDelOrMov() {
         selectedBuildingForAction = null;
         delOrMovFrame.classList.add('hidden');
     }
 
-    // DelOrMov iframe으로부터 postMessage 수신 처리
     window.addEventListener('message', (e) => {
         if (!e.data || e.data.type !== 'BUILDING_ACTION') return;
 
@@ -472,7 +483,6 @@
         if (!selectedBuildingForAction) return;
 
         if (action === 'delete') {
-            // 건물 철거
             const idx = placedBuildings.indexOf(selectedBuildingForAction);
             if (idx !== -1) {
                 placedBuildings.splice(idx, 1);
@@ -480,19 +490,16 @@
             }
             closeDelOrMov();
         } else if (action === 'move') {
-            // 위치 조정
             const buildingToMove = selectedBuildingForAction;
             closeDelOrMov();
 
             isMovingExistingBuilding = true;
             originalPlacedBuildingData = buildingToMove;
 
-            // 잠시 배치 목록에서 제외
             const idx = placedBuildings.indexOf(buildingToMove);
             if (idx !== -1) placedBuildings.splice(idx, 1);
             syncBuildingHtmlIcons();
 
-            // 배치 모드 가동
             startBuildingPlacement(buildingToMove.data);
         } else if (action === 'close') {
             closeDelOrMov();
@@ -516,7 +523,6 @@
     viewport.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
 
-        // 다른 빈 공간 클릭 시 DelOrMov 닫기
         if (!e.target.closest('#del-or-mov-frame') && !e.target.closest('.building-iframe-wrapper')) {
             closeDelOrMov();
         }
@@ -525,7 +531,6 @@
             const ignoreObj = isMovingExistingBuilding ? originalPlacedBuildingData : null;
             if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, ignoreObj)) {
                 
-                // 새로 신규 설치할 때만 자원 소모 및 기술력 상승
                 if (!isMovingExistingBuilding) {
                     const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
                     const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
@@ -554,19 +559,21 @@
         startY = e.clientY - cameraY;
     });
 
+    // ★ 격자 스냅 100% 일치 정밀 마우스 이동 스크립트
     window.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
+        const rect = viewport.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        const worldX = (mouseX - cameraX) / scale;
+        // 설계도 모드일 때 좌측 레일 오프셋(10vw) 정밀 보정
+        const shiftX = isBlueprintMode ? (window.innerWidth * 0.1) : 0;
+
+        const worldX = (mouseX - cameraX - shiftX) / scale;
         const worldY = (mouseY - cameraY) / scale;
 
-        const alignedX = worldX - 161;
-        const alignedY = worldY - 161;
-
-        mouseGridCol = Math.floor(alignedX / CELL_SIZE);
-        mouseGridRow = Math.floor(alignedY / CELL_SIZE);
+        // 마우스 커서의 중심점이 속한 격자 셀 번호를 100% 오차 없이 정밀 스냅
+        mouseGridCol = Math.floor(worldX / CELL_SIZE);
+        mouseGridRow = Math.floor(worldY / CELL_SIZE);
 
         if (isPanning) {
             cameraX = e.clientX - startX;
@@ -577,7 +584,6 @@
 
     window.addEventListener('mouseup', () => { isPanning = false; });
 
-    // ESC 키 입력 시 건설 취소 처리
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (currentPlacingBuilding) {
@@ -610,25 +616,20 @@
     const resourceContainer = document.getElementById('resource-module-container');
     const cancelPlacementContainer = document.getElementById('cancel-placement-container');
 
-    // ★ 건물을 선택하여 배치를 시작할 때 UI 처리
     window.startBuildingPlacement = function(buildingData) {
         currentPlacingBuilding = buildingData;
         closeDelOrMov();
 
-        // UI 숨김 및 패널 닫기
         craftPanelFrame.classList.remove('active');
-        canvas.style.transform = 'translateX(0)';
+        worldContainer.style.left = '0px';
         hideableUiGroup.style.display = 'none';
         bottomControlsGroup.style.display = 'none';
         resourceContainer.style.display = 'none';
 
-        // 화면 중앙 하단 건설 취소 [x] 버튼 표시
         cancelPlacementContainer.classList.remove('hidden');
     };
 
-    // ★ 건설 취소 로직
     window.cancelBuildingPlacement = function() {
-        // 위치 조정 중 취소한 경우, 이전 원래 위치로 복원
         if (isMovingExistingBuilding && originalPlacedBuildingData) {
             placedBuildings.push(originalPlacedBuildingData);
             syncBuildingHtmlIcons();
@@ -641,7 +642,6 @@
         restoreCraftingUI();
     };
 
-    // ★ 건설 완료 시 로직
     function finishBuildingPlacement() {
         currentPlacingBuilding = null;
         isMovingExistingBuilding = false;
@@ -650,7 +650,6 @@
         restoreCraftingUI();
     }
 
-    // ★ 직전 크래프팅 선택 화면으로 복원
     function restoreCraftingUI() {
         cancelPlacementContainer.classList.add('hidden');
 
@@ -658,7 +657,7 @@
         resourceContainer.style.display = 'block';
 
         if (isBlueprintMode) {
-            canvas.style.transform = 'translateX(10vw)';
+            worldContainer.style.left = '10vw';
             craftPanelFrame.classList.add('active');
             updateResourceContainerPosition();
 
@@ -691,56 +690,50 @@
         resourceContainer.style.left = `${craftRect.right + 420}px`;
     }
 
-   btnBlueprint.addEventListener('click', () => {
-    if (currentPlacingBuilding) {
-        cancelBuildingPlacement();
-        return;
-    }
-
-    isBlueprintMode = !isBlueprintMode;
-    if (isBlueprintMode) {
-        btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
-        btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
-        blueprintText.innerText = '설계도 UI (격자 ON)';
-        blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
-
-        hideableUiGroup.style.display = 'none';
-
-        // 배경 캔버스 이동
-        canvas.style.transform = 'translateX(10vw)';
-        
-        // ★ 건물 레이어도 배경과 동일하게 translateX(10vw) 적용
-        updateBuildingHtmlLayerTransform();
-
-        craftPanelFrame.classList.add('active');
-        updateResourceContainerPosition();
-
-        const craftIframe = document.getElementById('craft-iframe');
-        if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
-            craftIframe.contentWindow.renderCraftList();
+    btnBlueprint.addEventListener('click', () => {
+        if (currentPlacingBuilding) {
+            cancelBuildingPlacement();
+            return;
         }
 
-    } else {
-        btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
-        btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
-        blueprintText.innerText = '설계도 UI (격자)';
-        blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
+        isBlueprintMode = !isBlueprintMode;
+        if (isBlueprintMode) {
+            btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
+            btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
+            blueprintText.innerText = '설계도 UI (격자 ON)';
+            blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
 
-        hideableUiGroup.style.display = 'block';
+            hideableUiGroup.style.display = 'none';
 
-        // 배경 캔버스 제자리 복귀
-        canvas.style.transform = 'translateX(0)';
-        
-        // ★ 건물 레이어도 제자리 복귀
-        updateBuildingHtmlLayerTransform();
+            // 월드 전체를 동일한 10vw 좌표계로 이동하여 일체화
+            worldContainer.style.left = '10vw';
 
-        craftPanelFrame.classList.remove('active');
+            craftPanelFrame.classList.add('active');
+            updateResourceContainerPosition();
 
-        resourceContainer.style.top = 'auto';
-        resourceContainer.style.bottom = '6rem';
-        resourceContainer.style.left = '1.5rem';
-    }
-});
+            const craftIframe = document.getElementById('craft-iframe');
+            if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
+                craftIframe.contentWindow.renderCraftList();
+            }
+
+        } else {
+            btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
+            btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
+            blueprintText.innerText = '설계도 UI (격자)';
+            blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
+
+            hideableUiGroup.style.display = 'block';
+
+            worldContainer.style.left = '0px';
+
+            craftPanelFrame.classList.remove('active');
+
+            resourceContainer.style.top = 'auto';
+            resourceContainer.style.bottom = '6rem';
+            resourceContainer.style.left = '1.5rem';
+        }
+        updateDelOrMovPosition();
+    });
 
     btnToggleOuter.addEventListener('click', () => {
         isOuterRegion = true;
