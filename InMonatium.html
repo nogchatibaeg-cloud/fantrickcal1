@@ -328,7 +328,7 @@
                 ctx.fillText(b.data.name, bx + bw / 2, by + bh / 2);
             });
 
-            // ★ 건물 설치 잔상 (하얀색으로 변경)
+            // 건물 설치 잔상 (하얀색/빨간색)
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
@@ -337,7 +337,6 @@
 
                 const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2);
 
-                // 설치 가능시 하얀색 잔상, 불가시 빨간색 경고
                 ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.4)';
                 ctx.fillRect(gx, gy, bw, bh);
 
@@ -389,7 +388,6 @@
 
                 if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
 
-                // 건설 완료 시 UI 및 크래프팅 모드로 복귀
                 finishBuildingPlacement();
             } else {
                 alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
@@ -425,6 +423,13 @@
 
     window.addEventListener('mouseup', () => { isPanning = false; });
 
+    // ESC 키 입력 시 건설 취소 처리
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && currentPlacingBuilding) {
+            cancelBuildingPlacement();
+        }
+    });
+
     viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
         const mouseX = e.clientX;
@@ -451,7 +456,7 @@
     window.startBuildingPlacement = function(buildingData) {
         currentPlacingBuilding = buildingData;
 
-        // UI 전부 숨김 및 크래프팅 패널 닫기 (화면 원래 위치로)
+        // UI 숨김 및 패널 닫기
         craftPanelFrame.classList.remove('active');
         canvas.style.transform = 'translateX(0)';
         hideableUiGroup.style.display = 'none';
@@ -478,7 +483,6 @@
     function restoreCraftingUI() {
         cancelPlacementContainer.classList.add('hidden');
 
-        // UI 및 패널 다시 열기
         bottomControlsGroup.style.display = 'flex';
         resourceContainer.style.display = 'block';
 
@@ -517,6 +521,12 @@
     }
 
     btnBlueprint.addEventListener('click', () => {
+        // 배치 중이라면 깔끔하게 건설 취소부터 진행
+        if (currentPlacingBuilding) {
+            cancelBuildingPlacement();
+            return;
+        }
+
         isBlueprintMode = !isBlueprintMode;
         if (isBlueprintMode) {
             btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
@@ -548,8 +558,6 @@
             resourceContainer.style.top = 'auto';
             resourceContainer.style.bottom = '6rem';
             resourceContainer.style.left = '1.5rem';
-
-            currentPlacingBuilding = null;
         }
     });
 
