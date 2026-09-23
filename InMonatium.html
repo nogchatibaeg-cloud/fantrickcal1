@@ -13,7 +13,6 @@
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
         body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
         
-        /* 맵 이동 컨테이너 (Canvas + HTML 건물이 한 몸으로 함께 트랜스폼됨) */
         #world-container {
             position: absolute;
             top: 0;
@@ -22,6 +21,7 @@
             height: 100%;
             transform-origin: 0 0;
             pointer-events: none;
+            will-change: transform;
         }
 
         #map-canvas {
@@ -48,7 +48,6 @@
 
         .toggle-arrow { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* Craft Panel (좌측 배치) */
         #craft-panel-frame {
             transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
             transform: translateX(-105%);
@@ -76,7 +75,6 @@
             z-index: 30;
         }
 
-        /* DelOrMov 액션 팝업 프레임 */
         #del-or-mov-frame {
             position: absolute;
             width: 220px;
@@ -85,39 +83,26 @@
             pointer-events: auto;
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
-
-        /* 캔버스 및 뷰포트 전체 스무스 이동 애니메이션 */
-        .blueprint-shift {
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-        }
     </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
-    <!-- 뷰포트 -->
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
-        
-        <!-- 배경/격자 캔버스와 HTML 레이어를 통째로 들고 움직이는 월드 래퍼 -->
         <div id="world-container">
             <canvas id="map-canvas"></canvas>
-            <!-- 배치된 건물 전용 HTML DOM 레이어 -->
             <div id="building-html-layer"></div>
         </div>
 
-        <!-- DelOrMov (철거 / 위치 조정) 팝업 프레임 -->
         <div id="del-or-mov-frame" class="hidden">
             <iframe id="del-or-mov-iframe" src="DelOrMov.html" class="w-full h-full border-0 bg-transparent"></iframe>
         </div>
 
-        <!-- 자원 패널 컨테이너 -->
         <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl"></div>
 
-        <!-- Craftwiththis.html 연동 프레임 -->
         <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[30vw] min-w-[320px] max-w-[420px] z-40 flex items-center justify-center">
             <iframe id="craft-iframe" src="Craftwiththis.html" class="w-full h-full border-0 rounded-2xl shadow-2xl bg-transparent"></iframe>
         </div>
 
-        <!-- Hideable UI Group -->
         <div id="hideable-ui-group">
             <div class="absolute top-4 right-4 flex items-center gap-3 z-40 pointer-events-auto" onclick="event.stopPropagation()">
                 <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3 shadow-2xl">
@@ -158,7 +143,6 @@
             </div>
         </div>
 
-        <!-- 하단 설계도 버튼 & 시점 리셋 버튼 그룹 -->
         <div id="bottom-controls-group" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto" onclick="event.stopPropagation()">
             <button id="btn-blueprint" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
                 <i id="blueprint-icon" class="fa-solid fa-drafting-compass text-teal-400 text-sm"></i>
@@ -171,7 +155,6 @@
             </button>
         </div>
 
-        <!-- 화면 중앙 하단 건설 취소 전용 버튼 -->
         <div id="cancel-placement-container" class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
             <button id="btn-cancel-placement" onclick="cancelBuildingPlacement()" class="btn-ui px-6 py-3 bg-rose-600/90 hover:bg-rose-500 text-white font-black text-xs rounded-2xl shadow-2xl border border-rose-400/40 backdrop-blur-md flex items-center gap-2.5 cursor-pointer">
                 <i class="fa-solid fa-xmark text-sm"></i>
@@ -197,8 +180,8 @@
     const GRID_COLS = 50;
     const GRID_ROWS = 25;
     const CELL_SIZE = 160;
-    const MAP_WIDTH = GRID_COLS * CELL_SIZE;
-    const MAP_HEIGHT = GRID_ROWS * CELL_SIZE;
+    const MAP_WIDTH = GRID_COLS * CELL_SIZE;  // 8000px
+    const MAP_HEIGHT = GRID_ROWS * CELL_SIZE; // 4000px
     const OUTDOOR_MARGIN = 1500; 
 
     const canvas = document.getElementById('map-canvas');
@@ -218,6 +201,7 @@
 
     let isOuterRegion = false;   
     let isBlueprintMode = false; 
+    let animationFrameId = null;
 
     const placedBuildings = [];
     let currentPlacingBuilding = null;
@@ -324,7 +308,6 @@
         updateWorldTransform();
     }
 
-    // ★ Canvas와 HTML Layer를 완벽하게 통째로 변환
     function updateWorldTransform() {
         if (worldContainer) {
             worldContainer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`;
@@ -341,6 +324,7 @@
         });
     }
 
+    // 렌더링 애니메이션 루프
     function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -362,9 +346,10 @@
             ctx.fillStyle = '#4ab255'; 
             ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
+            // 완벽한 격자 선 그리기 (빈곳 방지 정밀 루프)
             if (isBlueprintMode || currentPlacingBuilding) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                ctx.lineWidth = 1.5;
 
                 ctx.beginPath();
                 for (let c = 0; c <= GRID_COLS; c++) {
@@ -384,8 +369,8 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            // 건설 중 잔상 미리보기 (100% Snap)
-            if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
+            // 스냅 건설 타일 미리보기
+            if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0 && mouseGridCol < GRID_COLS && mouseGridRow < GRID_ROWS) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
                 const bw = CELL_SIZE * 2;
@@ -408,7 +393,7 @@
         }
 
         ctx.restore();
-        requestAnimationFrame(render);
+        animationFrameId = requestAnimationFrame(render);
     }
 
     function syncBuildingHtmlIcons() {
@@ -554,7 +539,6 @@
         startY = e.clientY - cameraY;
     });
 
-    // ★ 단일 좌표계 기반 마우스 스냅 계산 공식
     window.addEventListener('mousemove', (e) => {
         const rect = viewport.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -679,6 +663,13 @@
         resourceContainer.style.left = `${craftRect.right + 20}px`;
     }
 
+    // 크래프트 창 연동 - PlayerResource 접힘/열림 상태 자동 동기화 함수
+    function setResourceCollapsedState(collapsed) {
+        if (window.setPlayerResourceCollapsed) {
+            window.setPlayerResourceCollapsed(collapsed);
+        }
+    }
+
     btnBlueprint.addEventListener('click', () => {
         if (currentPlacingBuilding) {
             cancelBuildingPlacement();
@@ -696,6 +687,9 @@
 
             craftPanelFrame.classList.add('active');
             updateResourceContainerPosition();
+
+            // 크래프트 열릴 시 PlayerResource 닫기(접기)
+            setResourceCollapsedState(true);
 
             const craftIframe = document.getElementById('craft-iframe');
             if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
@@ -715,6 +709,9 @@
             resourceContainer.style.top = 'auto';
             resourceContainer.style.bottom = '6rem';
             resourceContainer.style.left = '1.5rem';
+
+            // 크래프트 닫힐 시 PlayerResource 열기
+            setResourceCollapsedState(false);
         }
         updateDelOrMovPosition();
     });
@@ -767,6 +764,7 @@
         loadPlayerResourceModule();
         resizeCanvas();
         resetCamera();
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
         render();
     });
 </script>
