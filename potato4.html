@@ -6,22 +6,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { user-select: none; box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; overflow: visible; }
     </style>
 </head>
-<!-- p-3 : iframe 바깥으로 테두리나 배지가 잘려 나가지 않게 해주는 안전 여백 -->
+<!-- p-1.5 여백을 주어 튀어나온 배지가 자라나도 잘리지 않게 공간 확보 -->
 <body class="w-full h-full flex items-center justify-center p-3">
 
-    <!-- aspect-square : 어떤 시점/크기에서도 무조건 1:1 완벽한 정사각형 유지 -->
-    <div class="relative w-full h-full aspect-square bg-slate-950 border-[6px] border-amber-400 rounded-[28px] flex items-center justify-center shadow-2xl">
+    <!-- 건물 카드 본체 (overflow-visible 설정 필수) -->
+    <div class="relative w-full h-full bg-slate-900 border-2 border-amber-400/80 rounded-2xl flex flex-col items-center justify-center shadow-xl overflow-visible">
         
-        <!-- 메인 아이콘 (text-5xl~6xl 로 늘려 파묻히지 않고 꽉 차게 설정) -->
-        <div class="text-amber-400 text-5xl flex items-center justify-center">
+        <!-- 1. 건물 대표 아이콘 (중앙) -->
+        <div class="text-amber-400 text-2xl flex items-center justify-center">
             <i class="fa-solid fa-battery-full"></i>
         </div>
 
-        <!-- 우하단 배지 (안전 여백 내부 안쪽에 배치) -->
-        <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-400 border-2 border-slate-950 rounded-full flex items-center justify-center text-slate-950 text-sm z-10 shadow-lg">
+        <!-- 2. 알림 뱃지처럼 우상단 구석에 살짝 튀어나온 감자 아이콘 -->
+        <!-- w-5 h-5 (작은 크기), -top-0.5 -right-0.5 (살짝 튀어나옴) -->
+        <div class="absolute -top-0.5 -right-0.5 w-5 h-5 bg-amber-500 border-2 border-slate-950 rounded-full flex items-center justify-center shadow-md text-slate-950 text-[10px] z-10">
             <i class="fa-solid fa-database"></i>
         </div>
 
