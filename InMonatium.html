@@ -69,6 +69,7 @@
             pointer-events: auto;
             cursor: pointer;
             transition: transform 0.15s ease;
+            will-change: transform;
         }
         .building-iframe-wrapper:hover {
             transform: scale(1.02);
@@ -324,7 +325,7 @@
         });
     }
 
-    // 렌더링 애니메이션 루프
+    // 최적화된 렌더링 루프
     function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -335,18 +336,14 @@
             ctx.strokeStyle = '#94a3b8';
             ctx.lineWidth = 6;
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
-            buildingHtmlLayer.style.display = 'none';
-            closeDelOrMov();
         } else {
-            buildingHtmlLayer.style.display = 'block';
-
             ctx.fillStyle = '#b45309'; 
             ctx.fillRect(-OUTDOOR_MARGIN, -OUTDOOR_MARGIN, MAP_WIDTH + OUTDOOR_MARGIN * 2, MAP_HEIGHT + OUTDOOR_MARGIN * 2);
 
             ctx.fillStyle = '#4ab255'; 
             ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-            // 완벽한 격자 선 그리기 (빈곳 방지 정밀 루프)
+            // 격자 선 및 가이드라인 최적화 렌더링
             if (isBlueprintMode || currentPlacingBuilding) {
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
                 ctx.lineWidth = 1.5;
@@ -369,7 +366,7 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            // 스냅 건설 타일 미리보기
+            // 건설 스냅 영역 실시간 프리뷰
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0 && mouseGridCol < GRID_COLS && mouseGridRow < GRID_ROWS) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
@@ -663,7 +660,6 @@
         resourceContainer.style.left = `${craftRect.right + 20}px`;
     }
 
-    // 크래프트 창 연동 - PlayerResource 접힘/열림 상태 자동 동기화 함수
     function setResourceCollapsedState(collapsed) {
         if (window.setPlayerResourceCollapsed) {
             window.setPlayerResourceCollapsed(collapsed);
@@ -688,7 +684,6 @@
             craftPanelFrame.classList.add('active');
             updateResourceContainerPosition();
 
-            // 크래프트 열릴 시 PlayerResource 닫기(접기)
             setResourceCollapsedState(true);
 
             const craftIframe = document.getElementById('craft-iframe');
@@ -710,7 +705,6 @@
             resourceContainer.style.bottom = '6rem';
             resourceContainer.style.left = '1.5rem';
 
-            // 크래프트 닫힐 시 PlayerResource 열기
             setResourceCollapsedState(false);
         }
         updateDelOrMovPosition();
@@ -718,6 +712,9 @@
 
     btnToggleOuter.addEventListener('click', () => {
         isOuterRegion = true;
+        buildingHtmlLayer.style.display = 'none';
+        closeDelOrMov();
+
         btnToggleOuter.parentElement.classList.add('hidden');
         wrapperInnerArrow.classList.remove('hidden');
 
@@ -728,6 +725,8 @@
 
     btnToggleInner.addEventListener('click', () => {
         isOuterRegion = false;
+        buildingHtmlLayer.style.display = 'block';
+
         btnToggleOuter.parentElement.classList.remove('hidden');
         wrapperInnerArrow.classList.add('hidden');
 
