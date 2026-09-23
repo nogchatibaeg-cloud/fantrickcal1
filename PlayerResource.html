@@ -3,14 +3,11 @@
 (function() {
     if (document.getElementById('player-resource-root')) return;
 
-    // 1. InMonatium.html의 모듈 컨테이너가 존재하는지 확인
     const externalContainer = document.getElementById('resource-module-container');
     
-    // 외부 컨테이너 유무에 따라 루트 엘리먼트 생성 또는 지정
     const container = externalContainer || document.createElement('div');
     container.id = 'player-resource-root';
     
-    // 외부 컨테이너가 없을 경우 기본 fixed 스타일 적용
     if (!externalContainer) {
         container.className = 'fixed bottom-24 left-4 w-36 z-50 pointer-events-auto shadow-2xl transition-transform duration-300 ease-in-out';
     } else {
@@ -35,7 +32,6 @@
         document.body.prepend(container);
     }
 
-    // 2. 보유 자원 데이터 정의
     window.PLAYER_RESOURCES_DATA = [
         {
             id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "",
@@ -91,7 +87,6 @@
         }
     ];
 
-    // 3. UI 렌더링
     window.renderPlayerResourcesUI = function() {
         const listContainer = document.getElementById('resource-list-container');
         if (!listContainer) return;
@@ -106,7 +101,6 @@
                 </div>
                 <span class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}${res.unit || ''}</span>
                 
-                <!-- 툴팁 -->
                 <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
                     <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
                         <i class="${res.icon} ${res.color}"></i> ${res.name}
@@ -131,23 +125,26 @@
         });
     };
 
-    // 4. 접기/펼치기 토글 이벤트 로직
     let isCollapsed = false;
     const toggleBtn = document.getElementById('btn-toggle-resource');
     const toggleIcon = document.getElementById('resource-toggle-icon');
 
+    // 외부(InMonatium.html)에서 접힘 상태를 강제 제어할 수 있는 글로벌 제어 함수
+    window.setPlayerResourceCollapsed = function(shouldCollapse) {
+        isCollapsed = shouldCollapse;
+        if (isCollapsed) {
+            container.style.transform = 'translateX(calc(-100% - 1rem))';
+            if (toggleIcon) toggleIcon.className = 'fa-solid fa-chevron-right text-[10px]';
+        } else {
+            container.style.transform = 'translateX(0)';
+            if (toggleIcon) toggleIcon.className = 'fa-solid fa-chevron-left text-[10px]';
+        }
+    };
+
     if (toggleBtn) {
         toggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            isCollapsed = !isCollapsed;
-
-            if (isCollapsed) {
-                container.style.transform = 'translateX(calc(-100% - 1rem))';
-                toggleIcon.className = 'fa-solid fa-chevron-right text-[10px]';
-            } else {
-                container.style.transform = 'translateX(0)';
-                toggleIcon.className = 'fa-solid fa-chevron-left text-[10px]';
-            }
+            window.setPlayerResourceCollapsed(!isCollapsed);
         });
     }
 
