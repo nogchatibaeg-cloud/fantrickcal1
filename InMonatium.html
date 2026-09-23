@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&family=Jua&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
@@ -16,6 +16,7 @@
         #map-canvas {
             transform-origin: 0 0;
             cursor: grab;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
         #map-canvas:active { cursor: grabbing; }
 
@@ -38,16 +39,6 @@
             pointer-events: auto;
         }
 
-        /* UI 숨김 애니메이션 트랜지션 */
-        .ui-fade-layer {
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .ui-fade-layer.hidden-placement {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transform: translateY(20px);
-        }
-
         /* PlayerResource 컨테이너 위치 이동 트랜지션 */
         #resource-module-container {
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
@@ -58,28 +49,18 @@
 
     <!-- 뷰포트 (캔버스 레이어) -->
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
-        
-        <!-- [개선] 지도, 건물 DOM, 액션 메뉴를 통합 관리하는 맵 월드 그룹 레이어 -->
-        <div id="map-world-layer" class="absolute top-0 left-0 w-full h-full transition-transform duration-300 ease-in-out">
-            <canvas id="map-canvas" class="absolute top-0 left-0"></canvas>
-            <div id="building-dom-container" class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-visible"></div>
-            
-            <!-- DelOrMov.html 메뉴 팝업 iframe 컨테이너 -->
-            <div id="action-menu-container" class="absolute hidden z-50 pointer-events-auto transition-opacity duration-150">
-                <iframe id="action-menu-iframe" src="DelOrMov.html" class="w-full h-full border-0"></iframe>
-            </div>
-        </div>
+        <canvas id="map-canvas" class="absolute top-0 left-0"></canvas>
 
-        <!-- 자원 패널 컨테이너 -->
-        <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl ui-fade-layer"></div>
+        <!-- 자원 패널 컨테이너 (기본: 좌측 하단 고정) -->
+        <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl"></div>
 
         <!-- Craftwiththis.html 연동 프레임 -->
-        <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[30vw] min-w-[320px] max-w-[420px] z-40 flex items-center justify-center ui-fade-layer">
+        <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[30vw] min-w-[320px] max-w-[420px] z-40 flex items-center justify-center">
             <iframe id="craft-iframe" src="Craftwiththis.html" class="w-full h-full border-0 rounded-2xl shadow-2xl bg-transparent"></iframe>
         </div>
 
-        <!-- 상단/기본 UI 요소들 그룹 -->
-        <div id="hideable-ui-group" class="ui-fade-layer">
+        <!-- 숨겨질 UI 요소들 그룹 -->
+        <div id="hideable-ui-group">
             <div class="absolute top-4 right-4 flex items-center gap-3 z-40 pointer-events-auto" onclick="event.stopPropagation()">
                 <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3 shadow-2xl">
                     <div class="bg-teal-500/20 text-teal-400 p-2 rounded-lg border border-teal-500/30">
@@ -119,8 +100,8 @@
             </div>
         </div>
 
-        <!-- 하단 버튼 컨트롤러 -->
-        <div id="default-bottom-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto ui-fade-layer" onclick="event.stopPropagation()">
+        <!-- 하단 설계도 버튼 & 시점 리셋 버튼 -->
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto" onclick="event.stopPropagation()">
             <button id="btn-blueprint" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
                 <i id="blueprint-icon" class="fa-solid fa-drafting-compass text-teal-400 text-sm"></i>
                 <span id="blueprint-text">설계도 UI (격자)</span>
@@ -131,22 +112,10 @@
                 <span>시점 리셋</span>
             </button>
         </div>
-
-        <!-- 건축 모드 전용 하단 취소 버튼 -->
-        <div id="placement-cancel-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden pointer-events-auto">
-            <button onclick="cancelBuildingPlacement()" class="btn-ui px-6 py-3.5 bg-rose-600/90 hover:bg-rose-500 border border-rose-400/50 text-white font-black text-sm rounded-2xl shadow-2xl backdrop-blur-lg flex items-center gap-2.5 tracking-wide cursor-pointer transition-all">
-                <i class="fa-solid fa-ban text-base"></i>
-                <span id="placement-cancel-text">건축 취소</span>
-            </button>
-        </div>
-
-        <!-- 마우스 커서 설치 불가 알림 토스트 -->
-        <div id="cursor-error-toast" class="fixed z-50 pointer-events-none hidden -translate-x-1/2 -translate-y-full mb-3 px-3.5 py-2 bg-slate-950/90 border border-rose-500/80 text-rose-400 text-xs font-black rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 transition-opacity duration-200 opacity-0">
-            <span>여기에는 지을 수 없습니다!</span>
-        </div>
     </div>
 
 <script>
+    // 전역 데이터 초기 할당
     window.PLAYER_RESOURCES_DATA = [
         { id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "", desc: "기술력입니다." },
         { id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W" },
@@ -184,147 +153,8 @@
 
     const placedBuildings = [];
     let currentPlacingBuilding = null;
-    let isMovingBuilding = false;
-    let selectedBuildingObj = null;
     let mouseGridCol = -1;
     let mouseGridRow = -1;
-
-    // 🌟 [전체 맵 밀림 통합 제어 함수]
-    function updateMapWorldShift() {
-        const mapLayer = document.getElementById('map-world-layer');
-        if (!mapLayer) return;
-
-        if (isBlueprintMode && !currentPlacingBuilding) {
-            mapLayer.style.transform = 'translateX(10vw)';
-        } else {
-            mapLayer.style.transform = 'translateX(0)';
-        }
-    }
-
-    function createBuildingDOM(building) {
-        const container = document.getElementById('building-dom-container');
-        if (!container) return;
-        
-        const wrapper = document.createElement('div');
-        wrapper.id = `building-dom-${building.col}-${building.row}`;
-        wrapper.className = 'absolute pointer-events-auto cursor-pointer transition-transform hover:scale-105';
-        
-        const iframe = document.createElement('iframe');
-        iframe.src = `${building.data.id}.html`;
-        iframe.className = 'w-full h-full border-0 overflow-hidden pointer-events-none bg-transparent';
-        
-        wrapper.appendChild(iframe);
-        container.appendChild(wrapper);
-        
-        wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (currentPlacingBuilding || isOuterRegion) return;
-            openActionMenuForBuilding(building);
-        });
-
-        building.domElement = wrapper;
-    }
-
-    function openActionMenuForBuilding(building) {
-        if (isOuterRegion) return;
-        selectedBuildingObj = building;
-        const menuContainer = document.getElementById('action-menu-container');
-        if (!menuContainer) return;
-
-        menuContainer.classList.remove('hidden');
-        updateActionMenuPosition();
-    }
-
-    function closeActionMenu() {
-        selectedBuildingObj = null;
-        const menuContainer = document.getElementById('action-menu-container');
-        if (menuContainer) menuContainer.classList.add('hidden');
-    }
-
-    // 🌟 [DelOrMov 버튼 위치 조정 - width를 210px로 확대하여 글자 넘침 방지]
-    function updateActionMenuPosition() {
-        if (!selectedBuildingObj || !selectedBuildingObj.domElement || isOuterRegion) return;
-        const menuContainer = document.getElementById('action-menu-container');
-        if (menuContainer.classList.contains('hidden')) return;
-
-        const screenX = cameraX + (selectedBuildingObj.col * CELL_SIZE) * scale;
-        const screenY = cameraY + (selectedBuildingObj.row * CELL_SIZE) * scale;
-        const screenW = (CELL_SIZE * 2) * scale;
-
-        const menuWidth = Math.max(210, screenW); // 210px 확장
-        const menuHeight = 54;
-
-        menuContainer.style.width = `${menuWidth}px`;
-        menuContainer.style.height = `${menuHeight}px`;
-        menuContainer.style.left = `${screenX + (screenW - menuWidth) / 2}px`;
-        menuContainer.style.top = `${screenY - menuHeight - 12}px`;
-    }
-
-    window.addEventListener('message', (e) => {
-        if (!e.data || e.data.type !== 'BUILDING_ACTION') return;
-
-        const action = e.data.action;
-        if (!selectedBuildingObj) return;
-
-        const targetBuilding = selectedBuildingObj;
-        closeActionMenu();
-
-        if (action === 'move') {
-            removeBuildingDOM(targetBuilding);
-            const index = placedBuildings.indexOf(targetBuilding);
-            if (index > -1) placedBuildings.splice(index, 1);
-
-            isMovingBuilding = true;
-            window.startBuildingPlacement(targetBuilding.data);
-
-        } else if (action === 'delete') {
-            const refundPotato = Math.floor((targetBuilding.data.reqPotato || 0) * 0.1);
-            const totalRefundPotato = refundPotato + Math.floor((targetBuilding.upgradeSpentPotato || 0) * 0.1);
-
-            const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
-            if (potatoRes) potatoRes.value += totalRefundPotato;
-
-            const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
-            if (techRes && techRes.value >= 5) techRes.value -= 5;
-
-            removeBuildingDOM(targetBuilding);
-            const index = placedBuildings.indexOf(targetBuilding);
-            if (index > -1) placedBuildings.splice(index, 1);
-
-            if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
-        }
-    });
-
-    function removeBuildingDOM(building) {
-        if (building.domElement && building.domElement.parentNode) {
-            building.domElement.parentNode.removeChild(building.domElement);
-            building.domElement = null;
-        }
-    }
-
-    // 🌟 [건물 DOM 크기 320px 고정 + transform scale 적용하여 모든 줌 비율 완벽 스케일링]
-    function updateBuildingDOMPositions() {
-        if (isOuterRegion) return;
-
-        placedBuildings.forEach(b => {
-            if (!b.domElement) {
-                createBuildingDOM(b);
-            }
-
-            const screenX = cameraX + (b.col * CELL_SIZE) * scale;
-            const screenY = cameraY + (b.row * CELL_SIZE) * scale;
-            const baseSize = CELL_SIZE * 2; // 320px 고정
-
-            b.domElement.style.left = `${screenX}px`;
-            b.domElement.style.top = `${screenY}px`;
-            b.domElement.style.width = `${baseSize}px`;
-            b.domElement.style.height = `${baseSize}px`;
-            b.domElement.style.transformOrigin = '0 0';
-            b.domElement.style.transform = `scale(${scale})`;
-        });
-
-        updateActionMenuPosition();
-    }
 
     const citizens = [];
     const CITIZEN_COUNT = 5;
@@ -443,8 +273,7 @@
             ctx.lineWidth = 6;
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
         } else {
-            // 🌟 [갈색 #b45309 -> 어두운 회색 #1e293b 로 변경]
-            ctx.fillStyle = '#1e293b'; 
+            ctx.fillStyle = '#b45309'; 
             ctx.fillRect(-OUTDOOR_MARGIN, -OUTDOOR_MARGIN, MAP_WIDTH + OUTDOOR_MARGIN * 2, MAP_HEIGHT + OUTDOOR_MARGIN * 2);
 
             ctx.fillStyle = '#4ab255'; 
@@ -472,7 +301,24 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            updateBuildingDOMPositions();
+            placedBuildings.forEach(b => {
+                const bx = b.col * CELL_SIZE;
+                const by = b.row * CELL_SIZE;
+                const bw = CELL_SIZE * 2;
+                const bh = CELL_SIZE * 2;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(bx, by, bw, bh);
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(bx, by, bw, bh);
+
+                ctx.fillStyle = '#fde047';
+                ctx.font = 'bold 24px "Gothic A1"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(b.data.name, bx + bw / 2, by + bh / 2);
+            });
 
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
@@ -482,18 +328,12 @@
 
                 const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2);
 
-                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.45)' : 'rgba(255, 255, 255, 0.55)';
+                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)';
                 ctx.fillRect(gx, gy, bw, bh);
 
-                ctx.strokeStyle = occupied ? '#ef4444' : '#ffffff';
-                ctx.lineWidth = occupied ? 4 : 5;
+                ctx.strokeStyle = occupied ? '#ef4444' : '#10b981';
+                ctx.lineWidth = 4;
                 ctx.strokeRect(gx, gy, bw, bh);
-
-                ctx.fillStyle = occupied ? '#fca5a5' : '#ffffff';
-                ctx.font = 'bold 22px "Gothic A1"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(currentPlacingBuilding.name, gx + bw / 2, gy + bh / 2);
             }
 
             citizens.forEach(citizen => {
@@ -520,39 +360,16 @@
         if (hudZoom) hudZoom.innerText = Math.round((scale / minScale) * 100);
     }
 
-    let toastTimeout = null;
-    function showErrorToastAtCursor(clientX, clientY) {
-        const toast = document.getElementById('cursor-error-toast');
-        if (!toast) return;
-
-        toast.style.left = `${clientX}px`;
-        toast.style.top = `${clientY}px`;
-        
-        toast.classList.remove('hidden');
-        setTimeout(() => { toast.style.opacity = '1'; }, 10);
-
-        if (toastTimeout) clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.classList.add('hidden'), 200);
-        }, 1200);
-    }
-
     viewport.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
 
-        closeActionMenu();
-
         if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
             if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2)) {
-                
-                if (!isMovingBuilding) {
-                    const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
-                    const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+                const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
+                const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
 
-                    if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
-                    if (techRes) techRes.value += 5;
-                }
+                if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
+                if (techRes) techRes.value += 5;
 
                 placedBuildings.push({
                     col: mouseGridCol,
@@ -562,14 +379,14 @@
 
                 if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
 
-                cancelBuildingPlacement();
+                currentPlacingBuilding = null;
 
                 const iframe = document.getElementById('craft-iframe');
                 if (iframe && iframe.contentWindow && iframe.contentWindow.onBuildingPlacedSuccess) {
                     iframe.contentWindow.onBuildingPlacedSuccess();
                 }
             } else {
-                showErrorToastAtCursor(e.clientX, e.clientY);
+                alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
             }
             return;
         }
@@ -579,7 +396,6 @@
         startY = e.clientY - cameraY;
     });
 
-    // 🌟 [마우스 그리드 좌표 오프셋 수정]
     window.addEventListener('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -588,8 +404,11 @@
         const worldX = (mouseX - cameraX) / scale;
         const worldY = (mouseY - cameraY) / scale;
 
-        mouseGridCol = Math.floor(worldX / CELL_SIZE);
-        mouseGridRow = Math.floor(worldY / CELL_SIZE);
+        const alignedX = worldX - 161;
+        const alignedY = worldY - 161;
+
+        mouseGridCol = Math.floor(alignedX / CELL_SIZE);
+        mouseGridRow = Math.floor(alignedY / CELL_SIZE);
 
         if (isPanning) {
             cameraX = e.clientX - startX;
@@ -618,38 +437,10 @@
 
     window.startBuildingPlacement = function(buildingData) {
         currentPlacingBuilding = buildingData;
-
-        document.querySelectorAll('.ui-fade-layer').forEach(el => {
-            el.classList.add('hidden-placement');
-        });
-
-        updateMapWorldShift();
-
-        const cancelBar = document.getElementById('placement-cancel-bar');
-        const cancelText = document.getElementById('placement-cancel-text');
-        if (cancelBar && cancelText) {
-            cancelText.innerText = isMovingBuilding ? `${buildingData.name} 이동 취소` : `${buildingData.name} 배치 취소`;
-            cancelBar.classList.remove('hidden');
-        }
     };
 
     window.cancelBuildingPlacement = function() {
         currentPlacingBuilding = null;
-        isMovingBuilding = false;
-
-        const cancelBar = document.getElementById('placement-cancel-bar');
-        if (cancelBar) cancelBar.classList.add('hidden');
-
-        updateMapWorldShift();
-
-        document.querySelectorAll('.ui-fade-layer').forEach(el => {
-            el.classList.remove('hidden-placement');
-        });
-
-        const craftIframe = document.getElementById('craft-iframe');
-        if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.onPlacementCancelled) {
-            craftIframe.contentWindow.onPlacementCancelled();
-        }
     };
 
     const btnBlueprint = document.getElementById('btn-blueprint');
@@ -667,18 +458,22 @@
     const craftPanelFrame = document.getElementById('craft-panel-frame');
     const resourceContainer = document.getElementById('resource-module-container');
 
+    // ★ [오류 수정 완료] 자원 모듈 위치 계산 함수 
     function updateResourceContainerPosition() {
         if (!isBlueprintMode) return;
         const craftRect = craftPanelFrame.getBoundingClientRect();
         
+        // Y축 높이는 기본 bottom-24(6rem) 유지하여 화면 안으로 고정
         resourceContainer.style.top = 'auto';
         resourceContainer.style.bottom = '6rem';
-        resourceContainer.style.left = `${craftRect.right + 416}px`;
+        
+        // X축만 제작 창 우측 끝 + 16px 여백 위치로 이동
+        resourceContainer.style.left = `${craftRect.right + 420}px`;
     }
 
+    // 설계도 UI 토글 버튼 이벤트
     btnBlueprint.addEventListener('click', () => {
         isBlueprintMode = !isBlueprintMode;
-
         if (isBlueprintMode) {
             btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
             btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
@@ -686,11 +481,15 @@
             blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
 
             hideableUiGroup.style.display = 'none';
+            
+            // 캔버스 오른쪽 이동
+            canvas.style.transform = 'translateX(10vw)';
             craftPanelFrame.classList.add('active');
 
-            updateMapWorldShift();
+            // 자원 창을 제작 목록 우측 영역으로 정확히 이동
             updateResourceContainerPosition();
 
+            // iframe 크래프트 UI 최신화 알림
             const craftIframe = document.getElementById('craft-iframe');
             if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
                 craftIframe.contentWindow.renderCraftList();
@@ -703,10 +502,11 @@
             blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
             hideableUiGroup.style.display = 'block';
+            
+            canvas.style.transform = 'translateX(0)';
             craftPanelFrame.classList.remove('active');
 
-            updateMapWorldShift();
-
+            // 설계도 UI가 닫히면 원래 위치(좌측 하단 left: 1.5rem)로 복원
             resourceContainer.style.top = 'auto';
             resourceContainer.style.bottom = '6rem';
             resourceContainer.style.left = '1.5rem';
@@ -715,7 +515,6 @@
         }
     });
 
-    // 🌟 [외부로 이동 시 건물 DOM 숨김 및 메뉴 닫기 처리]
     btnToggleOuter.addEventListener('click', () => {
         isOuterRegion = true;
         btnToggleOuter.parentElement.classList.add('hidden');
@@ -724,10 +523,6 @@
         locationTitle.innerText = "모나티엄 외곽";
         locationBadge.innerText = "외부 지역";
         locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30";
-
-        const buildingContainer = document.getElementById('building-dom-container');
-        if (buildingContainer) buildingContainer.classList.add('hidden');
-        closeActionMenu();
     });
 
     btnToggleInner.addEventListener('click', () => {
@@ -738,9 +533,6 @@
         locationTitle.innerText = "모나티엄 내부";
         locationBadge.innerText = "내부 지역";
         locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30";
-
-        const buildingContainer = document.getElementById('building-dom-container');
-        if (buildingContainer) buildingContainer.classList.remove('hidden');
     });
 
     document.getElementById('btn-reset-cam').addEventListener('click', resetCamera);
@@ -750,6 +542,7 @@
         resetCamera();
     });
 
+    // PlayerResource 모듈 동적 로드 및 렌더링
     function loadPlayerResourceModule() {
         fetch('PlayerResource.html')
             .then(response => response.text())
@@ -774,5 +567,3 @@
         render();
     });
 </script>
-</body>
-</html>

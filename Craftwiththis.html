@@ -15,7 +15,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="bg-slate-900/95 text-slate-100 p-3 h-full border border-slate-700/80 rounded-2xl flex flex-col justify-between backdrop-blur-xl shadow-2xl overflow-visible relative">
+<body class="bg-slate-900/95 text-slate-100 p-3 h-full border border-slate-700/80 rounded-2xl flex flex-col justify-between backdrop-blur-xl shadow-2xl overflow-hidden relative">
 
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5 mb-2.5">
@@ -35,12 +35,23 @@
     </div>
 
     <!-- Crafting Cards List -->
-    <div class="flex-1 overflow-y-auto space-y-2 pr-1 relative overflow-x-visible" id="craft-list">
+    <div class="flex-1 overflow-y-auto space-y-2 pr-1 relative" id="craft-list">
         <!-- JS 동적 생성 -->
     </div>
 
+    <!-- Building Selection / Cancel View (제작 진행 시 활성화) -->
+    <div id="building-placing-view" class="hidden flex-1 flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-amber-500/40 rounded-xl bg-amber-950/20 backdrop-blur-md">
+        <i class="fa-solid fa-compass-drafting text-3xl text-amber-400 mb-2 animate-bounce"></i>
+        <h3 class="font-extrabold text-xs text-amber-300 mb-1" id="placing-title">건물 배치 중...</h3>
+        <p class="text-[10px] text-slate-400 mb-4">원하는 격자 위치를 클릭하여 설치하세요.<br>(크기: 2x2 격자)</p>
+        
+        <button onclick="cancelBuildingPlacement()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 border border-rose-400/30 cursor-pointer">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>제작 취소</span>
+        </button>
+    </div>
+
     <script>
-        // 🌟 [PlayerResource.html의 desc 포맷과 100% 동일하게 굵은 요약 설명 + <br><br> + 대사/플레이버 텍스트 적용]
         const BUILDINGS_DATA = [
             {
                 id: 'potato1',
@@ -49,7 +60,8 @@
                 icon: 'fa-solid fa-industry',
                 bg: 'bg-amber-900/40', border: 'border-amber-600/40', text: 'text-amber-400', hoverBorder: 'hover:border-amber-500/60',
                 reqTech: 10, reqPotato: 300000,
-                desc: '<b>매일 감자 10만 개를 소모하여 가공된 자재 10개를 생산한다. (감자 부족 시 미가공 자재 1개/일 자동 가공)</b><br><br>"감자로 건물 외벽을 만드는 건 조금 끈적거리긴 하지만, 방수 성능 하나는 끝내줍니다!" - 에르핀'
+                desc: '매일 감자 10만 개를 소모하여 <b>가공된 자재 10개</b>를 생산합니다.<br>(감자 부족 시 미가공 자재 1개/일 자동 가공)',
+                effect: '제작 시 기술력 +5 상승'
             },
             {
                 id: 'potato2',
@@ -58,7 +70,8 @@
                 icon: 'fa-solid fa-plug-circle-bolt',
                 bg: 'bg-cyan-900/40', border: 'border-cyan-600/40', text: 'text-cyan-400', hoverBorder: 'hover:border-cyan-500/60',
                 reqTech: 10, reqPotato: 300000,
-                desc: '<b>매일 감자 10만 개를 소모하여 에너지 10을 생성한다. (감자 부족 시 7일마다 에너지 1 자동 생산)</b><br><br>"감자에 꽂은 젓가락에서 전기가 흐르는 걸 보고 다들 기절할 뻔했지 뭐야..." - 알레트'
+                desc: '매일 감자 10만 개를 소모하여 <b>에너지 10</b>을 생성합니다.<br>(감자 부족 시 7일마다 에너지 1 자동 생산)',
+                effect: '제작 시 기술력 +5 상승'
             },
             {
                 id: 'potato3',
@@ -67,7 +80,8 @@
                 icon: 'fa-solid fa-bolt',
                 bg: 'bg-yellow-900/40', border: 'border-yellow-600/40', text: 'text-yellow-400', hoverBorder: 'hover:border-yellow-500/60',
                 reqTech: 10, reqPotato: 300000,
-                desc: '<b>매일 감자 10만 개를 소모하여 에너지 1을 전력 1로 변환한다.</b><br><br>"감자 스파크로 전력망을 안정화시키다니, 이건 거의 연금술 수준인데요?" - 아이시아'
+                desc: '매일 감자 10만 개를 소모하여 <b>에너지 1을 전력 1로 변환</b>합니다.',
+                effect: '제작 시 기술력 +5 상승'
             },
             {
                 id: 'potato4',
@@ -76,7 +90,8 @@
                 icon: 'fa-solid fa-battery-full',
                 bg: 'bg-emerald-900/40', border: 'border-emerald-600/40', text: 'text-emerald-400', hoverBorder: 'hover:border-emerald-500/60',
                 reqTech: 10, reqPotato: 300000,
-                desc: '<b>전력 최대 저장 용량을 +50 증가시킨다. (일일 감자 소모 없음)</b><br><br>"거대한 감자 덩어리가 전기를 품고 있다니... 먹지는 못하겠군요." - 로네'
+                desc: '전력 최대 저장 용량을 <b>+50</b> 증가시킵니다. (일일 감자 소모 없음)',
+                effect: '제작 시 기술력 +5 상승'
             },
             {
                 id: 'potato5',
@@ -85,7 +100,8 @@
                 icon: 'fa-solid fa-kitchen-set',
                 bg: 'bg-orange-900/40', border: 'border-orange-600/40', text: 'text-orange-400', hoverBorder: 'hover:border-orange-500/60',
                 reqTech: 15, reqPotato: 300000,
-                desc: '<b>매일 감자 5만 개를 소모하여 가공된 식량 5개를 생산한다. (감자 부족 시 미가공 식량 1개/일 자동 가공)</b><br><br>"오늘의 메뉴는 감자튀김, 감자전, 감자 샐러드, 그리고... 감자입니다!" - 셰디'
+                desc: '매일 감자 5만 개를 소모하여 <b>가공된 식량 5개</b>를 생산합니다.<br>(감자 부족 시 미가공 식량 1개/일 자동 가공)',
+                effect: '제작 시 기술력 +5 상승'
             }
         ];
 
@@ -127,13 +143,13 @@
                         ${isTechDisabled ? '잠김' : '제작'}
                     </button>
 
-                    <!-- 🌟 [PlayerResource.html과 100% 완전히 동일한 구조와 스타일의 Hover 툴팁] -->
-                    <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
-                        <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
-                            <i class="${b.icon} ${b.text}"></i>
-                            <span>${b.name}</span>
+                    <!-- Hover Tooltip -->
+                    <div class="absolute left-full top-0 ml-3 w-56 bg-slate-900/95 border border-slate-700 p-3 rounded-xl shadow-2xl z-50 hidden group-hover:block pointer-events-none backdrop-blur-md">
+                        <div class="font-extrabold text-xs ${b.text} mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                            <i class="${b.icon}"></i> ${b.name}
                         </div>
-                        <div class="text-[11px] leading-relaxed text-slate-200">${b.desc}</div>
+                        <div class="text-[10px] text-slate-300 leading-relaxed">${b.desc}</div>
+                        <div class="mt-2 pt-1 border-t border-slate-800 text-[9px] text-teal-400 font-semibold">${b.effect}</div>
                     </div>
                 </div>
                 `;
@@ -150,25 +166,35 @@
                 return;
             }
 
+            document.getElementById('craft-list').classList.add('hidden');
+            document.getElementById('building-placing-view').classList.remove('hidden');
+            document.getElementById('placing-title').innerText = `${building.name} 배치 중`;
+
             if (window.parent && window.parent.startBuildingPlacement) {
                 window.parent.startBuildingPlacement(building);
             }
         }
 
-        function onPlacementCancelled() {
-            renderCraftList();
+        function cancelBuildingPlacement() {
+            document.getElementById('craft-list').classList.remove('hidden');
+            document.getElementById('building-placing-view').classList.add('hidden');
+
+            if (window.parent && window.parent.cancelBuildingPlacement) {
+                window.parent.cancelBuildingPlacement();
+            }
         }
 
         function onBuildingPlacedSuccess() {
+            document.getElementById('craft-list').classList.remove('hidden');
+            document.getElementById('building-placing-view').classList.add('hidden');
             renderCraftList();
         }
 
         window.renderCraftList = renderCraftList;
-        window.onPlacementCancelled = onPlacementCancelled;
-        window.onBuildingPlacedSuccess = onBuildingPlacedSuccess;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderCraftList();
+            // 상위 창 데이터 할당 타이밍 대비 반복 확인
             let checks = 0;
             const timer = setInterval(() => {
                 renderCraftList();
