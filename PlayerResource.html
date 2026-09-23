@@ -41,12 +41,12 @@
         {
             id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W", max: 0,
             desc: "<b>에너지를 여러 방식으로 가공하여 만들어낸, 문명에 그 무엇보다 소중한 자원. 반드시 우리 스스로 늘려야 한다. 저장할 배터리는 필수이다.</b><br><br>이게 ⚡엘레나님⚙️의 협조🤝로 만들어진 '엘레나-노바 테이저건 20🔫'다 순간 전력⚡ 1500볼트에 일회용🗑️인 전기지짐이가 충전 시간⏰ 24시간이고요. 친환경🌱 에너지 이용하고, 심지어 세일🏷️ 기간이ㄱ- 야! 내가 비효율적이라고 말하는거 빼랬지! - 알레트, 아이시아",
-            goodRegions: [], badRegions: []
+            goodRegions: ["elf"], badRegions: ["fairy", "witch", "spirit", "dragon", "beast", "ghost"]
         },
         {
             id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, unit: "",
             get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
-            desc: "<b>아무리 배고파도 죽진 않는 세계 같지만, 일단 고통스러운 건 마찬가지라 정상적으로 살기 위해선 반드시 필요하다. 가공해야 하루가 지날 때 먹일 수 있다.</b><br><br>\"돈까스는 없나요?\" - 로네",
+            desc: "<b>아무리 배고파도 죽진 않는 세계 같지만, 일단 고통스러운 건 마찬가지라 정상적으로 살기 위해선 반드시 필요하다. 가공해야 하루가 지날 때 먹일 수 있다. 주로 수인들에게서 얻을 수 있다. 유령과 정령들에게선 얻을 수 없다.</b><br><br>\"돈까스는 없나요?\" - 로네",
             goodRegions: ["beast"], badRegions: ["spirit", "ghost"]
         },
         {
@@ -62,7 +62,7 @@
         {
             id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, unit: "",
             get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
-            desc: "<b>이곳은 어디서 나오는지도 모를 광물들이 끊임없이 발생한다. 가공해야 사용 가능한 자재로 인정받는다.</b><br><br>\"용족들이 시끄럽다면서 돌을 던진 적이 있는데, 주워보니 하나하나가 우리집 창문 가격급 보석이었어!\" - 페스타",
+            desc: "<b>이곳은 어디서 나오는지도 모를 광물들이 끊임없이 발생한다. 가공해야 사용 가능한 자재로 인정받는다. 주로 용족들에게서 얻을 수 있다. 요정들에게선 얻을 수 없다.</b><br><br>\"용족들이 시끄럽다면서 돌을 던진 적이 있는데, 주워보니 하나하나가 우리집 창문 가격급 보석이었어!\" - 페스타",
             goodRegions: ["dragon"], badRegions: ["fairy"]
         },
         {
@@ -129,7 +129,6 @@
     const toggleBtn = document.getElementById('btn-toggle-resource');
     const toggleIcon = document.getElementById('resource-toggle-icon');
 
-    // 외부(InMonatium.html)에서 접힘 상태를 강제 제어할 수 있는 글로벌 제어 함수
     window.setPlayerResourceCollapsed = function(shouldCollapse) {
         isCollapsed = shouldCollapse;
         if (isCollapsed) {
