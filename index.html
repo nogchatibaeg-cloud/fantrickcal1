@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엘리아스 어웨이 - 메인</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 날카로운 상단 폰트 & 부드러운 하단 폰트 불러오기 -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@800&family=Jua&family=Noto+Sans+KR:wght@900&display=swap" rel="stylesheet">
+
+    <style>
+        .fade-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            z-index: 9999; /* 모든 요소 최상단에 위치 */
+            pointer-events: none; /* 클릭 이벤트 방해 방지 */
+            animation: fadeOut 1.2s ease-out forwards; /* 1.2초 동안 페이드아웃 */
+        }
+
+        /* 검은 화면이 투명해지며 사라지는 애니메이션 */
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+                body {
+                    background-color: #050508;
+                    color: #ffffff;
+                    margin: 0;
+                    overflow: hidden;
+                    font-family: 'Noto Sans KR', sans-serif;
+                }
+
+        /* 1. 원형 로고 전체 컨테이너 */
+        .logo-circle-frame {
+            width: 340px;
+            height: 340px;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            /* 상단은 매끈하고 차가운 테두리, 하단은 몽글몽글 퍼지는 그라데이션 보더 */
+            box-shadow: 
+                0 -4px 15px rgba(180, 210, 255, 0.3),
+                0 0 0 2px rgba(255, 255, 255, 0.1);
+        }
+
+        /* 하단 몽글몽글 퍼지는 구름 테두리 연출 */
+        .logo-circle-frame::after {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 100%, rgba(135, 206, 235, 0.4) 0%, rgba(255,255,255,0.2) 30%, transparent 70%);
+            filter: blur(8px);
+            pointer-events: none;
+        }
+
+        /* 2. 상단 우주 영역 (엘리아스) */
+        .space-section {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 20%, #1a1c2e 0%, #05060a 80%);
+            display: flex;
+            justify-content: flex-start; /* 왼쪽 정렬 */
+            align-items: flex-start;
+            padding-top: 112px; /* 경계선 바로 위까지 내림 */
+            padding-left: 50px; /* 이미지처럼 좌측 위치 지정 */
+        }
+
+        /* 차가운 금속 색체의 엘리아스 텍스트 */
+        .text-elias {
+            transform: rotate(10deg);
+            font-size: 3.0rem; /* 크기를 좀 더 키워서 강조 */
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            background: linear-gradient(180deg, #ffffff 0%, #b0c4de 50%, #4682b4 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(176, 196, 222, 0.6));
+            line-height: 1;
+        }
+
+        /* 3. 하단 지하 하늘 영역 (어웨이) - 45도 기울임 및 원 중앙을 가르도록 조정 */
+        .sky-section-wrapper {
+            position: absolute;
+            width: 160%;
+            height: 160%;
+            top: 50%; /* 경계선이 원 중앙(50%)을 정확히 지남 */
+            left: -30%;
+            /* 45도 각도로 기울임 */
+            transform: rotate(-15deg); 
+            overflow: hidden;
+        }
+
+        /* 위로 약간 휘어지는 경계선 */
+        .sky-section {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 60%, #ffffff 100%);
+            border-top-left-radius: 50% 25px;
+            border-top-right-radius: 50% 25px;
+            border-top: 3px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 -8px 20px rgba(255, 255, 255, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 10px; /* 경계선 아래로 바짝 밀착 */
+        }
+
+        /* 산뜻하고 부드러운 폰트의 어웨이 텍스트 (우측 위치, 정방향 세움) */
+        .text-away {
+            font-family: 'Jua', sans-serif;
+            letter-spacing: 0.15em;
+            font-size: 3.0rem;
+            color: #ff6b81;
+            text-shadow: 
+                2px 2px 0px #ffffff,
+                -2px -2px 0px #ffffff,
+                2px -2px 0px #ffffff,
+                -2px 2px 0px #ffffff,
+                0 4px 12px rgba(255, 107, 129, 0.4);
+            /* 회전 보정으로 화면 기준 똑바로 세우고, 오른쪽으로 많이 보냄 */
+            transform: rotate(25deg) translate(100px, -30px);
+            line-height: 1;
+        }
+        .text-away-sub {
+            font-family: 'Jua', sans-serif;
+            letter-spacing: 0.15em;
+            font-size: 3.0rem;
+            color: #ff6b81; 
+            text-shadow: 
+                2px 2px 0px #ffffff,
+                -2px -2px 0px #ffffff,
+                2px -2px 0px #ffffff,
+                -2px 2px 0px #ffffff,
+                0 4px 12px rgba(255, 107, 129, 0.4);
+            position: absolute;
+            transform: rotate(28deg) translate(13px, -96px);
+        }
+        /* 별빛 반짝임 효과 */
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: blink 2s infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 0.2; }
+            to { opacity: 0.9; }
+        }
+        /* 우상단 지구 스타일 */
+        .earth {
+            position: absolute;
+            width: 300px;        /* 지구 너비 */
+            height: 300px;       /* 지구 높이 */
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #a2e8dd 0%, #3a9bdc 45%, #16437d 75%, #081a36 100%);
+            box-shadow: inset -8px -8px 15px rgba(0, 0, 0, 0.7), 0 0 12px rgba(135, 206, 235, 0.4);
+            opacity: 0.85;
+            pointer-events: none;
+            transform: translate(-30px, -350px);
+        }
+
+        /* 나무 폰트 스타일 (기존 어웨이 스타일 복사) */
+        .text-tree {
+            font-family: 'Jua', sans-serif;
+            font-size: 10rem;
+            color: #2e8b57;
+            text-shadow: 
+                2px 2px 0px #ffffff,
+                -2px -2px 0px #ffffff,
+                2px -2px 0px #ffffff,
+                -2px 2px 0px #ffffff,
+                0 4px 12px rgba(46, 139, 87, 0.4);
+            position: absolute;
+            /* 위치 및 각도 조절 */
+            transform: rotate(15deg) translate(30px, 60px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center relative">
+    <div class="fade-overlay"></div>
+
+    <!-- 메인 로고 영역 -->
+    <div class="logo-circle-frame">
+        
+        <!-- 상단: 차가운 우주 & 금속 '엘리아스' -->
+        <div class="space-section">
+            <div class="earth"></div>
+            <!-- 배경 별빛들 -->
+            <div class="star" style="width:2px; height:2px; top:20%; left:20%;"></div>
+            <div class="star" style="width:3px; height:3px; top:15%; left:75%;"></div>
+            <div class="star" style="width:2px; height:2px; top:35%; left:85%;"></div>
+
+            <div class="text-elias">엘리아스</div>
+        </div>
+
+        <!-- 하단: 45도 기울어지고 위로 휘어진 경계선 + 산뜻한 지하 하늘 & 부드러운 '어웨이' -->
+        <div class="sky-section-wrapper">
+            <div class="sky-section">
+                <div class="text-tree">🌳</div>
+
+                <div class="text-away">어웨이</div>
+                <div class="text-away-sub">엘리아스</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 시작 버튼 영역 -->
+    <div class="mt-12 flex flex-col items-center gap-4 z-10">
+        <a href="loading.html?target=Prologue.html" 
+           class="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full border border-white/30 backdrop-blur-md transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+            게임 시작
+        </a>
+    </div>
+
+</body>
+</html>

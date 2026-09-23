@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제작 시설 - Craftwiththis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-900/95 text-slate-100 p-3 h-full border border-slate-700/80 rounded-2xl flex flex-col justify-between backdrop-blur-xl shadow-2xl overflow-hidden relative">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5 mb-2.5">
+        <div class="flex items-center gap-2">
+            <div class="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30">
+                <i class="fa-solid fa-hammer text-sm"></i>
+            </div>
+            <div>
+                <h2 class="text-xs font-black tracking-wide text-white">시설 제작 목록</h2>
+                <p class="text-[9px] text-slate-400">카드에 마우스를 올리면 상세 정보가 표시됩니다.</p>
+            </div>
+        </div>
+        <div id="tech-indicator" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold text-teal-400">
+            <i class="fa-solid fa-microchip"></i>
+            <span>기술력: <strong id="val-tech" class="text-white">0</strong></span>
+        </div>
+    </div>
+
+    <!-- Crafting Cards List -->
+    <div class="flex-1 overflow-y-auto space-y-2 pr-1 relative" id="craft-list">
+        <!-- JS 동적 생성 -->
+    </div>
+
+    <script>
+        const BUILDINGS_DATA = [
+            {
+                id: 'potato1',
+                type: 'potato_factory',
+                name: '감자 가공소',
+                icon: 'fa-solid fa-industry',
+                bg: 'bg-amber-900/40', border: 'border-amber-600/40', text: 'text-amber-400', hoverBorder: 'hover:border-amber-500/60',
+                reqTech: 10, reqPotato: 300000,
+                desc: '매일 감자 10만 개를 소모하여 <b>가공된 자재 10개</b>를 생산합니다.<br>(감자 부족 시 미가공 자재 1개/일 자동 가공)',
+                effect: '제작 시 기술력 +5 지속 상승'
+            },
+            {
+                id: 'potato2',
+                type: 'potato_generator',
+                name: '감자 발전기',
+                icon: 'fa-solid fa-plug-circle-bolt',
+                bg: 'bg-cyan-900/40', border: 'border-cyan-600/40', text: 'text-cyan-400', hoverBorder: 'hover:border-cyan-500/60',
+                reqTech: 10, reqPotato: 300000,
+                desc: '매일 감자 10만 개를 소모하여 <b>에너지 10</b>을 생성합니다.<br>(감자 부족 시 7일마다 에너지 1 자동 생산)',
+                effect: '제작 시 기술력 +5 지속 상승'
+            },
+            {
+                id: 'potato3',
+                type: 'potato_converter',
+                name: '감자 에너지-전력 변환기',
+                icon: 'fa-solid fa-bolt',
+                bg: 'bg-yellow-900/40', border: 'border-yellow-600/40', text: 'text-yellow-400', hoverBorder: 'hover:border-yellow-500/60',
+                reqTech: 10, reqPotato: 300000,
+                desc: '매일 감자 10만 개를 소모하여 <b>에너지 1을 전력 1로 변환</b>합니다.',
+                effect: '제작 시 기술력 +5 지속 상승'
+            },
+            {
+                id: 'potato4',
+                type: 'potato_battery',
+                name: '감자 배터리',
+                icon: 'fa-solid fa-battery-full',
+                bg: 'bg-emerald-900/40', border: 'border-emerald-600/40', text: 'text-emerald-400', hoverBorder: 'hover:border-emerald-500/60',
+                reqTech: 10, reqPotato: 300000,
+                desc: '전력 최대 저장 용량을 <b>+50</b> 증가시킵니다. (일일 감자 소모 없음)',
+                effect: '제작 시 기술력 +5 지속 상승'
+            },
+            {
+                id: 'potato5',
+                type: 'potato_kitchen',
+                name: '감자 조리시설',
+                icon: 'fa-solid fa-kitchen-set',
+                bg: 'bg-orange-900/40', border: 'border-orange-600/40', text: 'text-orange-400', hoverBorder: 'hover:border-orange-500/60',
+                reqTech: 15, reqPotato: 300000,
+                desc: '매일 감자 5만 개를 소모하여 <b>가공된 식량 5개</b>를 생산합니다.<br>(감자 부족 시 미가공 식량 1개/일 자동 가공)',
+                effect: '제작 시 기술력 +5 지속 상승'
+            }
+        ];
+
+        function getParentResource(id) {
+            if (window.parent && window.parent.PLAYER_RESOURCES_DATA) {
+                return window.parent.PLAYER_RESOURCES_DATA.find(r => r.id === id);
+            }
+            return null;
+        }
+
+        function renderCraftList() {
+            const listEl = document.getElementById('craft-list');
+            if (!listEl) return;
+
+            const techRes = getParentResource('tech');
+            const currentTech = techRes ? techRes.value : 0;
+
+            document.getElementById('val-tech').innerText = currentTech;
+
+            listEl.innerHTML = BUILDINGS_DATA.map(b => {
+                const isTechDisabled = currentTech < b.reqTech;
+                const disabledClass = isTechDisabled ? 'opacity-40 grayscale pointer-events-none bg-slate-900/50' : 'bg-slate-800/80';
+
+                return `
+                <div class="group relative ${disabledClass} border border-slate-700 ${b.hoverBorder} rounded-xl p-2.5 flex items-center justify-between transition-all cursor-pointer">
+                    <div class="flex items-center gap-2.5 truncate">
+                        <div class="w-9 h-9 ${b.bg} border ${b.border} rounded-lg flex items-center justify-center ${b.text} text-base shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="${b.icon}"></i>
+                        </div>
+                        <div class="truncate">
+                            <h3 class="font-bold text-xs ${b.text} truncate">${b.name}</h3>
+                            <div class="flex items-center gap-2 mt-0.5 text-[9px] text-slate-300 font-mono">
+                                <span class="${isTechDisabled ? 'text-rose-400 font-bold' : ''}"><i class="fa-solid fa-microchip text-teal-400"></i> ${b.reqTech}</span>
+                                <span><i class="fa-solid fa-database text-yellow-600"></i> ${(b.reqPotato / 10000).toFixed(0)}만</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="startPlacement('${b.id}')" ${isTechDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-black text-[10px] rounded-lg shadow-md transition-all shrink-0">
+                        ${isTechDisabled ? '잠김' : '제작'}
+                    </button>
+
+                    <!-- Hover Tooltip -->
+                    <div class="absolute left-full top-0 ml-3 w-56 bg-slate-900/95 border border-slate-700 p-3 rounded-xl shadow-2xl z-50 hidden group-hover:block pointer-events-none backdrop-blur-md">
+                        <div class="font-extrabold text-xs ${b.text} mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                            <i class="${b.icon}"></i> ${b.name}
+                        </div>
+                        <div class="text-[10px] text-slate-300 leading-relaxed">${b.desc}</div>
+                        <div class="mt-2 pt-1 border-t border-slate-800 text-[9px] text-teal-400 font-semibold">${b.effect}</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function startPlacement(buildingId) {
+            const building = BUILDINGS_DATA.find(b => b.id === buildingId);
+            if (!building) return;
+
+            const potatoRes = getParentResource('potato');
+            if (potatoRes && potatoRes.value < building.reqPotato) {
+                alert(`감자가 부족합니다! (필요: ${building.reqPotato.toLocaleString()}개)`);
+                return;
+            }
+
+            if (window.parent && window.parent.startBuildingPlacement) {
+                window.parent.startBuildingPlacement(building);
+            }
+        }
+
+        function onPlacementCancelled() {
+            renderCraftList();
+        }
+
+        function onBuildingPlacedSuccess() {
+            renderCraftList();
+        }
+
+        window.renderCraftList = renderCraftList;
+        window.onPlacementCancelled = onPlacementCancelled;
+        window.onBuildingPlacedSuccess = onBuildingPlacedSuccess;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCraftList();
+            let checks = 0;
+            const timer = setInterval(() => {
+                renderCraftList();
+                checks++;
+                if (checks > 10) clearInterval(timer);
+            }, 300);
+        });
+    </script>
+</body>
+</html>

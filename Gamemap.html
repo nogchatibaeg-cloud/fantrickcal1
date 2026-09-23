@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엘리아스 어웨이 - 지도</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&family=Jua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
+        body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
+        
+        #map-svg { transform-origin: 0 0 !important; }
+
+        .map-region {
+            transition: all 0.3s ease-out;
+            cursor: pointer;
+            stroke-width: 3.5;
+            stroke-linejoin: round;
+        }
+        .map-region:hover {
+            filter: brightness(1.25) drop-shadow(0 0 12px rgba(255, 255, 255, 0.4));
+            stroke-width: 5;
+        }
+        .map-region.active {
+            filter: brightness(1.35) drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+            stroke: #ffd700 !important;
+            stroke-width: 6 !important;
+        }
+
+        /* 자원 호버에 따른 지역 반응 클래스 */
+        .map-region.region-good {
+            /* 밝기를 2배로 올리고, 강렬한 이중 형광 글로우(Neon Glow) 효과 적용 */
+            filter: brightness(2.0) drop-shadow(0 0 12px rgba(52, 211, 153, 1)) drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)) !important;
+            stroke: #34d399 !important;
+            stroke-width: 6 !important;
+            opacity: 1 !important;
+            z-index: 10;
+        }
+
+        .map-region.region-bad {
+            /* 형체를 알아볼 수 있는 선에서 기분 좋게 차분해지는 어두움 (완전 암전 X) */
+            filter: brightness(0.35) contrast(1.1) !important;
+            opacity: 0.5 !important;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+
+        .btn-action { transition: all 0.2s ease; }
+        .btn-action:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .btn-action:active { transform: translateY(0); }
+
+        @keyframes floatUpFade {
+            0% { opacity: 0; transform: translateY(15px) scale(0.9); }
+            15% { opacity: 1; transform: translateY(0) scale(1); }
+            85% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+        }
+        .region-toast { animation: floatUpFade 3s ease-in-out forwards; }
+
+        @keyframes warBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+        .war-icon-badge {
+            animation: warBlink 2s infinite ease-in-out;
+            transform-origin: center;
+        }
+
+        .resource-item { position: relative; }
+        .resource-item .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .resource-item:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
+
+    <!-- 상단 헤더 -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between flex-shrink-0 z-20">
+        <div class="flex items-center space-x-3">
+            <div class="bg-amber-500/20 text-amber-400 p-2 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-map text-lg"></i>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="font-extrabold text-lg text-white tracking-wide">엘리아스 어웨이</h1>
+                <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">지도</span>
+                <span id="header-day-count" class="text-xs px-3 py-1 rounded-lg font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Day 1</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button id="btn-reset-view" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-compress"></i> 시점 리셋
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <div class="flex-grow flex relative overflow-hidden">
+        <div id="map-viewport" class="flex-grow h-full bg-slate-950 relative overflow-hidden cursor-grab active:cursor-grabbing">
+            
+            <svg id="map-svg" viewBox="0 0 2000 2000" class="w-[2000px] h-[2000px] absolute top-0 left-0">
+                <g id="map-world-layer">
+                    <path id="region-element-fairy" class="map-region" d="M 1000 725 A 240 200 0 0 0 1000 1125 Z" fill="rgba(21, 128, 61, 0.85)" stroke="#22c55e" data-id="fairy" />
+                    <path id="region-element-witch" class="map-region" d="M 1000 725 A 240 200 0 0 1 1000 1125 Z" fill="rgba(126, 34, 206, 0.85)" stroke="#a855f7" data-id="witch" />
+                    <path id="region-element-dragon" class="map-region" d="M 1000 325 A 600 600 0 0 0 400 925 L 760 925 A 240 200 0 0 1 1000 725 Z" fill="rgba(180, 83, 9, 0.55)" stroke="#f59e0b" data-id="dragon" />
+                    <path id="region-element-spirit" class="map-region" d="M 400 925 A 600 600 0 0 0 575 1349 L 830 1066 A 240 200 0 0 1 760 925 Z" fill="rgba(14, 116, 144, 0.55)" stroke="#06b6d4" data-id="spirit" />
+                    <path id="region-element-ghost" class="map-region" d="M 1000 325 A 600 600 0 0 1 1600 925 L 1240 925 A 240 200 0 0 0 1000 725 Z" fill="rgba(159, 18, 57, 0.55)" stroke="#f43f5e" data-id="ghost" />
+                    <path id="region-element-beast" class="map-region" d="M 575 1349 A 600 600 0 0 0 1600 925 L 1240 925 A 240 200 0 0 1 830 1066 Z" fill="rgba(194, 65, 12, 0.65)" stroke="#ea580c" data-id="beast" />
+                    <path id="region-element-elf" class="map-region" transform="translate(0, 35)" d="M 680 1400 A 600 600 0 0 0 1320 1400 A 380 480 0 0 1 680 1400 Z" fill="rgba(15, 118, 110, 0.85)" stroke="#14b8a6" data-id="elf" />
+                </g>
+
+                <g id="map-status-layer" class="pointer-events-none"></g>
+                <g id="map-toast-layer" class="pointer-events-none"></g>
+            </svg>
+
+            <!-- 범례 및 외부 자원 모듈 인클루드 영역 -->
+            <div class="absolute top-4 left-4 flex flex-col gap-3 w-36 z-10" onclick="event.stopPropagation()">
+                <!-- 범례 -->
+                <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-2xl">
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span>범례 & 세력</span>
+                        <i class="fa-solid fa-layer-group text-slate-500 text-xs"></i>
+                    </h3>
+                    <div class="space-y-1 text-[11px] font-bold" id="legend-list"></div>
+                </div>
+
+                <!-- PlayerResource.html 코드가 들어오는 자원 컨테이너 -->
+                <div id="resource-module-container"></div>
+            </div>
+
+            <!-- 하단 HUD -->
+            <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-1.5 text-[11px] text-slate-300 font-mono flex items-center gap-3 shadow-xl z-10" onclick="event.stopPropagation()">
+                <div>X: <span id="hud-x" class="text-amber-400 font-bold">-</span></div>
+                <div>Y: <span id="hud-y" class="text-amber-400 font-bold">-</span></div>
+                <div>Zoom: <span id="hud-zoom" class="text-emerald-400 font-bold">100</span>%</div>
+            </div>
+        </div>
+
+        <!-- 우측 패널 생략 없이 동일 조립 -->
+        <div id="side-panel" class="w-96 bg-slate-900 border-l border-slate-800 flex flex-col justify-between h-full z-20 flex-shrink-0 shadow-2xl absolute right-0 top-0 transition-transform duration-300 ease-in-out translate-x-full" onclick="event.stopPropagation()">
+            <button id="btn-toggle-panel" class="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-14 bg-slate-900 border-l border-t border-b border-slate-700 text-slate-300 hover:text-white rounded-l-xl flex items-center justify-center shadow-lg transition-colors cursor-pointer z-30">
+                <i id="toggle-icon" class="fa-solid fa-chevron-left text-xs"></i>
+            </button>
+
+            <div class="p-6 overflow-y-auto custom-scroll flex-grow space-y-5">
+                <div class="border-b border-slate-800 pb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span id="panel-faction-badge" class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30">SELECT REGION</span>
+                        <i id="panel-icon" class="fa-solid fa-map-pin text-2xl text-slate-500"></i>
+                    </div>
+                    <h2 id="panel-title" class="text-xl font-extrabold text-white tracking-wide">지역을 선택하세요</h2>
+                </div>
+
+                <div class="bg-slate-950/60 rounded-xl p-3.5 border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400">외교 상태</span>
+                        <span id="panel-affinity-percent" class="text-xs font-black text-slate-400">우호 100 | 적대 100</span>
+                    </div>
+                    <div id="panel-governance-status" class="text-sm font-black text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info"></i> 선택된 지역 없음
+                    </div>
+                    <div id="panel-hostile-days-info" class="text-[10px] font-bold text-rose-400 hidden">
+                        ⚠️ <span id="label-hostile-progress">적대 지속 기간: <span id="text-hostile-days">0</span>일 / 7일</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/60 rounded-xl p-3.5 border border-slate-800 space-y-2.5">
+                    <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <span id="graph-title">외교 균형 그래프</span>
+                        <span id="graph-subtitle" class="text-[10px] text-slate-500">차이 ±100 기준</span>
+                    </div>
+                    <div class="space-y-1.5 pt-1">
+                        <div class="flex items-center justify-between text-[11px] font-black" id="graph-labels-row">
+                            <span id="label-left-pt" class="text-rose-400 flex items-center gap-1"><i class="fa-solid fa-skull text-[9px]"></i> 적대 Pt: <span id="text-point-hostile">100</span></span>
+                            <span id="label-right-pt" class="text-emerald-400 flex items-center gap-1">우호 Pt: <span id="text-point-friendly">100</span> <i class="fa-solid fa-handshake text-[9px]"></i></span>
+                        </div>
+                        <div class="w-full h-5 bg-slate-900 rounded-full overflow-hidden flex border border-slate-700/60 relative">
+                            <div id="graph-center-line" class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-950 z-10 opacity-70"></div>
+                            <div id="bar-point-hostile" class="h-full bg-rose-500 transition-all duration-300 flex items-center justify-start pl-2" style="width: 50%"></div>
+                            <div id="bar-point-friendly" class="h-full bg-emerald-500 transition-all duration-300 flex items-center justify-end pr-2" style="width: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400 flex items-center justify-between">
+                        <span>작전 유형 설정</span>
+                        <i class="fa-solid fa-route text-amber-400"></i>
+                    </label>
+                    <select id="select-mission-type" class="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2.5 font-bold focus:outline-none focus:border-amber-500 transition-colors" disabled>
+                        <option value="friendly">🤝 우호 작전 (Friendly Mission)</option>
+                        <option value="hostile">⚔️ 적대 작전 (Hostile Mission)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800">
+                        <div class="text-[11px] font-bold text-slate-400 mb-1">지휘관</div>
+                        <div id="panel-commander" class="text-xs font-bold text-slate-200">-</div>
+                    </div>
+                    <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800">
+                        <div class="text-[11px] font-bold text-slate-400 mb-1">주요 자원</div>
+                        <div id="panel-specialty" class="text-xs font-bold text-slate-200">-</div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                    <h3 class="text-xs font-bold text-amber-400 tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-chess"></i> 전략 및 작전 성공 확률
+                    </h3>
+                    <div class="bg-slate-950/60 rounded-xl p-3.5 border border-slate-800 space-y-3">
+                        <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between border-b border-slate-800/80 pb-2">
+                            <span>성공 확률</span>
+                            <span class="text-[10px] text-slate-500">최대 100%</span>
+                        </div>
+                        <div class="flex justify-around items-end h-28 pt-2 px-8 bg-slate-900/50 rounded-lg border border-slate-800/50">
+                            <div class="flex flex-col items-center h-full justify-end w-12 group">
+                                <span id="text-prob-hostile" class="text-[10px] font-black text-rose-400 mb-1">0%</span>
+                                <div class="w-8 bg-slate-800 rounded-t-md overflow-hidden flex items-end h-20">
+                                    <div id="bar-hostile" class="w-full bg-rose-500 transition-all duration-300 rounded-t-md" style="height: 0%"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 mt-1.5 flex items-center gap-0.5"><i class="fa-solid fa-skull text-[8px] text-rose-400"></i> 적대</span>
+                            </div>
+                            <div class="flex flex-col items-center h-full justify-end w-12 group">
+                                <span id="text-prob-friendly" class="text-[10px] font-black text-emerald-400 mb-1">0%</span>
+                                <div class="w-8 bg-slate-800 rounded-t-md overflow-hidden flex items-end h-20">
+                                    <div id="bar-friendly" class="w-full bg-emerald-500 transition-all duration-300 rounded-t-md" style="height: 0%"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 mt-1.5 flex items-center gap-0.5"><i class="fa-solid fa-handshake text-[8px] text-emerald-400"></i> 우호</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950/60 rounded-xl p-3.5 border border-slate-800 space-y-1">
+                        <div class="text-[11px] font-bold text-slate-400">지역 설명</div>
+                        <p id="panel-notes" class="text-xs text-slate-400 leading-relaxed font-medium">지도 상의 지역을 클릭하여 세부 정보를 확인하세요.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-950 border-t border-slate-800">
+                <button id="btn-dispatch" class="btn-action w-full py-3 bg-slate-800 text-slate-500 font-black text-sm rounded-xl cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                    <i id="btn-dispatch-icon" class="fa-solid fa-paper-plane"></i>
+                    <span id="btn-dispatch-text">지역을 선택해 주세요</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const REGIONS_DATA = {
+            elf: { id: "elf", name: "엘프", regionName: "모나티엄", targetUrl: "loading.html?target=InMonatium.html", factionBadge: "Monatium", factionBadgeColor: "bg-teal-500/20 text-teal-300 border-teal-500/30", icon: "fa-solid fa-gear", color: "#14b8a6", commander: "엘레나 (시장)", specialty: "기술력", probabilities: { hostile: 0, friendly: 100 }, notes: "<b>우리</b>.<br><br>엘피니아 수정-재수정-헌법 제1조 2항!<br>국가의 주엘은 리더이고, 모든 배신은 국민으로부터 나온다! - 엘레나", center: { x: 1000, y: 1580 }, friendlyPoints: 150, hostilePoints: 0, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            fairy: { id: "fairy", name: "요정", regionName: "에르피엔", targetUrl: "loading.html?target=InErpien.html", factionBadge: "Erpien", factionBadgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", icon: "fa-solid fa-leaf", color: "#22c55e", commander: "에르핀 (요정여왕)", specialty: "세계수", probabilities: { hostile: 30, friendly: 90 }, notes: "<b>먹을 것만 잘 챙겨주면 되는 바보 종족</b>.<br><br>시식은 식사가 아니라 맛보라고 있는거라고,<br>이 먹보들아!!! - 아이시아", center: { x: 880, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            witch: { id: "witch", name: "마녀", regionName: "벨리티엔", targetUrl: "loading.html?target=InBelitien.html", factionBadge: "Belitien", factionBadgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30", icon: "fa-solid fa-hat-wizard", color: "#a855f7", commander: "벨리타 (고위 마녀)", specialty: "마법", probabilities: { hostile: 80, friendly: 40 }, notes: "<b>까다롭고 보수적인 종족</b>.<br><br>오시는 환자분들의 98%가 저 녀석들 포션 문제에요... - 힐데", center: { x: 1120, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            spirit: { id: "spirit", name: "정령", regionName: "정령산", targetUrl: "loading.html?target=InEleMoun.html", factionBadge: "Elemental Mountain", factionBadgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30", icon: "fa-solid fa-mountain", color: "#06b6d4", commander: "실라 (바람의 고위 정령)", specialty: "에너지", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>적당히 잘 구슬려서 에너지로 쓸만한 종족</b>.<br><br>이 설정은 어딜 가나 있네. - 리스티", center: { x: 640, y: 1080 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            dragon: { id: "dragon", name: "용족", regionName: "불길과 물길의 터", targetUrl: "loading.html?target=InWFaWM.html", factionBadge: "Where Fire and Water Meet", factionBadgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30", icon: "fa-solid fa-fire", color: "#f59e0b", commander: "다야 (다이아몬드의 용족)", specialty: "광물", probabilities: { hostile: 70, friendly: 50 }, notes: "<b>일단 싸움부터 걸고 보는 종족</b>.<br><br>덕분에 시장님께 드릴 다이아몬드 반지를 만들었습니다!<br>이제 시장님만 있으면 됩니다! - 아멜리아", center: { x: 700, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            beast: { id: "beast", name: "수인", regionName: "수인 부락", targetUrl: "loading.html?target=InWereTribe.html", factionBadge: "Werebeast Tribe", factionBadgeColor: "bg-orange-500/20 text-orange-300 border-orange-500/30", icon: "fa-solid fa-paw", color: "#ea580c", commander: "디아나 (사슴? 수인)", specialty: "식량", probabilities: { hostile: 40, friendly: 80 }, notes: "<b>원시 모습 그대로인 종족</b>.<br><br>자판기를 털거면 털기만 하라고!<br>왜 다 털고 나서 부수는데?! - 칸나", center: { x: 1000, y: 1300 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            ghost: { id: "ghost", name: "유령", regionName: "유령 늪", targetUrl: "loading.html?target=InPhanMarsh.html", factionBadge: "Phantom Marsh", factionBadgeColor: "bg-rose-500/20 text-rose-300 border-rose-500/30", icon: "fa-solid fa-ghost", color: "#f43f5e", commander: "셰이디 (혼돈의 유령)", specialty: "차원문", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>맨날 사고치고 튀는 종족</b>.<br><br>이거 수인쪽에다 적어야 하지 않아요? - 로네", center: { x: 1300, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" }
+        };
+
+        // 외부 자원 모듈 조율 함수 정의
+window.highlightRegionsByResource = function(goodRegions = [], badRegions = []) {
+    document.querySelectorAll('.map-region').forEach(el => {
+        const regionId = el.dataset.id;
+                el.classList.remove('region-good', 'region-bad');
+
+                if (goodRegions.includes(regionId)) {
+                    el.classList.add('region-good'); // 좋은 지역: 1.35배 밝게
+                } else if (badRegions.includes(regionId)) {
+                    el.classList.add('region-bad');  // 나쁜 지역: 은은하게 어둡게
+                }
+            });
+        };
+
+        window.resetRegionHighlights = function() {
+            document.querySelectorAll('.map-region').forEach(el => {
+                // 모든 반응 클래스 제거하여 원상복구
+                el.classList.remove('region-good', 'region-bad', 'region-dim');
+            });
+        };
+
+        const DOM = {};
+        let currentDay = 1;
+        let currentRegionId = null;
+        let isPanelOpen = false;
+        
+        const BASE_SCALE = 1.0; 
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initDOM();
+            loadPlayerResourceModule();
+            renderLegend();
+            renderStatusBadges();
+            bindEvents();
+            resetView();
+            clearSelection();
+        });
+
+        function loadPlayerResourceModule() {
+            fetch('PlayerResource.html')
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('resource-module-container');
+                    if (container) {
+                        container.innerHTML = html;
+                        // 내부 script 태그 다시 실행
+                        const scripts = container.querySelectorAll('script');
+                        scripts.forEach(script => {
+                            const newScript = document.createElement('script');
+                            newScript.textContent = script.textContent;
+                            document.body.appendChild(newScript);
+                        });
+                    }
+                })
+                .catch(err => console.error("PlayerResource.html 로드 실패:", err));
+        }
+
+        function initDOM() {
+            DOM.viewport = document.getElementById('map-viewport');
+            DOM.svg = document.getElementById('map-svg');
+            DOM.worldLayer = document.getElementById('map-world-layer');
+            DOM.statusLayer = document.getElementById('map-status-layer');
+            DOM.toastLayer = document.getElementById('map-toast-layer');
+            DOM.legendList = document.getElementById('legend-list');
+
+            DOM.sidePanel = document.getElementById('side-panel');
+            DOM.btnTogglePanel = document.getElementById('btn-toggle-panel');
+            DOM.toggleIcon = document.getElementById('toggle-icon');
+
+            DOM.headerDayCount = document.getElementById('header-day-count');
+            DOM.hudX = document.getElementById('hud-x');
+            DOM.hudY = document.getElementById('hud-y');
+            DOM.hudZoom = document.getElementById('hud-zoom');
+
+            DOM.panelFactionBadge = document.getElementById('panel-faction-badge');
+            DOM.panelIcon = document.getElementById('panel-icon');
+            DOM.panelTitle = document.getElementById('panel-title');
+            DOM.panelGovernanceStatus = document.getElementById('panel-governance-status');
+            DOM.panelAffinityPercent = document.getElementById('panel-affinity-percent');
+            DOM.panelHostileDaysInfo = document.getElementById('panel-hostile-days-info');
+            DOM.labelHostileProgress = document.getElementById('label-hostile-progress');
+            DOM.textHostileDays = document.getElementById('text-hostile-days');
+
+            DOM.graphTitle = document.getElementById('graph-title');
+            DOM.graphSubtitle = document.getElementById('graph-subtitle');
+            DOM.labelLeftPt = document.getElementById('label-left-pt');
+            DOM.labelRightPt = document.getElementById('label-right-pt');
+            DOM.graphCenterLine = document.getElementById('graph-center-line');
+
+            DOM.textPointFriendly = document.getElementById('text-point-friendly');
+            DOM.textPointHostile = document.getElementById('text-point-hostile');
+            DOM.barPointFriendly = document.getElementById('bar-point-friendly');
+            DOM.barPointHostile = document.getElementById('bar-point-hostile');
+
+            DOM.selectMissionType = document.getElementById('select-mission-type');
+            DOM.panelCommander = document.getElementById('panel-commander');
+            DOM.panelSpecialty = document.getElementById('panel-specialty');
+            DOM.barHostile = document.getElementById('bar-hostile');
+            DOM.barFriendly = document.getElementById('bar-friendly');
+            DOM.textProbHostile = document.getElementById('text-prob-hostile');
+            DOM.textProbFriendly = document.getElementById('text-prob-friendly');
+            DOM.panelNotes = document.getElementById('panel-notes');
+            DOM.btnDispatch = document.getElementById('btn-dispatch');
+            DOM.btnDispatchText = document.getElementById('btn-dispatch-text');
+            DOM.btnDispatchIcon = document.getElementById('btn-dispatch-icon');
+            DOM.btnResetView = document.getElementById('btn-reset-view');
+        }
+
+        function renderLegend() {
+            DOM.legendList.innerHTML = Object.values(REGIONS_DATA).map(region => `
+                <div class="flex items-center justify-between p-0.5 rounded hover:bg-slate-800/60 cursor-pointer transition-colors" data-legend-id="${region.id}">
+                    <div class="flex items-center space-x-1 truncate">
+                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${region.color}"></span>
+                        <span class="text-slate-200 truncate text-[10px]">${region.name}</span>
+                    </div>
+                    <i class="${region.icon} text-slate-500 text-[9px]"></i>
+                </div>
+            `).join('');
+
+            DOM.legendList.querySelectorAll('[data-legend-id]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectRegion(item.dataset.legendId);
+                });
+            });
+        }
+
+        function calculateWarSuccessRate(region) {
+            const hostileProb = region.probabilities.hostile;
+            const calculated = 90 - Math.floor(hostileProb / 10);
+            return Math.min(90, Math.max(80, calculated));
+        }
+
+        function renderStatusBadges() {
+            DOM.statusLayer.innerHTML = Object.values(REGIONS_DATA).map(region => {
+                let warBadgeHTML = '';
+
+                if (region.isOccupied) {
+                    warBadgeHTML = `
+                        <g transform="translate(18, -14)">
+                            <circle cx="0" cy="0" r="13" fill="#0d9488" stroke="#ffffff" stroke-width="1.5"/>
+                            <foreignObject x="-9" y="-9" width="18" height="18">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="w-full h-full flex items-center justify-center text-white font-black text-xs">
+                                    <i class="fa-solid fa-crown"></i>
+                                </div>
+                            </foreignObject>
+                        </g>
+                    `;
+                } else if (region.isWar) {
+                    warBadgeHTML = `
+                        <g transform="translate(18, -14)" class="war-icon-badge">
+                            <circle cx="0" cy="0" r="13" fill="#e11d48" stroke="#ffffff" stroke-width="1.5"/>
+                            <foreignObject x="-9" y="-9" width="18" height="18">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="w-full h-full flex items-center justify-center text-white font-black text-xs">
+                                    <i class="fa-solid fa-swords"></i>
+                                </div>
+                            </foreignObject>
+                        </g>
+                    `;
+                }
+
+                return `
+                    <g id="status-group-${region.id}" transform="translate(${region.center.x}, ${region.center.y})">
+                        <rect x="-42" y="-34" width="84" height="20" rx="10" fill="rgba(15, 23, 42, 0.85)" stroke="${region.color}" stroke-width="1.5"/>
+                        <text id="badge-text-${region.id}" x="0" y="-20" fill="#ffffff" font-size="10" font-weight="900" text-anchor="middle">${getDiplomacyStatusText(region)}</text>
+                        
+                        <circle cx="0" cy="8" r="16" fill="${region.color}" opacity="0.9" />
+                        <foreignObject x="-10" y="-2" width="20" height="20">
+                            <div xmlns="http://www.w3.org/1999/xhtml" class="w-full h-full flex items-center justify-center text-slate-950 font-black text-xs">
+                                <i class="${region.icon}"></i>
+                            </div>
+                        </foreignObject>
+
+                        <g id="war-badge-${region.id}">
+                            ${warBadgeHTML}
+                        </g>
+                    </g>
+                `;
+            }).join('');
+        }
+
+        function getDiplomacyStatusText(region) {
+            if (region.id === 'elf') return 'PLAYERS';
+            if (region.isOccupied) return 'OCCUPIED';
+            if (region.isWar) return 'WAR';
+            
+            const diff = region.friendlyPoints - region.hostilePoints;
+            if (diff >= 100) return 'FRIENDLY';
+            if (diff <= -100) return 'HOSTILE';
+            return 'NEUTRAL';
+        }
+
+        function bindEvents() {
+            DOM.viewport.addEventListener('click', () => {
+                clearSelection();
+            });
+
+            document.querySelectorAll('.map-region').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectRegion(el.dataset.id);
+                });
+            });
+
+            DOM.btnTogglePanel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePanel();
+            });
+
+            DOM.selectMissionType.addEventListener('change', (e) => {
+                if (currentRegionId && REGIONS_DATA[currentRegionId] && !REGIONS_DATA[currentRegionId].isWar && !REGIONS_DATA[currentRegionId].isOccupied) {
+                    REGIONS_DATA[currentRegionId].selectedMissionType = e.target.value;
+                }
+                updateDispatchButtonText();
+            });
+
+            DOM.btnDispatch.addEventListener('click', handleButtonClick);
+            DOM.btnResetView.addEventListener('click', resetView);
+
+            DOM.viewport.addEventListener('mousedown', (e) => {
+                isPanning = true;
+                startX = e.clientX - pointX;
+                startY = e.clientY - pointY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                updateTransform();
+            });
+
+            window.addEventListener('mouseup', () => { isPanning = false; });
+
+            DOM.viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const centerX = DOM.viewport.clientWidth / 2;
+                const centerY = DOM.viewport.clientHeight / 2;
+                const delta = -e.deltaY;
+                const zoomFactor = delta > 0 ? 1.08 : 1 / 1.08;
+                
+                const newScale = Math.min(Math.max(0.2, scale * zoomFactor), 4.0);
+
+                pointX = centerX - (centerX - pointX) * (newScale / scale);
+                pointY = centerY - (centerY - pointY) * (newScale / scale);
+                
+                scale = newScale;
+                updateTransform();
+            }, { passive: false });
+        }
+
+        function togglePanel(forceOpen = null) {
+            if (forceOpen !== null) {
+                isPanelOpen = forceOpen;
+            } else {
+                isPanelOpen = !isPanelOpen;
+            }
+
+            if (isPanelOpen) {
+                DOM.sidePanel.classList.remove('translate-x-full');
+                DOM.toggleIcon.className = "fa-solid fa-chevron-right text-xs";
+            } else {
+                DOM.sidePanel.classList.add('translate-x-full');
+                DOM.toggleIcon.className = "fa-solid fa-chevron-left text-xs";
+            }
+        }
+
+        function clearSelection() {
+            currentRegionId = null;
+            document.querySelectorAll('.map-region').forEach(el => el.classList.remove('active'));
+
+            DOM.panelFactionBadge.className = "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
+            DOM.panelFactionBadge.innerText = "NONE SELECTED";
+            DOM.panelIcon.className = "fa-solid fa-map-pin text-2xl text-slate-600";
+            DOM.panelTitle.innerText = "지역을 선택해 주세요";
+
+            DOM.panelAffinityPercent.innerText = "우호 100 | 적대 100";
+            DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-circle-info"></i> 활성화된 지역 없음`;
+            DOM.panelGovernanceStatus.className = "text-sm font-black text-slate-500 flex items-center gap-2";
+            DOM.panelHostileDaysInfo.classList.add('hidden');
+
+            DOM.graphTitle.innerText = "외교 균형 그래프";
+            DOM.graphSubtitle.innerText = "차이 ±100 기준";
+            
+            DOM.barPointHostile.classList.remove('hidden');
+            DOM.labelLeftPt.innerHTML = `<i class="fa-solid fa-skull text-[9px]"></i> 적대 Pt: <span id="text-point-hostile">100</span>`;
+            DOM.labelLeftPt.className = "text-rose-400 flex items-center gap-1";
+            DOM.labelRightPt.innerHTML = `우호 Pt: <span id="text-point-friendly">100</span> <i class="fa-solid fa-handshake text-[9px]"></i>`;
+            DOM.labelRightPt.className = "text-emerald-400 flex items-center gap-1";
+            DOM.graphCenterLine.classList.remove('hidden');
+
+            DOM.barPointFriendly.style.width = "50%";
+            DOM.barPointHostile.style.width = "50%";
+
+            DOM.selectMissionType.disabled = true;
+            DOM.panelCommander.innerText = "-";
+            DOM.panelCommander.className = "text-xs font-bold text-slate-500";
+            DOM.panelSpecialty.innerText = "-";
+
+            DOM.barHostile.style.height = "0%";
+            DOM.barFriendly.style.height = "0%";
+
+            DOM.textProbHostile.innerText = "0%";
+            DOM.textProbFriendly.innerText = "0%";
+
+            DOM.panelNotes.innerText = "지도 상의 지역이나 좌측 범례에서 세력을 선택하면 상세 정보가 표시됩니다.";
+
+            DOM.btnDispatch.disabled = true;
+            DOM.btnDispatchIcon.className = "fa-solid fa-paper-plane";
+            DOM.btnDispatchText.innerText = "지역을 선택해 주세요";
+            DOM.btnDispatch.className = "btn-action w-full py-3 bg-slate-800 text-slate-500 font-black text-sm rounded-xl cursor-not-allowed flex items-center justify-center gap-2";
+
+            DOM.hudX.innerText = "-";
+            DOM.hudY.innerText = "-";
+        }
+
+        function handleButtonClick() {
+            if (!currentRegionId) return;
+            const region = REGIONS_DATA[currentRegionId];
+
+            const canEnter = (region.id === 'elf') || (region.friendlyPoints >= 200) || (region.isOccupied);
+
+            if (canEnter) {
+                window.location.href = region.targetUrl;
+            } else {
+                executeExpedition();
+            }
+        }
+
+        function showRegionToast(region, isSuccess, pointGain, missionType, diceRoll, successRate) {
+            const toastG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            toastG.setAttribute("transform", `translate(${region.center.x}, ${region.center.y - 90})`);
+            
+            const badgeBg = isSuccess ? "#059669" : "#e11d48";
+            const badgeBorder = isSuccess ? "#34d399" : "#fda4af";
+            const badgeIcon = isSuccess ? "✔" : "✖";
+
+            let resultTitle = isSuccess ? "작전 성공" : "작전 실패";
+            let changeText = isSuccess ? `+${pointGain} ${missionType === 'friendly' ? '우호' : '적대'} Pt` : "변동 없음";
+
+            if (region.isOccupied) {
+                resultTitle = "완전 점령!";
+                changeText = "해당 지역이 점령지가 되었습니다.";
+            } else if (region.isWar) {
+                resultTitle = isSuccess ? "파병 승리" : "파병 패배";
+                changeText = isSuccess ? `연속 성공 (${region.consecutiveWarSuccesses}/7일)` : "연속 성공 기록 리셋";
+            }
+
+            toastG.innerHTML = `
+                <foreignObject x="-150" y="-70" width="300" height="140" class="overflow-visible">
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="region-toast flex items-center gap-4 px-5 py-4 bg-slate-900/95 border-2 border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md text-white">
+                        <div class="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black flex-shrink-0" style="background-color: ${badgeBg}; border: 2px solid ${badgeBorder}; color: white;">
+                            ${badgeIcon}
+                        </div>
+                        <div class="flex flex-col justify-center leading-tight">
+                            <span class="text-lg font-black tracking-tight" style="color: ${badgeBorder};">${resultTitle}</span>
+                            <span class="text-sm font-bold text-slate-200 mt-1">${changeText}</span>
+                            <span class="text-xs font-medium text-slate-400 mt-1">확률 ${successRate}% (주사위 ${diceRoll})</span>
+                        </div>
+                    </div>
+                </foreignObject>
+            `;
+
+            DOM.toastLayer.appendChild(toastG);
+
+            setTimeout(() => {
+                if (toastG && toastG.parentNode) {
+                    toastG.parentNode.removeChild(toastG);
+                }
+            }, 3000);
+        }
+
+        function executeExpedition() {
+            if (!currentRegionId) return;
+            const region = REGIONS_DATA[currentRegionId];
+            if (region.id === 'elf' || region.isOccupied || region.friendlyPoints >= 200) return;
+
+            let successRate = 0;
+            let missionType = 'friendly';
+
+            if (region.isWar) {
+                missionType = 'war';
+                successRate = calculateWarSuccessRate(region);
+            } else {
+                missionType = region.selectedMissionType;
+                successRate = region.probabilities[missionType];
+            }
+
+            const roll = Math.floor(Math.random() * 100);
+            const isSuccess = roll < successRate;
+
+            let pointGain = 5;
+
+            if (region.isWar) {
+                if (isSuccess) {
+                    region.consecutiveWarSuccesses++;
+                    if (region.consecutiveWarSuccesses >= 7) {
+                        region.isOccupied = true;
+                        region.isWar = false;
+                    }
+                } else {
+                    region.consecutiveWarSuccesses = 0;
+                }
+            } else {
+                if (isSuccess) {
+                    if (missionType === 'friendly') {
+                        region.friendlyPoints = Math.min(200, region.friendlyPoints + pointGain);
+                        region.hostilePoints = Math.max(0, region.hostilePoints - pointGain);
+                    } else if (missionType === 'hostile') {
+                        region.hostilePoints = Math.min(200, region.hostilePoints + pointGain);
+                        region.friendlyPoints = Math.max(0, region.friendlyPoints - pointGain);
+                    }
+                }
+            }
+
+            showRegionToast(region, isSuccess, pointGain, missionType, roll, successRate);
+
+            advanceDay();
+            updateAllRegionsState();
+            selectRegion(currentRegionId);
+        }
+
+        function advanceDay() {
+            currentDay++;
+            DOM.headerDayCount.innerText = `Day ${currentDay}`;
+
+            Object.values(REGIONS_DATA).forEach(region => {
+                if (region.id === 'elf' || region.isOccupied) return;
+
+                const diff = region.friendlyPoints - region.hostilePoints;
+                if (diff <= -100) {
+                    region.hostileDays++;
+                    if (region.hostileDays >= 7 && !region.isWar) {
+                        region.isWar = true;
+                        region.consecutiveWarSuccesses = 0;
+                    }
+                } else {
+                    region.hostileDays = 0;
+                    region.isWar = false;
+                    region.consecutiveWarSuccesses = 0;
+                }
+            });
+        }
+
+        function updateAllRegionsState() {
+            Object.values(REGIONS_DATA).forEach(region => {
+                const badgeText = document.getElementById(`badge-text-${region.id}`);
+                if (badgeText) {
+                    badgeText.textContent = getDiplomacyStatusText(region);
+                }
+
+                const warBadgeGroup = document.getElementById(`war-badge-${region.id}`);
+                if (warBadgeGroup) {
+                    if (region.isOccupied) {
+                        warBadgeGroup.innerHTML = `
+                            <g transform="translate(18, -14)">
+                                <circle cx="0" cy="0" r="13" fill="#0d9488" stroke="#ffffff" stroke-width="1.5"/>
+                                <foreignObject x="-9" y="-9" width="18" height="18">
+                                    <div xmlns="http://www.w3.org/1999/xhtml" class="w-full h-full flex items-center justify-center text-white font-black text-xs">
+                                        <i class="fa-solid fa-crown"></i>
+                                    </div>
+                                </foreignObject>
+                            </g>
+                        `;
+                    } else if (region.isWar) {
+                        warBadgeGroup.innerHTML = `
+                            <g transform="translate(18, -14)" class="war-icon-badge">
+                                <circle cx="0" cy="0" r="13" fill="#e11d48" stroke="#ffffff" stroke-width="1.5"/>
+                                <foreignObject x="-9" y="-9" width="18" height="18">
+                                    <div xmlns="http://www.w3.org/1999/xhtml" class="w-full h-full flex items-center justify-center text-white font-black text-xs">
+                                        <i class="fa-solid fa-swords"></i>
+                                    </div>
+                                </foreignObject>
+                            </g>
+                        `;
+                    } else {
+                        warBadgeGroup.innerHTML = '';
+                    }
+                }
+            });
+        }
+
+        function selectRegion(id) {
+            currentRegionId = id;
+            const region = REGIONS_DATA[id];
+            if (!region) return;
+
+            togglePanel(true);
+
+            document.querySelectorAll('.map-region').forEach(el => {
+                if (el.dataset.id === id) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+
+            DOM.panelFactionBadge.className = `px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${region.factionBadgeColor}`;
+            DOM.panelFactionBadge.innerText = region.factionBadge;
+            DOM.panelIcon.className = `${region.icon} text-2xl`;
+            DOM.panelIcon.style.color = region.color;
+            DOM.panelTitle.innerText = region.regionName;
+
+            const statusText = getDiplomacyStatusText(region);
+
+            if (region.id === 'elf') {
+                DOM.graphTitle.innerText = "지지도";
+                DOM.graphSubtitle.innerText = "단일 지지도 기준";
+                
+                DOM.labelLeftPt.innerHTML = `<span class="text-teal-400 flex items-center gap-1 font-extrabold"><i class="fa-solid fa-heart text-[9px]"></i> 지지도</span>`;
+                DOM.labelLeftPt.className = "text-teal-400 flex items-center gap-1";
+                DOM.labelRightPt.innerHTML = `<span class="text-teal-300 font-black text-xs">${region.friendlyPoints}%</span>`;
+                DOM.labelRightPt.className = "text-teal-300 font-black";
+                
+                DOM.graphCenterLine.classList.add('hidden');
+                DOM.barPointHostile.classList.add('hidden');
+
+                DOM.barPointFriendly.style.width = "100%";
+                DOM.barPointFriendly.className = "h-full bg-teal-500 transition-all duration-300 flex items-center justify-end pr-2";
+
+                DOM.panelAffinityPercent.innerText = "지지도 150%";
+                DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-crown"></i> 본거지 (플레이어 관할)`;
+                DOM.panelGovernanceStatus.className = "text-sm font-black text-emerald-400 flex items-center gap-2";
+                DOM.panelHostileDaysInfo.classList.add('hidden');
+                DOM.selectMissionType.disabled = true;
+            } else {
+                DOM.graphTitle.innerText = "외교 균형 그래프";
+                DOM.graphSubtitle.innerText = "차이 ±100 기준";
+                
+                DOM.barPointHostile.classList.remove('hidden');
+                DOM.labelLeftPt.innerHTML = `<span class="text-rose-400 flex items-center gap-1"><i class="fa-solid fa-skull text-[9px]"></i> 적대 Pt: <span id="text-point-hostile">${region.hostilePoints}</span></span>`;
+                DOM.labelLeftPt.className = "text-rose-400 flex items-center gap-1";
+                DOM.labelRightPt.innerHTML = `<span class="text-emerald-400 flex items-center gap-1">우호 Pt: <span id="text-point-friendly">${region.friendlyPoints}</span> <i class="fa-solid fa-handshake text-[9px]"></i></span>`;
+                DOM.labelRightPt.className = "text-emerald-400 flex items-center gap-1";
+                DOM.graphCenterLine.classList.remove('hidden');
+
+                DOM.barPointFriendly.className = "h-full bg-emerald-500 transition-all duration-300 flex items-center justify-end pr-2";
+                
+                DOM.panelAffinityPercent.innerText = `우호 ${region.friendlyPoints} | 적대 ${region.hostilePoints}`;
+                
+                const totalPoints = region.friendlyPoints + region.hostilePoints;
+                const hostileRatio = totalPoints > 0 ? (region.hostilePoints / totalPoints) * 100 : 50;
+                const friendlyRatio = totalPoints > 0 ? (region.friendlyPoints / totalPoints) * 100 : 50;
+
+                DOM.barPointHostile.style.width = `${hostileRatio}%`;
+                DOM.barPointFriendly.style.width = `${friendlyRatio}%`;
+
+                if (region.isOccupied) {
+                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-flag"></i> 점령지`;
+                    DOM.panelGovernanceStatus.className = "text-sm font-black text-teal-400 flex items-center gap-2";
+                    DOM.panelHostileDaysInfo.classList.remove('hidden');
+                    DOM.labelHostileProgress.innerHTML = `👑 완전히 점령된 지역입니다.`;
+
+                    DOM.selectMissionType.innerHTML = `<option value="occupied" selected>🚩 점령 완료</option>`;
+                    DOM.selectMissionType.disabled = true;
+                } else if (region.isWar) {
+                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-swords"></i> 전쟁 상태 (WAR)`;
+                    DOM.panelGovernanceStatus.className = "text-sm font-black text-rose-500 flex items-center gap-2 animate-pulse";
+                    DOM.panelHostileDaysInfo.classList.remove('hidden');
+                    DOM.labelHostileProgress.innerHTML = `⚔️ 연속 파병 성공: <span id="text-hostile-days" class="text-amber-400 font-extrabold">${region.consecutiveWarSuccesses}</span>일 / 7일`;
+
+                    const warRate = calculateWarSuccessRate(region);
+                    DOM.selectMissionType.innerHTML = `<option value="hostile" selected>⚔️ 군대 파병 (${warRate}%)</option>`;
+                    DOM.selectMissionType.disabled = true;
+                } else {
+                    const selected = region.selectedMissionType || 'friendly';
+                    DOM.selectMissionType.innerHTML = `
+                        <option value="friendly" ${selected === 'friendly' ? 'selected' : ''}>🤝 우호 작전 (Friendly Mission)</option>
+                        <option value="hostile" ${selected === 'hostile' ? 'selected' : ''}>⚔️ 적대 작전 (Hostile Mission)</option>
+                    `;
+                    DOM.selectMissionType.value = selected;
+                    DOM.selectMissionType.disabled = false;
+
+                    if (statusText === 'FRIENDLY') {
+                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-handshake"></i> 협력 세력 (교류 활발)`;
+                        DOM.panelGovernanceStatus.className = "text-sm font-black text-emerald-400 flex items-center gap-2";
+                        DOM.panelHostileDaysInfo.classList.add('hidden');
+                    } else if (statusText === 'HOSTILE') {
+                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-burst"></i> 적대 세력`;
+                        DOM.panelGovernanceStatus.className = "text-sm font-black text-rose-400 flex items-center gap-2";
+                        DOM.panelHostileDaysInfo.classList.remove('hidden');
+                        DOM.labelHostileProgress.innerHTML = `⚠️ 적대 지속 기간: <span id="text-hostile-days">${region.hostileDays}</span>일 / 7일`;
+                    } else {
+                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> 중립 세력`;
+                        DOM.panelGovernanceStatus.className = "text-sm font-black text-amber-400 flex items-center gap-2";
+                        DOM.panelHostileDaysInfo.classList.add('hidden');
+                    }
+                }
+            }
+
+            if (region.id === 'elf' || statusText === 'FRIENDLY' || region.isOccupied) {
+                DOM.panelCommander.innerText = region.commander;
+                DOM.panelCommander.className = "text-xs font-bold text-emerald-400";
+            } else {
+                DOM.panelCommander.innerText = "??? (협력 세력 전용)";
+                DOM.panelCommander.className = "text-xs font-bold text-slate-500 italic";
+            }
+
+            DOM.panelSpecialty.innerText = region.specialty;
+
+            const { hostile, friendly } = region.probabilities;
+
+            DOM.barHostile.style.height = `${Math.min(100, Math.max(0, hostile))}%`;
+            DOM.barFriendly.style.height = `${Math.min(100, Math.max(0, friendly))}%`;
+
+            DOM.textProbHostile.innerText = `${hostile}%`;
+            DOM.textProbFriendly.innerText = `${friendly}%`;
+
+            DOM.panelNotes.innerHTML = region.notes;
+
+            updateDispatchButtonText();
+
+            DOM.hudX.innerText = region.center.x;
+            DOM.hudY.innerText = region.center.y;
+        }
+
+        function updateDispatchButtonText() {
+            if (!currentRegionId) return;
+            const region = REGIONS_DATA[currentRegionId];
+
+            if (region.id === 'elf') {
+                DOM.btnDispatch.disabled = false;
+                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
+                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer";
+                return;
+            }
+
+            if (region.isOccupied) {
+                DOM.btnDispatch.disabled = false;
+                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
+                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-red-950 hover:bg-red-900 border border-red-700/60 text-red-100 font-black text-sm rounded-xl shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 cursor-pointer";
+                return;
+            }
+
+            if (region.friendlyPoints >= 200) {
+                DOM.btnDispatch.disabled = false;
+                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
+                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer";
+                return;
+            }
+
+            DOM.btnDispatch.disabled = false;
+            DOM.btnDispatchIcon.className = "fa-solid fa-paper-plane";
+
+            if (region.isWar) {
+                const warRate = calculateWarSuccessRate(region);
+                DOM.btnDispatchText.innerText = `${region.regionName} 군대 파병 (${warRate}%) (1일 소요)`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-xl shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer";
+                return;
+            }
+
+            const val = DOM.selectMissionType.value;
+
+            if (val === 'hostile') {
+                DOM.btnDispatchText.innerText = `${region.regionName} 적대 작전 시행 (1일 소요)`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-rose-500 hover:bg-rose-400 text-white font-black text-sm rounded-xl shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer";
+            } else {
+                DOM.btnDispatchText.innerText = `${region.regionName} 우호 작전 시행 (1일 소요)`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer";
+            }
+        }
+
+        function updateTransform() {
+            DOM.svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            DOM.hudZoom.innerText = Math.round((scale / BASE_SCALE) * 100);
+        }
+
+        function resetView() {
+            scale = BASE_SCALE;
+            
+            const targetX = REGIONS_DATA.elf.center.x;
+            const targetY = REGIONS_DATA.elf.center.y;
+
+            const viewportWidth = DOM.viewport.clientWidth;
+            const viewportHeight = DOM.viewport.clientHeight;
+
+            pointX = (viewportWidth / 2) - (targetX * scale);
+            pointY = (viewportHeight / 2) - (targetY * scale);
+            
+            updateTransform();
+        }
+    </script>
+</body>
+</html>

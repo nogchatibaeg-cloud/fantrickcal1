@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>로딩 중... - 엘리아스 어웨이</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            user-select: none;
+            font-family: 'Gothic A1', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0d0e15;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gear-spinner {
+            width: 110px;
+            height: 110px;
+            background-color: #ffffff;
+            -webkit-mask-image: url('images (4).jpeg');
+            mask-image: url('images (4).jpeg');
+            -webkit-mask-size: cover;
+            mask-size: cover;
+            -webkit-mask-position: center;
+            mask-position: center;
+            animation: spin 3s linear infinite;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+            border-radius: 9999px;
+            transition: width 0.05s linear;
+        }
+
+        .tip-fade {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-container" class="relative w-full h-full flex flex-col items-center justify-center p-6 bg-[#0d0e15]">
+        
+        <div class="mb-10 flex flex-col items-center justify-center">
+            <div class="gear-spinner"></div>
+        </div>
+
+        <div class="w-full max-w-md flex flex-col items-center gap-3">
+            <div class="w-full flex justify-between items-center text-xs text-gray-400 font-bold px-1">
+                <span class="tracking-widest uppercase">LOADING...</span>
+                <span id="loading-percent" class="text-white font-extrabold text-sm">0%</span>
+            </div>
+
+            <div class="w-full h-2.5 bg-white/10 rounded-full p-0.5 backdrop-blur-sm border border-white/10 overflow-hidden">
+                <div id="progress-bar" class="progress-bar-fill"></div>
+            </div>
+
+            <!-- 게임 팁 표시 영역 -->
+            <div class="mt-4 text-center min-h-[48px] flex items-center justify-center">
+                <p id="tip-text" class="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed tracking-tight tip-fade">
+                </p>
+            </div>
+
+            <!-- 오류 안내 메시지 (목적지 경로 부재 시 나타남) -->
+            <div id="error-message" class="hidden mt-2 text-center">
+                <p class="text-[10px] text-red-400/90 font-medium tracking-tight">
+                    ⚠️ 게임에 오류가 생겨 메인 화면으로 돌아갑니다.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GAME_TIPS = [
+            "tmi<br>본 게임은 개발자의 첫 작품이자 그림을 제외한 첫 2차 창작입니다!",
+            "tmi<br>응원은 정말정말 큰 힘이 됩니다!",
+            "tmi<br>감자 300만개는 약 600톤이라네요 ㄷㄷ",
+            "tmi<br>이 로딩은 사실 장식이랍니다!",
+            "tmi<br>제작자 최애 엘프는 엘레나입니다.",
+            "tmi<br>제작자는 요미 때 입문한 볼뉴비입니다! 여러분은 언제이신가요?"
+        ];
+
+        const FALLBACK_MAIN_URL = "Gamemain.html"; // 기본 메인 화면 파일명
+
+        function URL_PARAMS_GET(key) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(key);
+        }
+
+        const targetParam = URL_PARAMS_GET('target');
+        let TARGET_URL = targetParam;
+        let isErrorMode = false;
+
+        // 목적지 경로가 없거나 전달되지 않은 경우 처리
+        if (!targetParam || targetParam.trim() === "") {
+            TARGET_URL = FALLBACK_MAIN_URL;
+            isErrorMode = true;
+        }
+
+        function startLoadingSequence(onComplete) {
+            const progressBar = document.getElementById('progress-bar');
+            const percentText = document.getElementById('loading-percent');
+
+            animateProgress(0, 70, 600, () => {
+                animateProgress(70, 80, 1000, () => {
+                    animateProgress(80, 90, 400, () => {
+                        stutterProgress(90, 100, () => {
+                            if (onComplete) onComplete();
+                        });
+                    });
+                });
+            });
+
+            function animateProgress(start, end, duration, callback) {
+                const startTime = performance.now();
+                function update(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const currentVal = Math.floor(start + (end - start) * progress);
+                    
+                    progressBar.style.width = currentVal + '%';
+                    percentText.innerText = currentVal + '%';
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    } else if (callback) {
+                        callback();
+                    }
+                }
+                requestAnimationFrame(update);
+            }
+
+            function stutterProgress(start, end, callback) {
+                progressBar.style.width = '94%';
+                percentText.innerText = '94%';
+
+                setTimeout(() => {
+                    progressBar.style.width = '98%';
+                    percentText.innerText = '98%';
+                    
+                    setTimeout(() => {
+                        progressBar.style.width = '100%';
+                        percentText.innerText = '100%';
+                        setTimeout(callback, 200);
+                    }, 400);
+                }, 300);
+            }
+        }
+
+        function setRandomTip() {
+            const tipElement = document.getElementById('tip-text');
+            const randomIndex = Math.floor(Math.random() * GAME_TIPS.length);
+            tipElement.innerHTML = GAME_TIPS[randomIndex];
+        }
+
+        window.onload = function() {
+            setRandomTip();
+
+            // 오류 상황일 경우 오류 문구 노출
+            if (isErrorMode) {
+                const errorMsgEl = document.getElementById('error-message');
+                if (errorMsgEl) errorMsgEl.classList.remove('hidden');
+            }
+
+            startLoadingSequence(() => {
+                document.getElementById('loading-container').style.transition = 'opacity 0.3s ease';
+                document.getElementById('loading-container').style.opacity = '0';
+                
+                setTimeout(() => {
+                    window.location.href = TARGET_URL;
+                }, 300);
+            });
+        };
+    </script>
+</body>
+</html>

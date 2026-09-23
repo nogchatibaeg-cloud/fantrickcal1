@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>엘리아스 어웨이 - 프롤로그</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&family=Jua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Gothic A1', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0d0e15;
+            color: #2c2c2c;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1f2438 0%, #0d0e15 100%);
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        .trickcal-dialog-box {
+            background: rgba(255, 255, 255, 0.96);
+            border: 4px solid #eeeeee;
+            border-radius: 40px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.9);
+            position: relative;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .thought-bubble {
+            background: rgba(245, 248, 255, 0.96) !important;
+            border: 5px dashed #adc4eb !important;
+            border-radius: 50px !important;
+            box-shadow: 0 10px 30px rgba(100, 140, 200, 0.25), inset 0 0 15px rgba(180, 210, 255, 0.5) !important;
+            animation: cloud-float 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes cloud-float {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-4px); }
+        }
+
+        .name-tag {
+            background-color: #1e1e24;
+            color: #ffffff;
+            font-weight: 800;
+            border-radius: 14px;
+            padding: 5px 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+            border: 2px solid #3d3d4e;
+        }
+
+        .portrait-frame {
+            width: 86px;
+            height: 86px;
+            min-width: 86px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,230,200,0.7), rgba(255,190,210,0.7));
+            border: 4px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .portrait-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .sfx-badge {
+            background-color: #ffffff;
+            border: 3px solid #588251;
+            border-radius: 0px !important;
+            padding: 16px 30px;
+            color: #588251;
+            font-weight: 900;
+            font-size: 1.4rem;
+            letter-spacing: -0.02em;
+            box-shadow: 6px 6px 0px #82a878, 0 10px 20px rgba(0,0,0,0.25);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-width: 140px;
+            animation: pop-sfx 0.15s ease-out;
+        }
+
+        @keyframes pop-sfx {
+            0% { transform: scale(0.85); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .scene-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.94);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .scene-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .monologue-screen {
+            position: absolute;
+            inset: 0;
+            background-color: #000000;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .monologue-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .monologue-text-standard {
+            color: #ffffff;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.85;
+            font-size: 1.25rem;
+            white-space: pre-wrap;
+            word-break: keep-all;
+            max-width: 680px;
+        }
+
+        .btn-ui {
+            background: rgba(25, 25, 35, 0.8);
+            color: #e2e8f0;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            font-family: 'Jua', sans-serif;
+        }
+
+        .btn-ui:hover {
+            background: rgba(50, 50, 70, 0.95);
+            color: #fff;
+        }
+
+        .btn-ui.active {
+            background: #ffb703;
+            color: #1a1a24;
+            border-color: #ffb703;
+        }
+
+        .next-indicator {
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .text-typewriter {
+            white-space: pre-wrap;
+            word-break: keep-all;
+        }
+
+        /* 스킵 전용 연출 오버레이 */
+        .skip-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 70;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .skip-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .arrow-indicator {
+            font-size: 3.2rem;
+            color: #ffc107;
+            letter-spacing: 0.6rem;
+            text-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 0 0 40px rgba(255, 193, 7, 0.4);
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container" class="relative flex flex-col justify-between p-4 sm:p-6 overflow-hidden">
+        
+        <!-- 배경 레이어 -->
+        <div id="bg-layer" class="absolute inset-0 bg-cover bg-center opacity-80 transition-all duration-700"></div>
+
+        <div id="standing-left" class="absolute bottom-[110px] left-[8%] h-[70%] pointer-events-none opacity-25 flex items-end justify-center">
+            <div class="w-[240px] h-[380px] border-2 border-dashed border-white/40 rounded-3xl bg-white/5 backdrop-blur-sm flex flex-col items-center justify-center text-white/50 font-bold">
+                <i class="fa-solid fa-user text-3xl mb-2"></i>
+                <span>LEFT CHARACTER</span>
+            </div>
+        </div>
+
+        <div id="standing-right" class="absolute bottom-[110px] right-[8%] h-[70%] pointer-events-none opacity-25 flex items-end justify-center">
+            <div class="w-[240px] h-[380px] border-2 border-dashed border-white/40 rounded-3xl bg-white/5 backdrop-blur-sm flex flex-col items-center justify-center text-white/50 font-bold">
+                <i class="fa-solid fa-user text-3xl mb-2"></i>
+                <span>RIGHT CHARACTER</span>
+            </div>
+        </div>
+
+        <div class="relative z-20 flex justify-between items-center w-full">
+            <div class="flex items-center space-x-2 bg-black px-4 py-1.5 rounded-full backdrop-blur-md border border-white/10">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs sm:text-sm font-bold text-white tracking-wide">엘리아스 어웨이 : PROLOGUE</span>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button id="btn-auto" class="btn-ui text-xs sm:text-sm px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-play text-xs"></i>
+                    <span>AUTO</span>
+                </button>
+                <button id="btn-log" class="btn-ui text-xs sm:text-sm px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-ul text-xs"></i>
+                    <span>LOG</span>
+                </button>
+                <button id="btn-restart" class="btn-ui text-xs sm:text-sm px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right text-xs"></i>
+                </button>
+                <!-- 추가된 스킵 버튼 -->
+                <button id="btn-skip" class="btn-ui text-xs sm:text-sm px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-forward-fast text-xs"></i>
+                    <span>SKIP</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="sfx-wrapper" class="relative z-30 w-full flex justify-center items-center my-auto hidden">
+            <div class="sfx-badge">
+                <span id="sfx-text"></span>
+            </div>
+        </div>
+        <div id="sfx-dark-overlay" class="absolute inset-0 bg-black z-25 opacity-0 pointer-events-none transition-opacity duration-300">
+        </div>
+
+        <div id="dialogue-section" class="relative z-20 w-full flex flex-col items-center mb-2 sm:mb-4">
+            
+            <div id="dialogue-wrapper" class="w-full max-w-6xl relative pt-6">
+                
+                <div id="name-tag" class="name-tag absolute top-0 left-8 sm:left-12 z-30 text-sm sm:text-base flex items-center gap-2">
+                    <span id="speaker-name">엘레나</span>
+                </div>
+
+                <div id="dialogue-box" class="trickcal-dialog-box w-full p-4 sm:p-6 flex items-center gap-4 sm:gap-6 min-h-[130px] sm:min-h-[150px] cursor-pointer">
+                    
+                    <div class="portrait-frame flex-shrink-0">
+                        <div class="portrait-placeholder" id="portrait-icon">
+                        </div>
+                    </div>
+
+                    <div class="flex-grow flex flex-col justify-center h-full pr-6">
+                        <p id="dialogue-text" class="text-gray-800 text-base sm:text-lg sm:leading-relaxed font-bold tracking-tight text-typewriter">
+                        </p>
+                    </div>
+
+                    <div id="next-indicator" class="absolute bottom-4 right-6 text-yellow-600 text-lg sm:text-xl next-indicator opacity-80">
+                        <i class="fa-solid fa-caret-down"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="scene-overlay" class="scene-overlay">
+            <div id="scene-title" class="text-2xl sm:text-4xl font-extrabold text-white tracking-widest bg-white/10 px-8 py-4 rounded-2xl backdrop-blur-lg border border-white/20 shadow-2xl">
+            </div>
+            <p class="text-sm text-gray-400 mt-6 tracking-widest uppercase animate-pulse">Touch to continue</p>
+        </div>
+
+        <div id="monologue-screen" class="monologue-screen">
+            <div id="monologue-text" class="monologue-text-standard">
+            </div>
+            <div id="monologue-next" class="mt-8 text-xs text-gray-500 tracking-widest opacity-0 transition-opacity duration-300 uppercase">
+                Touch to continue
+            </div>
+        </div>
+
+        <!-- 스킵 전용 연출 레이어 -->
+        <div id="skip-overlay" class="skip-overlay">
+            <div id="skip-arrows" class="arrow-indicator">▶</div>
+        </div>
+
+        <div id="log-modal" class="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="bg-gray-900 border border-gray-700 w-full max-w-2xl h-[80vh] rounded-3xl p-6 flex flex-col text-white shadow-2xl">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-4 mb-4">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-list-ul text-yellow-400"></i> 대화 기록 (LOG)
+                    </h3>
+                    <button id="btn-close-log" class="text-gray-400 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="log-content" class="flex-grow overflow-y-auto space-y-4 pr-2">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const NEXT_SCENE_URL = "loading.html?target=Gamemap.html";
+
+        function goToNextScene() {
+            gameContainer.style.transition = "opacity 0.4s ease";
+            gameContainer.style.opacity = "0";
+            setTimeout(() => {
+                window.location.href = NEXT_SCENE_URL;
+            }, 400);
+        }
+
+        const SCRIPT = [
+            { type: "dialogue", speaker: "엘레나", text: "하아... 이놈의 일은 해도해도 끝이 없네...", color: "#ff8fab", bg: "elfjail.png" },
+            { type: "dialogue", speaker: "엘레나", text: "...그래도 오늘이 마지막일테니까.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "오늘 저녁은~ 까스 까스 돈까스!", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "...로네?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "네?", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "중요한 할 말이 있으니, 엘프들에게 오늘 저녁점호 후에 우리쪽으로 오라고 귀띔 좀 해줄래?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "네? 갑자기 무슨...", color: "#a2d2ff" },
+            
+            { type: "sfx", text: "속닥속닥-" },
+
+            { type: "dialogue", speaker: "엘레나", text: "이해했지?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "네? 그게 가능할리가요! 인간들이 24시간 저희를 감시하고 있는데!", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "로네, 이건 처음이자 마지막 기회다.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "크리스마스를 눈앞에 둔 지금! 하루 4시간 자고 선물 포장만 할 생각에 배신할 기운도 사라진 지금의 엘프들이 가장 비밀리에 작전을 진행하기 좋은 상태란 말이다!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "그렇다면... 까짓거 한번 해보죠.", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "아, 그리고 로네.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "네?", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "가능하다면, 식품 창고도 털어서 와주면 좋겠어.", color: "#ff8fab" },
+            
+            { type: "sfx", text: "저녁점호 후" },
+
+            { type: "dialogue", speaker: "엘프 병장", text: "...이상 저녁점호 엘원보고 끝!", color: "#c8b6ff" },
+            { type: "dialogue", speaker: "엘레나", text: "드디어 끝났군...", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "로네, 엘프들에게 전달은 다 했겠지?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "네! 그런데...", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "그런데?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "깨워도 안 일어날 만큼 깊이 자는 녀석들이랑,", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "로네", text: "휴가 간 녀석들은 못 불렀어요...", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "후... 어쩔 수 없다. 운명이야.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "하지만 시장님...", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "지금이 아니면 기회가 없다! 당연한 배신이야!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "아무리 그래도... 고햐... 읍읍!", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "그 단어는 아직 꺼내지 마, 로네. 우릴 배신하고 포상 휴가를 받으려는 엘프가 아직 존재할지도 모른다.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "도망칠 수 없을 만큼 확실한 범위에 적절한 인원수가 모였을 때, 그때 말한다.", color: "#ff8fab" },
+
+            { type: "sfx", text: "잠시 후" },
+
+            { type: "dialogue", speaker: "엘레나", text: "얼추 다 모인 것 같군.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "화난 엘프", text: "뭐야? 저녁밥도 못 먹게 하필 왜 이시간에 부른거야?", color: "#ffb5a7" },
+            { type: "dialogue", speaker: "다급한 엘프", text: "그리고 식품 창고는 왜 턴거야? 요리 대회라도 할 거야? 인간들이 식품 창고가 털린 걸 알면 어떡해?", color: "#fcd5ce" },
+            { type: "dialogue", speaker: "엘레나", text: "급하니 본론만 말하겠다.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "지금까지 인간에게 잡혀 일하느라 수고 많았다.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "우리는 오늘!", color: "#ff8fab" },
+            
+            { type: "sfx", text: "'파지직-'" },
+
+            { type: "dialogue", speaker: "엘레나", text: "고향으로 돌아간다.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "긴급 안내 방송", text: "경보. 5521호에서 엘프 대규모 탈출 시도. 신속히 제압 바람. 반복한다. 경보...", color: "#ef476f" },
+            { type: "dialogue", speaker: "엘레나", text: "제기랄! 벌써 들켰나!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "아멜리아", text: "납땜은 그렇게 늦장부리다가 결국 야근은 저희에게 떠맡기더니, 이런 일은 참으로 신속하기 그지 없습니다!", color: "#06d6a0" },
+            { type: "dialogue", speaker: "엘레나", text: "우리 엘프보다 내로남불이 심한 녀석들은 처음이군. 아멜리아? 차원문 안정화는 얼마나 되었지?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "아멜리아", text: "96% 완료되었습니다!", color: "#06d6a0" },
+            { type: "dialogue", speaker: "엘레나", text: "제발...", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "큰일이에요! 진압반이 벌써 저쪽 복도 끝에 왔어요!", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "화난 인간", text: "이 녀석들! 어딜 도망가려고!!!", color: "#e76f51" },
+            { type: "dialogue", speaker: "아멜리아", text: "99%... 100%! 안정화 완료되었습니다!", color: "#06d6a0" },
+            { type: "dialogue", speaker: "엘레나", text: "모두 차원문으로 뛰어! 이제 이 지긋지긋한 녀석들과는 안녕이다!", color: "#ff8fab" },
+
+            { type: "sfx", text: "'피유웅-!'", darkness: true },
+            { type: "sfx", text: "...", darkness: true },
+
+            { type: "dialogue", speaker: "????", text: "엘...님...!", color: "#cccccc", bg: "forest1.png" },
+            { type: "dialogue", speaker: "엘레나", text: "으음...?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "????", text: "엘레나님! 눈을 뜨십시오!", color: "#cccccc" },
+            { type: "dialogue", speaker: "엘레나", text: "여긴... 어디...", color: "#ff8fab" },
+            { type: "dialogue", speaker: "아멜리아", text: "성공했습니다! 지구의 수용소를 벗어났습니다!", color: "#06d6a0" },
+            { type: "dialogue", speaker: "엘레나", text: "정말이야? 현재 위치는? 아직 지구 내부는 아니겠지?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "아멜리아", text: "현재 위치 추정 중입니다. 우선 지구는 아닌것으로 확정했으니 안심하십시오.", color: "#06d6a0" },
+            { type: "dialogue", speaker: "엘레나", text: "됐다... 됐어...!!!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "성공이야, 아멜리아!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "아멜리아", text: "역시 엘레나님이십니다!", color: "#06d6a0" },
+            { type: "dialogue", speaker: "로네", text: "어, 저기 엘레나님?", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "로네", text: "분석이 다 끝나긴 했는데...", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "설마, 좋은 소식 하나 나쁜 소식 하나 같은 건 아니겠지?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "혹시 독심술이라도 배우셨나요?", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "인간들에게서 유일하게 배울만한 점이 눈치였어. 이정도는 이제 캐치할 만하지.", color: "#ff8fab" },
+            { type: "dialogue", speaker: "엘레나", text: "아무튼, 좋은 소식부터 말해줄래?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "좋은 소식은, 애초에 지구에서 두고 온 엘프를 빼면 차원문을 타려고 한 엘프들은 모두 넘어 왔어요. 인간들이 오기 직전에 차원문을 닫아서 변수도 없고요.", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "다행이군. 그럼 나쁜 소식은?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "...", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "여기가... 도대체 어디에요?", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "뭐?", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "모성도 아니고, 지구도 아니고, 저희가 발 디뎌본 그 어떤 행성도 아니에요.", color: "#a2d2ff" },
+            { type: "dialogue", speaker: "엘레나", text: "그럴리가! 분명 좌표는 완벽하게 설정했단 말이야!", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "저도 모르겠어요! 차원문을 넘어왔을 땐 이미 동력이 꺼져서, 좌표 이탈 원인도 분석이 안된다구요!",color: "#a2d2ff" },
+ 
+            { 
+                type: "thought", 
+                speaker: "엘레나", 
+                text: "동력이 끊어지는 바람에 차원 이동이 끊겼나? 그나마 안전장치 덕분에 차원 유폐 신세는 면했어.", 
+                color: "#800080" 
+            },
+
+            { type: "dialogue", speaker: "엘레나", text: "이럴 수가...", color: "#ff8fab" },
+            { type: "dialogue", speaker: "로네", text: "이제 어쩌죠? 심지어 수용소 식량 창고에도 감자밖에 없어서, 한동안 감자만 먹어야할 것 같은데...", color: "#a2d2ff" },
+
+            {
+                type: "monologue",
+                speaker: "엘레나",
+                text: "아무래도 깐됐다.\n그것이 내가 심사숙고 끝에 내린 결론이다.\n나는 깐됐다."
+            }
+        ];
+
+        let currentIndex = 0;
+        let isTyping = false;
+        let typewriterTimer = null;
+        let isAutoPlay = false;
+        let autoPlayTimer = null;
+        
+        let isSkipping = false;
+        let skipFastTimer = null;
+        let skipArrowTimer = null;
+        let currentArrowCount = 1;
+
+        let currentBgImage = 'elfjail.png';
+
+        const gameContainer = document.getElementById('game-container');
+        const bgLayer = document.getElementById('bg-layer');
+        const nameTag = document.getElementById('name-tag');
+        const speakerName = document.getElementById('speaker-name');
+        const dialogueText = document.getElementById('dialogue-text');
+        const dialogueBox = document.getElementById('dialogue-box');
+        const dialogueWrapper = document.getElementById('dialogue-wrapper');
+        const sceneOverlay = document.getElementById('scene-overlay');
+        const sceneTitle = document.getElementById('scene-title');
+        const sfxWrapper = document.getElementById('sfx-wrapper');
+        const sfxText = document.getElementById('sfx-text');
+        const dialogueSection = document.getElementById('dialogue-section');
+        const nextIndicator = document.getElementById('next-indicator');
+        const monologueScreen = document.getElementById('monologue-screen');
+        const monologueText = document.getElementById('monologue-text');
+        const monologueNext = document.getElementById('monologue-next');
+        const btnAuto = document.getElementById('btn-auto');
+        const btnLog = document.getElementById('btn-log');
+        const btnRestart = document.getElementById('btn-restart');
+        const btnSkip = document.getElementById('btn-skip');
+        const skipOverlay = document.getElementById('skip-overlay');
+        const skipArrows = document.getElementById('skip-arrows');
+        const logModal = document.getElementById('log-modal');
+        const logContent = document.getElementById('log-content');
+        const btnCloseLog = document.getElementById('btn-close-log');
+        const portraitIcon = document.getElementById('portrait-icon');
+        const sfxDarkOverlay = document.getElementById('sfx-dark-overlay');
+
+        const PORTRAITS = {
+            "아멜리아": "amelia.png",
+            "로네": "rohne.png",
+            "엘레나": "elena.png",
+            "ELF_GENERIC": "elf.png"
+        };
+        const HUMAN_SPEAKERS = ["화난 인간", "긴급 안내 방송"];
+
+        function setBackground(imageName) {
+            if (imageName) {
+                bgLayer.style.backgroundImage = `url('${imageName}')`;
+            }
+        }
+
+        function showDialogue(data, isThought = false) {
+            dialogueWrapper.classList.remove('hidden');
+            speakerName.innerText = data.speaker;
+            
+            if (isThought) {
+                dialogueBox.classList.add('thought-bubble');
+            }
+
+            const portraitFrame = document.querySelector('.portrait-frame');
+            const speaker = data.speaker;
+
+            if (HUMAN_SPEAKERS.includes(speaker)) {
+                portraitFrame.style.display = 'none';
+            } else {
+                portraitFrame.style.display = 'flex';
+                
+                if (PORTRAITS[speaker]) {
+                    portraitIcon.innerHTML = `<img src="${PORTRAITS[speaker]}" class="w-full h-full object-cover scale-125 origin-top pt-1" alt="${speaker}">`;
+                } else {
+                    portraitIcon.innerHTML = `<img src="${PORTRAITS['ELF_GENERIC']}" class="w-full h-full object-contain scale-125" alt="엘프 문양">`;
+                }
+            }
+
+            if (isSkipping) {
+                dialogueText.innerText = data.text;
+                isTyping = false;
+            } else {
+                startTypewriter(dialogueText, data.text);
+            }
+        }
+
+        function startTypewriter(targetElement, fullText, onComplete) {
+            clearInterval(typewriterTimer);
+            targetElement.innerText = "";
+            isTyping = true;
+            nextIndicator.classList.add('opacity-0');
+
+            let charIdx = 0;
+            const speed = 35;
+
+            typewriterTimer = setInterval(() => {
+                if (charIdx < fullText.length) {
+                    targetElement.innerText += fullText.charAt(charIdx);
+                    charIdx++;
+                } else {
+                    finishTypewriter(targetElement, fullText);
+                    if (onComplete) onComplete();
+                }
+            }, speed);
+        }
+
+        function finishTypewriter(targetElement, fullText) {
+            clearInterval(typewriterTimer);
+            targetElement.innerText = fullText;
+            isTyping = false;
+            nextIndicator.classList.remove('opacity-0');
+
+            if (isAutoPlay && !isSkipping) {
+                clearTimeout(autoPlayTimer);
+                autoPlayTimer = setTimeout(() => {
+                    handleNext();
+                }, 2200);
+            }
+        }
+
+        function showSfxBadge(text, isDarkness = false) {
+            dialogueWrapper.classList.add('hidden');
+            sfxWrapper.classList.remove('hidden');
+            sfxText.innerText = text;
+            isTyping = false;
+
+            if (isDarkness) {
+                sfxDarkOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                sfxDarkOverlay.classList.add('opacity-100');
+            }
+
+            if (isAutoPlay && !isSkipping) {
+                clearTimeout(autoPlayTimer);
+                autoPlayTimer = setTimeout(() => {
+                    handleNext();
+                }, 1400);
+            }
+        }
+
+        function showSceneTransition(titleText) {
+            dialogueWrapper.classList.add('hidden');
+            sfxWrapper.classList.add('hidden');
+            
+            sceneTitle.innerText = titleText;
+            sceneOverlay.classList.add('active');
+            isTyping = false;
+        }
+
+        function showDarkMonologue(text) {
+            dialogueSection.classList.add('hidden');
+            sfxWrapper.classList.add('hidden');
+            monologueScreen.classList.add('active');
+            monologueNext.classList.add('opacity-0');
+
+            startTypewriter(monologueText, text, () => {
+                monologueNext.classList.remove('opacity-0');
+            });
+        }
+
+        function handleNext() {
+            if (sceneOverlay.classList.contains('active')) {
+                sceneOverlay.classList.remove('active');
+                currentIndex++;
+                renderCurrentStep();
+                return;
+            }
+
+            if (monologueScreen.classList.contains('active')) {
+                if (isTyping) {
+                    finishTypewriter(monologueText, SCRIPT[currentIndex].text);
+                    monologueNext.classList.remove('opacity-0');
+                } else {
+                    goToNextScene();
+                }
+                return;
+            }
+
+            const current = SCRIPT[currentIndex];
+
+            if (current.type === "dialogue" || current.type === "thought") {
+                if (isTyping && !isSkipping) {
+                    finishTypewriter(dialogueText, current.text);
+                } else {
+                    currentIndex++;
+                    renderCurrentStep();
+                }
+            } else if (current.type === "sfx") {
+                currentIndex++;
+                renderCurrentStep();
+            }
+        }
+
+        function renderCurrentStep() {
+            if (currentIndex >= SCRIPT.length) return;
+
+            const data = SCRIPT[currentIndex];
+
+            if (data.bg) {
+                currentBgImage = data.bg;
+            }
+            setBackground(currentBgImage);
+
+            sceneOverlay.classList.remove('active');
+            monologueScreen.classList.remove('active');
+            sfxWrapper.classList.add('hidden');
+            dialogueSection.classList.remove('hidden');
+            dialogueBox.classList.remove('thought-bubble');
+
+            if (data.type !== "sfx" || !data.darkness) {
+                sfxDarkOverlay.classList.add('opacity-0', 'pointer-events-none');
+                sfxDarkOverlay.classList.remove('opacity-100');
+            }
+
+            if (data.type === "dialogue") {
+                showDialogue(data, false);
+            } else if (data.type === "thought") {
+                showDialogue(data, true);
+            } else if (data.type === "sfx") {
+                showSfxBadge(data.text, data.darkness);
+            } else if (data.type === "scene") {
+                showSceneTransition(data.title);
+            } else if (data.type === "monologue") {
+                if (isSkipping) {
+                    stopSkipProcess();
+                }
+                showDarkMonologue(data.text);
+            }
+        }
+
+        /* 스킵 기능 동작 흐름 관리 */
+        function startSkipProcess() {
+            if (isSkipping) return;
+
+            // 독백 화면에 이미 도달한 상황이면 연출 불필요
+            const monologueIndex = SCRIPT.findIndex(item => item.type === "monologue");
+            if (currentIndex >= monologueIndex) {
+                currentIndex = monologueIndex;
+                renderCurrentStep();
+                return;
+            }
+
+            isSkipping = true;
+            isAutoPlay = false;
+            btnAuto.classList.remove('active');
+            btnSkip.classList.add('active');
+
+            skipOverlay.classList.add('active');
+
+            // 0.2초마다 삼각형 갯수 변경 애니메이션 (▶ -> ▶ ▶ -> ▶ ▶ ▶)
+            currentArrowCount = 1;
+            skipArrows.innerText = "▶";
+            clearInterval(skipArrowTimer);
+            skipArrowTimer = setInterval(() => {
+                currentArrowCount = (currentArrowCount % 3) + 1;
+                skipArrows.innerText = "▶".repeat(currentArrowCount);
+            }, 200);
+
+            // 0.05초마다 스토리를 빠르게 넘김
+            clearInterval(skipFastTimer);
+            skipFastTimer = setInterval(() => {
+                if (currentIndex < monologueIndex) {
+                    currentIndex++;
+                    renderCurrentStep();
+                } else {
+                    stopSkipProcess();
+                }
+            }, 50);
+        }
+
+        function stopSkipProcess() {
+            isSkipping = false;
+            clearInterval(skipFastTimer);
+            clearInterval(skipArrowTimer);
+            skipOverlay.classList.remove('active');
+            btnSkip.classList.remove('active');
+        }
+
+        function initGame() {
+            stopSkipProcess();
+            currentIndex = 0;
+            isTyping = false;
+            currentBgImage = 'elfjail.png';
+            clearInterval(typewriterTimer);
+            clearTimeout(autoPlayTimer);
+            isAutoPlay = false;
+            btnAuto.classList.remove('active');
+
+            renderCurrentStep();
+        }
+
+        gameContainer.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-auto') || 
+                e.target.closest('#btn-log') || 
+                e.target.closest('#btn-restart') || 
+                e.target.closest('#btn-skip') || 
+                e.target.closest('#log-modal')) {
+                return;
+            }
+
+            // 스킵 연출 중 클릭 시 즉시 스킵 중단 후 현재 대사 정지
+            if (isSkipping) {
+                stopSkipProcess();
+                return;
+            }
+
+            handleNext();
+        });
+
+        btnAuto.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isSkipping) stopSkipProcess();
+            isAutoPlay = !isAutoPlay;
+            btnAuto.classList.toggle('active', isAutoPlay);
+            if (isAutoPlay && !isTyping) {
+                handleNext();
+            }
+        });
+
+        btnSkip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startSkipProcess();
+        });
+
+        btnLog.addEventListener('click', (e) => {
+            e.stopPropagation();
+            buildLogView();
+            logModal.classList.remove('pointer-events-none');
+            logModal.classList.add('opacity-100');
+        });
+
+        btnCloseLog.addEventListener('click', () => {
+            logModal.classList.add('pointer-events-none');
+            logModal.classList.remove('opacity-100');
+        });
+
+        btnRestart.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initGame();
+        });
+
+        function buildLogView() {
+            logContent.innerHTML = "";
+            SCRIPT.forEach((item, idx) => {
+                if (idx > currentIndex) return;
+
+                const div = document.createElement('div');
+                div.className = "p-3 rounded-xl bg-gray-800/60 border border-gray-700/50";
+                
+                if (item.type === "dialogue" || item.type === "thought") {
+                    const tag = item.type === "thought" ? " [생각]" : "";
+                    div.innerHTML = `
+                        <div class="text-xs font-bold mb-1" style="color:${item.color || '#ff8fab'}">${item.speaker}${tag}</div>
+                        <div class="text-sm text-gray-200">${item.text}</div>
+                    `;
+                } else if (item.type === "scene") {
+                    div.className = "p-2 rounded-lg bg-yellow-500/10 text-center text-xs text-yellow-300 font-bold tracking-widest";
+                    div.innerText = item.title;
+                } else if (item.type === "sfx") {
+                    div.className = "p-2 rounded-lg bg-emerald-500/10 text-center text-xs text-emerald-300 font-bold tracking-widest";
+                    div.innerText = `[효과음] ${item.text}`;
+                } else if (item.type === "monologue") {
+                    div.innerHTML = `
+                        <div class="text-xs text-amber-400 font-bold mb-1">[독백]</div>
+                        <div class="text-sm text-amber-100 whitespace-pre-line">${item.text}</div>
+                    `;
+                }
+                logContent.appendChild(div);
+            });
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>

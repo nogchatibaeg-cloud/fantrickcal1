@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>모나티엄 - 엘리아스 어웨이</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
+        body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
+        
+        #map-canvas {
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+        #map-canvas:active { cursor: grabbing; }
+
+        .btn-ui { transition: all 0.2s ease; }
+        .btn-ui:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .btn-ui:active { transform: translateY(0); }
+
+        .toggle-arrow { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Craft Panel (좌측 배치) */
+        #craft-panel-frame {
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+            transform: translateX(-105%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #craft-panel-frame.active {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* UI 숨김 애니메이션 트랜지션 */
+        .ui-fade-layer {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .ui-fade-layer.hidden-placement {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(20px);
+        }
+
+        /* PlayerResource 컨테이너 위치 이동 트랜지션 */
+        #resource-module-container {
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
+
+    <!-- 뷰포트 (캔버스 레이어) -->
+    <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
+        <canvas id="map-canvas" class="absolute top-0 left-0"></canvas>
+
+        <div id="building-dom-container" class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-visible"></div>
+        
+        <!-- [신규] DelOrMov.html 메뉴 팝업 iframe 컨테이너 -->
+        <div id="action-menu-container" class="absolute hidden z-50 pointer-events-auto transition-opacity duration-150">
+            <iframe id="action-menu-iframe" src="DelOrMov.html" class="w-full h-full border-0"></iframe>
+        </div>
+
+        <!-- 자원 패널 컨테이너 -->
+        <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl ui-fade-layer"></div>
+
+        <!-- Craftwiththis.html 연동 프레임 -->
+        <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[30vw] min-w-[320px] max-w-[420px] z-40 flex items-center justify-center ui-fade-layer">
+            <iframe id="craft-iframe" src="Craftwiththis.html" class="w-full h-full border-0 rounded-2xl shadow-2xl bg-transparent"></iframe>
+        </div>
+
+        <!-- 상단/기본 UI 요소들 그룹 -->
+        <div id="hideable-ui-group" class="ui-fade-layer">
+            <div class="absolute top-4 right-4 flex items-center gap-3 z-40 pointer-events-auto" onclick="event.stopPropagation()">
+                <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3 shadow-2xl">
+                    <div class="bg-teal-500/20 text-teal-400 p-2 rounded-lg border border-teal-500/30">
+                        <i class="fa-solid fa-city text-base"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 id="location-title" class="font-extrabold text-sm text-white tracking-wide">모나티엄 내부</h1>
+                            <span id="location-badge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">내부 지역</span>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="loading.html?target=Gamemap.html" class="btn-ui px-3.5 py-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl border border-slate-800 backdrop-blur-md flex items-center gap-2 shadow-2xl">
+                    <i class="fa-solid fa-map text-amber-400"></i>
+                    <span>지도</span>
+                </a>
+            </div>
+
+            <div class="absolute top-20 right-6 z-40 pointer-events-auto">
+                <button id="btn-toggle-outer" class="btn-ui px-3.5 py-2.5 bg-slate-900/95 border border-slate-700 hover:border-amber-400 rounded-xl text-amber-400 text-xs font-extrabold flex items-center gap-2 shadow-2xl backdrop-blur-md">
+                    <span>외부로</span>
+                    <i id="icon-arrow-outer" class="fa-solid fa-arrow-right text-xs toggle-arrow"></i>
+                </button>
+            </div>
+
+            <div class="absolute top-20 left-6 z-40 pointer-events-auto hidden" id="wrapper-inner-arrow">
+                <button id="btn-toggle-inner" class="btn-ui px-3.5 py-2.5 bg-slate-900/95 border border-slate-700 hover:border-teal-400 rounded-xl text-teal-400 text-xs font-extrabold flex items-center gap-2 shadow-2xl backdrop-blur-md">
+                    <i id="icon-arrow-inner" class="fa-solid fa-arrow-left text-xs toggle-arrow"></i>
+                    <span>내부로</span>
+                </button>
+            </div>
+
+            <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-3.5 py-2 text-[11px] text-slate-300 font-mono flex items-center gap-3 shadow-xl z-40 pointer-events-auto" onclick="event.stopPropagation()">
+                <div>Grid: <span class="text-teal-400 font-bold">50 × 25</span></div>
+                <div>Zoom: <span id="hud-zoom" class="text-emerald-400 font-bold">100</span>%</div>
+            </div>
+        </div>
+
+        <!-- 하단 버튼 컨트롤러 -->
+        <div id="default-bottom-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto ui-fade-layer" onclick="event.stopPropagation()">
+            <button id="btn-blueprint" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
+                <i id="blueprint-icon" class="fa-solid fa-drafting-compass text-teal-400 text-sm"></i>
+                <span id="blueprint-text">설계도 UI (격자)</span>
+            </button>
+
+            <button id="btn-reset-cam" class="btn-ui px-4 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2 shadow-2xl">
+                <i class="fa-solid fa-compress text-amber-400"></i>
+                <span>시점 리셋</span>
+            </button>
+        </div>
+
+        <!-- 건축 모드 전용 하단 취소 버튼 -->
+        <div id="placement-cancel-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden pointer-events-auto">
+            <button onclick="cancelBuildingPlacement()" class="btn-ui px-6 py-3.5 bg-rose-600/90 hover:bg-rose-500 border border-rose-400/50 text-white font-black text-sm rounded-2xl shadow-2xl backdrop-blur-lg flex items-center gap-2.5 tracking-wide cursor-pointer transition-all">
+                <i class="fa-solid fa-ban text-base"></i>
+                <span id="placement-cancel-text">건축 취소</span>
+            </button>
+        </div>
+
+        <!-- 마우스 커서 설치 불가 알림 토스트 -->
+        <div id="cursor-error-toast" class="fixed z-50 pointer-events-none hidden -translate-x-1/2 -translate-y-full mb-3 px-3.5 py-2 bg-slate-950/90 border border-rose-500/80 text-rose-400 text-xs font-black rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 transition-opacity duration-200 opacity-0">
+            <span>여기에는 지을 수 없습니다!</span>
+        </div>
+    </div>
+
+<script>
+    window.PLAYER_RESOURCES_DATA = [
+        { id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "", desc: "기술력입니다." },
+        { id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W" },
+        { id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; } },
+        { id: "leaf", name: "세계수 잎", icon: "fa-solid fa-leaf", color: "text-emerald-400", value: 0 },
+        { id: "mana", name: "마력", icon: "fa-solid fa-wand-magic-sparkles", color: "text-purple-400", value: 0 },
+        { id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; } },
+        { id: "energy", name: "에너지", icon: "fa-solid fa-bolt", color: "text-cyan-400", value: 0 },
+        { id: "efficiency", name: "효율성", icon: "fa-solid fa-gauge-high", color: "text-rose-400", value: 0, unit: "%" },
+        { id: "potato", name: "감자", icon: "fa-solid fa-database", color: "text-yellow-600", value: 3000927, unit: "개" },
+        { id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G" }
+    ];
+
+    const GRID_COLS = 50;
+    const GRID_ROWS = 25;
+    const CELL_SIZE = 160;
+    const MAP_WIDTH = GRID_COLS * CELL_SIZE;
+    const MAP_HEIGHT = GRID_ROWS * CELL_SIZE;
+    const OUTDOOR_MARGIN = 1500; 
+
+    const canvas = document.getElementById('map-canvas');
+    const ctx = canvas.getContext('2d');
+    const viewport = document.getElementById('map-viewport');
+
+    let scale = 1.0;
+    let minScale = 0.2;
+    let maxScale = 2.5;
+    let cameraX = 0;
+    let cameraY = 0;
+    let isPanning = false;
+    let startX = 0, startY = 0;
+
+    let isOuterRegion = false;   
+    let isBlueprintMode = false; 
+
+    const placedBuildings = [];
+    let currentPlacingBuilding = null;
+    let isMovingBuilding = false; // 위치 조정(재배치) 모드 여부
+    let selectedBuildingObj = null; // 현재 액션 메뉴가 열린 건물
+    let mouseGridCol = -1;
+    let mouseGridRow = -1;
+
+    // 🌟 [HTML 건물 iframe DOM 생성 함수 및 클릭 이벤트 바인딩]
+ function createBuildingDOM(building) {
+    const container = document.getElementById('building-dom-container');
+    if (!container) return;
+    
+    const wrapper = document.createElement('div');
+    wrapper.id = `building-dom-${building.col}-${building.row}`;
+    wrapper.className = 'absolute pointer-events-auto cursor-pointer transition-transform hover:scale-105';
+    
+    const iframe = document.createElement('iframe');
+    iframe.src = `${building.data.id}.html`;
+    iframe.className = 'w-full h-full border-0 overflow-hidden pointer-events-none bg-transparent';
+    
+    wrapper.appendChild(iframe);
+    container.appendChild(wrapper);
+    
+    wrapper.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentPlacingBuilding) return;
+        openActionMenuForBuilding(building);
+    });
+
+    building.domElement = wrapper;
+}
+
+    // 🌟 [건물 액션 팝업 메뉴 (DelOrMov.html) 열기 함수]
+    function openActionMenuForBuilding(building) {
+        selectedBuildingObj = building;
+        const menuContainer = document.getElementById('action-menu-container');
+        if (!menuContainer) return;
+
+        menuContainer.classList.remove('hidden');
+        updateActionMenuPosition();
+    }
+
+    function closeActionMenu() {
+        selectedBuildingObj = null;
+        const menuContainer = document.getElementById('action-menu-container');
+        if (menuContainer) menuContainer.classList.add('hidden');
+    }
+
+    // 🌟 [액션 메뉴 위치 동기화]
+    function updateActionMenuPosition() {
+        if (!selectedBuildingObj || !selectedBuildingObj.domElement) return;
+        const menuContainer = document.getElementById('action-menu-container');
+        if (menuContainer.classList.contains('hidden')) return;
+
+        const screenX = cameraX + (selectedBuildingObj.col * CELL_SIZE) * scale;
+        const screenY = cameraY + (selectedBuildingObj.row * CELL_SIZE) * scale;
+        const screenW = (CELL_SIZE * 2) * scale;
+
+        const menuWidth = Math.max(180, screenW);
+        const menuHeight = 54;
+
+        menuContainer.style.width = `${menuWidth}px`;
+        menuContainer.style.height = `${menuHeight}px`;
+        menuContainer.style.left = `${screenX + (screenW - menuWidth) / 2}px`;
+        menuContainer.style.top = `${screenY - menuHeight - 12}px`; // 건물 바로 위에 떠있도록 설정
+    }
+
+    // 🌟 [DelOrMov.html 액션 수신 통신 리스너]
+    window.addEventListener('message', (e) => {
+        if (!e.data || e.data.type !== 'BUILDING_ACTION') return;
+
+        const action = e.data.action;
+        if (!selectedBuildingObj) return;
+
+        const targetBuilding = selectedBuildingObj;
+        closeActionMenu();
+
+        if (action === 'move') {
+            // 1. 위치 조정 (기존 위치 건물 임시 제거 후 배치 모드 진입)
+            removeBuildingDOM(targetBuilding);
+            const index = placedBuildings.indexOf(targetBuilding);
+            if (index > -1) placedBuildings.splice(index, 1);
+
+            isMovingBuilding = true;
+            window.startBuildingPlacement(targetBuilding.data);
+
+        } else if (action === 'delete') {
+            // 2. 철거 (사용했던 자원의 10% 환불 처리)
+            const refundPotato = Math.floor((targetBuilding.data.reqPotato || 0) * 0.1);
+            
+            // 강화 자원이 포함될 경우 대비 확장 가능하도록 구획 설정
+            const totalRefundPotato = refundPotato + Math.floor((targetBuilding.upgradeSpentPotato || 0) * 0.1);
+
+            const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
+            if (potatoRes) {
+                potatoRes.value += totalRefundPotato;
+            }
+
+            // 기술력 스탯 등 필요시 차감 로직 처리
+            const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+            if (techRes && techRes.value >= 5) techRes.value -= 5;
+
+            removeBuildingDOM(targetBuilding);
+            const index = placedBuildings.indexOf(targetBuilding);
+            if (index > -1) placedBuildings.splice(index, 1);
+
+            if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+        }
+    });
+
+    function removeBuildingDOM(building) {
+        if (building.domElement && building.domElement.parentNode) {
+            building.domElement.parentNode.removeChild(building.domElement);
+            building.domElement = null;
+        }
+    }
+
+    // 🌟 [카메라 이동/줌에 맞춰 iframe 건물 및 액션 메뉴 위치 동기화]
+    function updateBuildingDOMPositions() {
+        placedBuildings.forEach(b => {
+            if (!b.domElement) {
+                createBuildingDOM(b);
+            }
+
+            const screenX = cameraX + (b.col * CELL_SIZE) * scale;
+            const screenY = cameraY + (b.row * CELL_SIZE) * scale;
+            const screenW = (CELL_SIZE * 2) * scale;
+            const screenH = (CELL_SIZE * 2) * scale;
+
+            b.domElement.style.left = `${screenX}px`;
+            b.domElement.style.top = `${screenY}px`;
+            b.domElement.style.width = `${screenW}px`;
+            b.domElement.style.height = `${screenH}px`;
+        });
+
+        updateActionMenuPosition();
+    }
+
+    const citizens = [];
+    const CITIZEN_COUNT = 5;
+
+    const defaultCitizenImg = new Image();
+    defaultCitizenImg.src = 'Citizen.png';
+    let isDefaultImgLoaded = false;
+    defaultCitizenImg.onload = () => { isDefaultImgLoaded = true; };
+
+    class Citizen {
+        constructor(id, imgSrc = 'Citizen.png') {
+            this.id = id;
+            this.x = Math.random() * MAP_WIDTH;
+            this.y = Math.random() * MAP_HEIGHT;
+            this.vx = (Math.random() - 0.5) * 1.5;
+            this.vy = (Math.random() - 0.5) * 1.5;
+            this.size = 300;
+            this.changeDirTimer = 0;
+            
+            this.img = new Image();
+            this.img.src = imgSrc;
+            this.isLoaded = false;
+            this.img.onload = () => { this.isLoaded = true; };
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.changeDirTimer--;
+            if (this.changeDirTimer <= 0) {
+                this.vx = (Math.random() - 0.5) * 1.8;
+                this.vy = (Math.random() - 0.5) * 1.8;
+                this.changeDirTimer = Math.floor(Math.random() * 120) + 60;
+            }
+
+            if (this.x < 10) { this.x = 10; this.vx *= -1; }
+            if (this.x > MAP_WIDTH - 10) { this.x = MAP_WIDTH - 10; this.vx *= -1; }
+            if (this.y < 10) { this.y = 10; this.vy *= -1; }
+            if (this.y > MAP_HEIGHT - 10) { this.y = MAP_HEIGHT - 10; this.vy *= -1; }
+        }
+
+        draw(ctx) {
+            ctx.save();
+            if (this.isLoaded) {
+                ctx.drawImage(this.img, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            } else if (isDefaultImgLoaded) {
+                ctx.drawImage(defaultCitizenImg, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            } else {
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    for (let i = 0; i < CITIZEN_COUNT; i++) {
+        citizens.push(new Citizen(i, 'Citizen.png'));
+    }
+
+    function resizeCanvas() {
+        canvas.width = viewport.clientWidth;
+        canvas.height = viewport.clientHeight;
+        calculateMinScale();
+        clampCamera();
+        if (isBlueprintMode) updateResourceContainerPosition();
+    }
+
+    function calculateMinScale() {
+        minScale = canvas.width / MAP_WIDTH * 0.7;
+        if (scale < minScale) {
+            scale = minScale;
+            updateHUDZoom();
+        }
+    }
+
+    function clampCamera() {
+        const scaledW = MAP_WIDTH * scale;
+        const scaledH = MAP_HEIGHT * scale;
+
+        if (scaledW <= canvas.width) {
+            cameraX = (canvas.width - scaledW) / 2;
+        } else {
+            const minX = canvas.width - scaledW;
+            cameraX = Math.max(minX, Math.min(0, cameraX));
+        }
+
+        if (scaledH <= canvas.height) {
+            cameraY = (canvas.height - scaledH) / 2;
+        } else {
+            const minY = canvas.height - scaledH;
+            cameraY = Math.max(minY, Math.min(0, cameraY));
+        }
+    }
+
+    function isSpaceOccupied(col, row, width = 2, height = 2) {
+        if (col < 0 || row < 0 || col + width > GRID_COLS || row + height > GRID_ROWS) return true;
+        return placedBuildings.some(b => {
+            return (col < b.col + 2 && col + width > b.col &&
+                    row < b.row + 2 && row + height > b.row);
+        });
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(cameraX, cameraY);
+        ctx.scale(scale, scale);
+
+        if (isOuterRegion) {
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-OUTDOOR_MARGIN * 2, -OUTDOOR_MARGIN * 2, MAP_WIDTH + OUTDOOR_MARGIN * 4, MAP_HEIGHT + OUTDOOR_MARGIN * 4);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+        } else {
+            ctx.fillStyle = '#b45309'; 
+            ctx.fillRect(-OUTDOOR_MARGIN, -OUTDOOR_MARGIN, MAP_WIDTH + OUTDOOR_MARGIN * 2, MAP_HEIGHT + OUTDOOR_MARGIN * 2);
+
+            ctx.fillStyle = '#4ab255'; 
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            if (isBlueprintMode) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                for (let c = 0; c <= GRID_COLS; c++) {
+                    const x = c * CELL_SIZE;
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, MAP_HEIGHT);
+                }
+                for (let r = 0; r <= GRID_ROWS; r++) {
+                    const y = r * CELL_SIZE;
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(MAP_WIDTH, y);
+                }
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            }
+
+            updateBuildingDOMPositions();
+
+            if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
+                const gx = mouseGridCol * CELL_SIZE;
+                const gy = mouseGridRow * CELL_SIZE;
+                const bw = CELL_SIZE * 2;
+                const bh = CELL_SIZE * 2;
+
+                const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2);
+
+                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.45)' : 'rgba(255, 255, 255, 0.55)';
+                ctx.fillRect(gx, gy, bw, bh);
+
+                ctx.strokeStyle = occupied ? '#ef4444' : '#ffffff';
+                ctx.lineWidth = occupied ? 4 : 5;
+                ctx.strokeRect(gx, gy, bw, bh);
+
+                ctx.fillStyle = occupied ? '#fca5a5' : '#ffffff';
+                ctx.font = 'bold 22px "Gothic A1"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(currentPlacingBuilding.name, gx + bw / 2, gy + bh / 2);
+            }
+
+            citizens.forEach(citizen => {
+                citizen.update();
+                citizen.draw(ctx);
+            });
+        }
+
+        ctx.restore();
+        requestAnimationFrame(render);
+    }
+
+    function resetCamera() {
+        calculateMinScale();
+        scale = minScale;
+        cameraX = (canvas.width - MAP_WIDTH * scale) / 2;
+        cameraY = (canvas.height - MAP_HEIGHT * scale) / 2;
+        clampCamera();
+        updateHUDZoom();
+    }
+
+    function updateHUDZoom() {
+        const hudZoom = document.getElementById('hud-zoom');
+        if (hudZoom) hudZoom.innerText = Math.round((scale / minScale) * 100);
+    }
+
+    let toastTimeout = null;
+    function showErrorToastAtCursor(clientX, clientY) {
+        const toast = document.getElementById('cursor-error-toast');
+        if (!toast) return;
+
+        toast.style.left = `${clientX}px`;
+        toast.style.top = `${clientY}px`;
+        
+        toast.classList.remove('hidden');
+        setTimeout(() => { toast.style.opacity = '1'; }, 10);
+
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.classList.add('hidden'), 200);
+        }, 1200);
+    }
+
+    viewport.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+
+        // 다른 곳 클릭 시 열려있는 액션 메뉴 닫기
+        closeActionMenu();
+
+        if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
+            if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2)) {
+                
+                // 신규 설치 시에만 자원 차감 및 기술력 추가 (위치 조정 시에는 변동 없음)
+                if (!isMovingBuilding) {
+                    const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
+                    const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+
+                    if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
+                    if (techRes) techRes.value += 5;
+                }
+
+                placedBuildings.push({
+                    col: mouseGridCol,
+                    row: mouseGridRow,
+                    data: currentPlacingBuilding
+                });
+
+                if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+
+                cancelBuildingPlacement();
+
+                const iframe = document.getElementById('craft-iframe');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.onBuildingPlacedSuccess) {
+                    iframe.contentWindow.onBuildingPlacedSuccess();
+                }
+            } else {
+                showErrorToastAtCursor(e.clientX, e.clientY);
+            }
+            return;
+        }
+
+        isPanning = true;
+        startX = e.clientX - cameraX;
+        startY = e.clientY - cameraY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const worldX = (mouseX - cameraX) / scale;
+        const worldY = (mouseY - cameraY) / scale;
+
+        mouseGridCol = Math.floor(worldX / CELL_SIZE) - 1;
+        mouseGridRow = Math.floor(worldY / CELL_SIZE) - 1;
+
+        if (isPanning) {
+            cameraX = e.clientX - startX;
+            cameraY = e.clientY - startY;
+            clampCamera();
+        }
+    });
+
+    window.addEventListener('mouseup', () => { isPanning = false; });
+
+    viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+
+        const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        const newScale = Math.min(Math.max(minScale, scale * zoomFactor), maxScale);
+
+        cameraX = mouseX - (mouseX - cameraX) * (newScale / scale);
+        cameraY = mouseY - (mouseY - cameraY) * (newScale / scale);
+        scale = newScale;
+
+        clampCamera();
+        updateHUDZoom();
+    }, { passive: false });
+
+    window.startBuildingPlacement = function(buildingData) {
+        currentPlacingBuilding = buildingData;
+
+        document.querySelectorAll('.ui-fade-layer').forEach(el => {
+            el.classList.add('hidden-placement');
+        });
+
+        canvas.style.transform = 'translateX(0)';
+
+        const cancelBar = document.getElementById('placement-cancel-bar');
+        const cancelText = document.getElementById('placement-cancel-text');
+        if (cancelBar && cancelText) {
+            cancelText.innerText = isMovingBuilding ? `${buildingData.name} 이동 취소` : `${buildingData.name} 배치 취소`;
+            cancelBar.classList.remove('hidden');
+        }
+    };
+
+    window.cancelBuildingPlacement = function() {
+        currentPlacingBuilding = null;
+        isMovingBuilding = false;
+
+        const cancelBar = document.getElementById('placement-cancel-bar');
+        if (cancelBar) cancelBar.classList.add('hidden');
+
+        if (isBlueprintMode) {
+            canvas.style.transform = 'translateX(10vw)';
+        }
+
+        document.querySelectorAll('.ui-fade-layer').forEach(el => {
+            el.classList.remove('hidden-placement');
+        });
+
+        const craftIframe = document.getElementById('craft-iframe');
+        if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.onPlacementCancelled) {
+            craftIframe.contentWindow.onPlacementCancelled();
+        }
+    };
+
+    const btnBlueprint = document.getElementById('btn-blueprint');
+    const blueprintText = document.getElementById('blueprint-text');
+    const blueprintIcon = document.getElementById('blueprint-icon');
+
+    const btnToggleOuter = document.getElementById('btn-toggle-outer');
+    const btnToggleInner = document.getElementById('btn-toggle-inner');
+    const wrapperInnerArrow = document.getElementById('wrapper-inner-arrow');
+
+    const locationTitle = document.getElementById('location-title');
+    const locationBadge = document.getElementById('location-badge');
+
+    const hideableUiGroup = document.getElementById('hideable-ui-group');
+    const craftPanelFrame = document.getElementById('craft-panel-frame');
+    const resourceContainer = document.getElementById('resource-module-container');
+
+    function updateResourceContainerPosition() {
+        if (!isBlueprintMode) return;
+        const craftRect = craftPanelFrame.getBoundingClientRect();
+        
+        resourceContainer.style.top = 'auto';
+        resourceContainer.style.bottom = '6rem';
+        resourceContainer.style.left = `${craftRect.right + 416}px`;
+    }
+
+    btnBlueprint.addEventListener('click', () => {
+        isBlueprintMode = !isBlueprintMode;
+        if (isBlueprintMode) {
+            btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
+            btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
+            blueprintText.innerText = '설계도 UI (격자 ON)';
+            blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
+
+            hideableUiGroup.style.display = 'none';
+            canvas.style.transform = 'translateX(10vw)';
+            craftPanelFrame.classList.add('active');
+
+            updateResourceContainerPosition();
+
+            const craftIframe = document.getElementById('craft-iframe');
+            if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
+                craftIframe.contentWindow.renderCraftList();
+            }
+
+        } else {
+            btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
+            btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
+            blueprintText.innerText = '설계도 UI (격자)';
+            blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
+
+            hideableUiGroup.style.display = 'block';
+            canvas.style.transform = 'translateX(0)';
+            craftPanelFrame.classList.remove('active');
+
+            resourceContainer.style.top = 'auto';
+            resourceContainer.style.bottom = '6rem';
+            resourceContainer.style.left = '1.5rem';
+
+            currentPlacingBuilding = null;
+        }
+    });
+
+    btnToggleOuter.addEventListener('click', () => {
+        isOuterRegion = true;
+        btnToggleOuter.parentElement.classList.add('hidden');
+        wrapperInnerArrow.classList.remove('hidden');
+
+        locationTitle.innerText = "모나티엄 외곽";
+        locationBadge.innerText = "외부 지역";
+        locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30";
+    });
+
+    btnToggleInner.addEventListener('click', () => {
+        isOuterRegion = false;
+        btnToggleOuter.parentElement.classList.remove('hidden');
+        wrapperInnerArrow.classList.add('hidden');
+
+        locationTitle.innerText = "모나티엄 내부";
+        locationBadge.innerText = "내부 지역";
+        locationBadge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30";
+    });
+
+    document.getElementById('btn-reset-cam').addEventListener('click', resetCamera);
+
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        resetCamera();
+    });
+
+    function loadPlayerResourceModule() {
+        fetch('PlayerResource.html')
+            .then(response => response.text())
+            .then(html => {
+                if (resourceContainer) {
+                    resourceContainer.innerHTML = html;
+                    const scripts = resourceContainer.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.body.appendChild(newScript);
+                    });
+                }
+            })
+            .catch(err => console.error("PlayerResource.html 로드 실패:", err));
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadPlayerResourceModule();
+        resizeCanvas();
+        resetCamera();
+        render();
+    });
+</script>
+</body>
+</html>

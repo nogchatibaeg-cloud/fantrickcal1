@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { user-select: none; box-sizing: border-box; }
+        body { margin: 0; padding: 0; width: 100vw; height: 100vh; background: transparent; overflow: hidden; }
+        .action-btn { transition: all 0.15s ease; }
+        .action-btn:hover { transform: translateY(-2px) scale(1.03); }
+        .action-btn:active { transform: translateY(0) scale(0.97); }
+    </style>
+</head>
+<body class="p-1 flex items-center justify-center">
+
+    <!-- 철거 / 위치 조정 메뉴 바 -->
+    <div class="w-full h-full bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-2xl backdrop-blur-md">
+        
+        <!-- 위치 조정 버튼 -->
+        <button onclick="sendAction('move')" class="action-btn flex-1 h-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 rounded-xl flex items-center justify-center gap-2 text-amber-300 font-extrabold text-xs shadow-md">
+            <i class="fa-solid fa-arrows-up-down-left-right text-sm"></i>
+            <span>위치 조정</span>
+        </button>
+
+        <!-- 철거 버튼 -->
+        <button onclick="sendAction('delete')" class="action-btn flex-1 h-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/50 rounded-xl flex items-center justify-center gap-2 text-rose-300 font-extrabold text-xs shadow-md">
+            <i class="fa-solid fa-trash-can text-sm"></i>
+            <span>철거</span>
+        </button>
+
+        <!-- 닫기 버튼 -->
+        <button onclick="sendAction('close')" class="w-7 h-full bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl flex items-center justify-center text-slate-400 hover:text-white text-xs">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+    </div>
+
+    <script>
+        function sendAction(actionType) {
+            window.parent.postMessage({ type: 'BUILDING_ACTION', action: actionType }, '*');
+        }
+    </script>
+</body>
+</html>
