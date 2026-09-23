@@ -33,13 +33,13 @@
                 visibility: hidden;
             }
         }
-                body {
-                    background-color: #050508;
-                    color: #ffffff;
-                    margin: 0;
-                    overflow: hidden;
-                    font-family: 'Noto Sans KR', sans-serif;
-                }
+        body {
+            background-color: #050508;
+            color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
 
         /* 1. 원형 로고 전체 컨테이너 */
         .logo-circle-frame {
@@ -80,9 +80,9 @@
             padding-left: 50px; /* 이미지처럼 좌측 위치 지정 */
         }
 
-        /* 차가운 금속 색체의 엘리아스 텍스트 */
+        /* 차가운 금속 색체의 엘리아스 텍스트 (정면 세움) */
         .text-elias {
-            transform: rotate(10deg);
+            transform: rotate(0deg);
             font-size: 3.0rem; /* 크기를 좀 더 키워서 강조 */
             font-weight: 900;
             letter-spacing: 0.05em;
@@ -121,7 +121,7 @@
             padding-top: 10px; /* 경계선 아래로 바짝 밀착 */
         }
 
-        /* 산뜻하고 부드러운 폰트의 어웨이 텍스트 (우측 위치, 정방향 세움) */
+        /* 산뜻하고 부드러운 폰트의 어웨이 텍스트 (정면 세움 및 위치 보정) */
         .text-away {
             font-family: 'Jua', sans-serif;
             letter-spacing: 0.15em;
@@ -133,8 +133,8 @@
                 2px -2px 0px #ffffff,
                 -2px 2px 0px #ffffff,
                 0 4px 12px rgba(255, 107, 129, 0.4);
-            /* 회전 보정으로 화면 기준 똑바로 세우고, 오른쪽으로 많이 보냄 */
-            transform: rotate(25deg) translate(100px, -30px);
+            /* 상위 요소를 15도 반대로 회전하여 화면 정면으로 똑바로 세움 */
+            transform: rotate(15deg) translate(80px, 10px);
             line-height: 1;
         }
         .text-away-sub {
@@ -149,7 +149,7 @@
                 -2px 2px 0px #ffffff,
                 0 4px 12px rgba(255, 107, 129, 0.4);
             position: absolute;
-            transform: rotate(28deg) translate(13px, -96px);
+            transform: rotate(15deg) translate(-20px, -60px);
         }
         /* 별빛 반짝임 효과 */
         .star {
@@ -176,7 +176,7 @@
             transform: translate(-30px, -350px);
         }
 
-        /* 나무 폰트 스타일 (기존 어웨이 스타일 복사) */
+        /* 나무 폰트 스타일 */
         .text-tree {
             font-family: 'Jua', sans-serif;
             font-size: 10rem;
@@ -210,7 +210,7 @@
             <div class="text-elias">엘리아스</div>
         </div>
 
-        <!-- 하단: 45도 기울어지고 위로 휘어진 경계선 + 산뜻한 지하 하늘 & 부드러운 '어웨이' -->
+        <!-- 하단: 경계선 + 산뜻한 지하 하늘 & 부드러운 '어웨이' -->
         <div class="sky-section-wrapper">
             <div class="sky-section">
                 <div class="text-tree">🌳</div>
