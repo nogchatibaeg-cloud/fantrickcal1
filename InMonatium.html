@@ -98,7 +98,7 @@
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
         
         <!-- 배경/격자 캔버스와 HTML 레이어를 통째로 들고 움직이는 월드 래퍼 -->
-        <div id="world-container" class="blueprint-shift">
+        <div id="world-container">
             <canvas id="map-canvas"></canvas>
             <!-- 배치된 건물 전용 HTML DOM 레이어 -->
             <div id="building-html-layer"></div>
@@ -289,15 +289,15 @@
     }
 
     function resizeCanvas() {
-        canvas.width = viewport.clientWidth;
-        canvas.height = viewport.clientHeight;
+        canvas.width = MAP_WIDTH;
+        canvas.height = MAP_HEIGHT;
         calculateMinScale();
         clampCamera();
         if (isBlueprintMode) updateResourceContainerPosition();
     }
 
     function calculateMinScale() {
-        minScale = canvas.width / MAP_WIDTH * 0.7;
+        minScale = viewport.clientWidth / MAP_WIDTH * 0.7;
         if (scale < minScale) {
             scale = minScale;
             updateHUDZoom();
@@ -308,23 +308,23 @@
         const scaledW = MAP_WIDTH * scale;
         const scaledH = MAP_HEIGHT * scale;
 
-        if (scaledW <= canvas.width) {
-            cameraX = (canvas.width - scaledW) / 2;
+        if (scaledW <= viewport.clientWidth) {
+            cameraX = (viewport.clientWidth - scaledW) / 2;
         } else {
-            const minX = canvas.width - scaledW;
+            const minX = viewport.clientWidth - scaledW;
             cameraX = Math.max(minX, Math.min(0, cameraX));
         }
 
-        if (scaledH <= canvas.height) {
-            cameraY = (canvas.height - scaledH) / 2;
+        if (scaledH <= viewport.clientHeight) {
+            cameraY = (viewport.clientHeight - scaledH) / 2;
         } else {
-            const minY = canvas.height - scaledH;
+            const minY = viewport.clientHeight - scaledH;
             cameraY = Math.max(minY, Math.min(0, cameraY));
         }
         updateWorldTransform();
     }
 
-    // ★ 월드 전체(Canvas + Building HTML Layer) 위치/스케일 일체화 동기화
+    // ★ Canvas와 HTML Layer를 완벽하게 통째로 변환
     function updateWorldTransform() {
         if (worldContainer) {
             worldContainer.style.transform = `translate(${cameraX}px, ${cameraY}px) scale(${scale})`;
@@ -345,7 +345,6 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
-        // ★ 월드 컨테이너가 변환을 담당하므로 Canvas는 원점 기준(0,0)에 일체화되어 렌더링
         if (isOuterRegion) {
             ctx.fillStyle = '#475569';
             ctx.fillRect(-OUTDOOR_MARGIN * 2, -OUTDOOR_MARGIN * 2, MAP_WIDTH + OUTDOOR_MARGIN * 4, MAP_HEIGHT + OUTDOOR_MARGIN * 4);
@@ -363,7 +362,7 @@
             ctx.fillStyle = '#4ab255'; 
             ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-            if (isBlueprintMode) {
+            if (isBlueprintMode || currentPlacingBuilding) {
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                 ctx.lineWidth = 2;
 
@@ -385,7 +384,7 @@
                 ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
             }
 
-            // 건설 중 잔상 미리보기 (격자에 정확히 Snap)
+            // 건설 중 잔상 미리보기 (100% Snap)
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
@@ -412,7 +411,6 @@
         requestAnimationFrame(render);
     }
 
-    // HTML 기반 건물 DOM 동적 생성 및 위치 동기화
     function syncBuildingHtmlIcons() {
         buildingHtmlLayer.innerHTML = '';
 
@@ -461,10 +459,7 @@
         const worldCenterX = bx + (bw / 2);
         const worldTopY = by;
 
-        // 월드 이동 오프셋 계산
-        const shiftX = isBlueprintMode ? (window.innerWidth * 0.1) : 0;
-
-        const screenX = (worldCenterX * scale) + cameraX + shiftX;
+        const screenX = (worldCenterX * scale) + cameraX;
         const screenY = (worldTopY * scale) + cameraY;
 
         delOrMovFrame.style.left = `${screenX - 110}px`; 
@@ -509,8 +504,8 @@
     function resetCamera() {
         calculateMinScale();
         scale = minScale;
-        cameraX = (canvas.width - MAP_WIDTH * scale) / 2;
-        cameraY = (canvas.height - MAP_HEIGHT * scale) / 2;
+        cameraX = (viewport.clientWidth - MAP_WIDTH * scale) / 2;
+        cameraY = (viewport.clientHeight - MAP_HEIGHT * scale) / 2;
         clampCamera();
         updateHUDZoom();
     }
@@ -559,19 +554,15 @@
         startY = e.clientY - cameraY;
     });
 
-    // ★ 격자 스냅 100% 일치 정밀 마우스 이동 스크립트
+    // ★ 단일 좌표계 기반 마우스 스냅 계산 공식
     window.addEventListener('mousemove', (e) => {
         const rect = viewport.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        // 설계도 모드일 때 좌측 레일 오프셋(10vw) 정밀 보정
-        const shiftX = isBlueprintMode ? (window.innerWidth * 0.1) : 0;
-
-        const worldX = (mouseX - cameraX - shiftX) / scale;
+        const worldX = (mouseX - cameraX) / scale;
         const worldY = (mouseY - cameraY) / scale;
 
-        // 마우스 커서의 중심점이 속한 격자 셀 번호를 100% 오차 없이 정밀 스냅
         mouseGridCol = Math.floor(worldX / CELL_SIZE);
         mouseGridRow = Math.floor(worldY / CELL_SIZE);
 
@@ -621,7 +612,6 @@
         closeDelOrMov();
 
         craftPanelFrame.classList.remove('active');
-        worldContainer.style.left = '0px';
         hideableUiGroup.style.display = 'none';
         bottomControlsGroup.style.display = 'none';
         resourceContainer.style.display = 'none';
@@ -657,7 +647,6 @@
         resourceContainer.style.display = 'block';
 
         if (isBlueprintMode) {
-            worldContainer.style.left = '10vw';
             craftPanelFrame.classList.add('active');
             updateResourceContainerPosition();
 
@@ -687,7 +676,7 @@
         
         resourceContainer.style.top = 'auto';
         resourceContainer.style.bottom = '6rem';
-        resourceContainer.style.left = `${craftRect.right + 420}px`;
+        resourceContainer.style.left = `${craftRect.right + 20}px`;
     }
 
     btnBlueprint.addEventListener('click', () => {
@@ -705,9 +694,6 @@
 
             hideableUiGroup.style.display = 'none';
 
-            // 월드 전체를 동일한 10vw 좌표계로 이동하여 일체화
-            worldContainer.style.left = '10vw';
-
             craftPanelFrame.classList.add('active');
             updateResourceContainerPosition();
 
@@ -723,8 +709,6 @@
             blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
             hideableUiGroup.style.display = 'block';
-
-            worldContainer.style.left = '0px';
 
             craftPanelFrame.classList.remove('active');
 
