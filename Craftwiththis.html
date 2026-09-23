@@ -39,18 +39,6 @@
         <!-- JS 동적 생성 -->
     </div>
 
-    <!-- Building Selection / Cancel View (제작 진행 시 활성화) -->
-    <div id="building-placing-view" class="hidden flex-1 flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-amber-500/40 rounded-xl bg-amber-950/20 backdrop-blur-md">
-        <i class="fa-solid fa-compass-drafting text-3xl text-amber-400 mb-2 animate-bounce"></i>
-        <h3 class="font-extrabold text-xs text-amber-300 mb-1" id="placing-title">건물 배치 중...</h3>
-        <p class="text-[10px] text-slate-400 mb-4">원하는 격자 위치를 클릭하여 설치하세요.<br>(크기: 2x2 격자)</p>
-        
-        <button onclick="cancelBuildingPlacement()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 border border-rose-400/30 cursor-pointer">
-            <i class="fa-solid fa-trash-can"></i>
-            <span>제작 취소</span>
-        </button>
-    </div>
-
     <script>
         const BUILDINGS_DATA = [
             {
@@ -112,10 +100,8 @@
             return null;
         }
 
-        // 전역 최상위 문서 타겟 설정 (iframe 고려)
         const targetDoc = (window.parent && window.parent.document) ? window.parent.document : document;
 
-        // 글로벌 툴팁 요소 싱글톤 관리
         function getGlobalTooltip() {
             let el = targetDoc.getElementById('craft-global-tooltip');
             if (!el) {
@@ -137,10 +123,8 @@
                 <div class="mt-2 pt-1 border-t border-slate-800 text-[9px] text-teal-400 font-semibold">${building.effect}</div>
             `;
 
-            // 마우스 위치 및 아이템 좌표를 기반으로 부모 창 기준 위치 계산
             const rect = e.currentTarget.getBoundingClientRect();
             
-            // iframe 내부일 경우 frameElement 좌표 계산 추가
             let frameLeft = 0;
             let frameTop = 0;
             if (window.frameElement && window.parent) {
@@ -149,8 +133,8 @@
                 frameTop = fRect.top;
             }
 
-            const left = frameLeft + rect.right + 12; // 아이템 오른쪽에 배치
-            const top = frameTop + rect.top + (rect.height / 2); // 세로 중앙 정렬
+            const left = frameLeft + rect.right + 12;
+            const top = frameTop + rect.top + (rect.height / 2);
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
@@ -160,7 +144,7 @@
 
         function hideTooltip() {
             const tooltip = getGlobalTooltip();
-            tooltip.classList.add('hidden');
+            if (tooltip) tooltip.classList.add('hidden');
         }
 
         function renderCraftList() {
@@ -197,7 +181,6 @@
                 `;
             }).join('');
 
-            // 이벤트 핸들러 바인딩
             listEl.querySelectorAll('.craft-item').forEach(item => {
                 const bData = BUILDINGS_DATA.find(b => b.id === item.dataset.id);
                 if (bData) {
@@ -218,28 +201,9 @@
                 return;
             }
 
-            document.getElementById('craft-list').classList.add('hidden');
-            document.getElementById('building-placing-view').classList.remove('hidden');
-            document.getElementById('placing-title').innerText = `${building.name} 배치 중`;
-
             if (window.parent && window.parent.startBuildingPlacement) {
                 window.parent.startBuildingPlacement(building);
             }
-        }
-
-        function cancelBuildingPlacement() {
-            document.getElementById('craft-list').classList.remove('hidden');
-            document.getElementById('building-placing-view').classList.add('hidden');
-
-            if (window.parent && window.parent.cancelBuildingPlacement) {
-                window.parent.cancelBuildingPlacement();
-            }
-        }
-
-        function onBuildingPlacedSuccess() {
-            document.getElementById('craft-list').classList.remove('hidden');
-            document.getElementById('building-placing-view').classList.add('hidden');
-            renderCraftList();
         }
 
         window.renderCraftList = renderCraftList;

@@ -100,8 +100,8 @@
             </div>
         </div>
 
-        <!-- 하단 설계도 버튼 & 시점 리셋 버튼 -->
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto" onclick="event.stopPropagation()">
+        <!-- 하단 설계도 버튼 & 시점 리셋 버튼 그룹 -->
+        <div id="bottom-controls-group" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto" onclick="event.stopPropagation()">
             <button id="btn-blueprint" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
                 <i id="blueprint-icon" class="fa-solid fa-drafting-compass text-teal-400 text-sm"></i>
                 <span id="blueprint-text">설계도 UI (격자)</span>
@@ -110,6 +110,14 @@
             <button id="btn-reset-cam" class="btn-ui px-4 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2 shadow-2xl">
                 <i class="fa-solid fa-compress text-amber-400"></i>
                 <span>시점 리셋</span>
+            </button>
+        </div>
+
+        <!-- 화면 중앙 하단 건설 취소 전용 버튼 (건물 배치 중일 때만 표시) -->
+        <div id="cancel-placement-container" class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+            <button id="btn-cancel-placement" onclick="cancelBuildingPlacement()" class="btn-ui px-6 py-3 bg-rose-600/90 hover:bg-rose-500 text-white font-black text-xs rounded-2xl shadow-2xl border border-rose-400/40 backdrop-blur-md flex items-center gap-2.5 cursor-pointer">
+                <i class="fa-solid fa-xmark text-sm"></i>
+                <span>건설 취소</span>
             </button>
         </div>
     </div>
@@ -320,6 +328,7 @@
                 ctx.fillText(b.data.name, bx + bw / 2, by + bh / 2);
             });
 
+            // ★ 건물 설치 잔상 (하얀색으로 변경)
             if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
                 const gx = mouseGridCol * CELL_SIZE;
                 const gy = mouseGridRow * CELL_SIZE;
@@ -328,10 +337,11 @@
 
                 const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2);
 
-                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)';
+                // 설치 가능시 하얀색 잔상, 불가시 빨간색 경고
+                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.4)';
                 ctx.fillRect(gx, gy, bw, bh);
 
-                ctx.strokeStyle = occupied ? '#ef4444' : '#10b981';
+                ctx.strokeStyle = occupied ? '#ef4444' : 'rgba(255, 255, 255, 0.9)';
                 ctx.lineWidth = 4;
                 ctx.strokeRect(gx, gy, bw, bh);
             }
@@ -379,12 +389,8 @@
 
                 if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
 
-                currentPlacingBuilding = null;
-
-                const iframe = document.getElementById('craft-iframe');
-                if (iframe && iframe.contentWindow && iframe.contentWindow.onBuildingPlacedSuccess) {
-                    iframe.contentWindow.onBuildingPlacedSuccess();
-                }
+                // 건설 완료 시 UI 및 크래프팅 모드로 복귀
+                finishBuildingPlacement();
             } else {
                 alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
             }
@@ -435,13 +441,60 @@
         updateHUDZoom();
     }, { passive: false });
 
+    const hideableUiGroup = document.getElementById('hideable-ui-group');
+    const bottomControlsGroup = document.getElementById('bottom-controls-group');
+    const craftPanelFrame = document.getElementById('craft-panel-frame');
+    const resourceContainer = document.getElementById('resource-module-container');
+    const cancelPlacementContainer = document.getElementById('cancel-placement-container');
+
+    // ★ 건물을 선택하여 배치를 시작할 때 UI 처리
     window.startBuildingPlacement = function(buildingData) {
         currentPlacingBuilding = buildingData;
+
+        // UI 전부 숨김 및 크래프팅 패널 닫기 (화면 원래 위치로)
+        craftPanelFrame.classList.remove('active');
+        canvas.style.transform = 'translateX(0)';
+        hideableUiGroup.style.display = 'none';
+        bottomControlsGroup.style.display = 'none';
+        resourceContainer.style.display = 'none';
+
+        // 화면 중앙 하단 건설 취소 [x] 버튼 표시
+        cancelPlacementContainer.classList.remove('hidden');
     };
 
+    // ★ 건설 취소 로직
     window.cancelBuildingPlacement = function() {
         currentPlacingBuilding = null;
+        restoreCraftingUI();
     };
+
+    // ★ 건설 완료 시 로직
+    function finishBuildingPlacement() {
+        currentPlacingBuilding = null;
+        restoreCraftingUI();
+    }
+
+    // ★ 직전 크래프팅 선택 화면으로 복원
+    function restoreCraftingUI() {
+        cancelPlacementContainer.classList.add('hidden');
+
+        // UI 및 패널 다시 열기
+        bottomControlsGroup.style.display = 'flex';
+        resourceContainer.style.display = 'block';
+
+        if (isBlueprintMode) {
+            canvas.style.transform = 'translateX(10vw)';
+            craftPanelFrame.classList.add('active');
+            updateResourceContainerPosition();
+
+            const craftIframe = document.getElementById('craft-iframe');
+            if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
+                craftIframe.contentWindow.renderCraftList();
+            }
+        } else {
+            hideableUiGroup.style.display = 'block';
+        }
+    }
 
     const btnBlueprint = document.getElementById('btn-blueprint');
     const blueprintText = document.getElementById('blueprint-text');
@@ -454,24 +507,15 @@
     const locationTitle = document.getElementById('location-title');
     const locationBadge = document.getElementById('location-badge');
 
-    const hideableUiGroup = document.getElementById('hideable-ui-group');
-    const craftPanelFrame = document.getElementById('craft-panel-frame');
-    const resourceContainer = document.getElementById('resource-module-container');
-
-    // ★ [오류 수정 완료] 자원 모듈 위치 계산 함수 
     function updateResourceContainerPosition() {
         if (!isBlueprintMode) return;
         const craftRect = craftPanelFrame.getBoundingClientRect();
         
-        // Y축 높이는 기본 bottom-24(6rem) 유지하여 화면 안으로 고정
         resourceContainer.style.top = 'auto';
         resourceContainer.style.bottom = '6rem';
-        
-        // X축만 제작 창 우측 끝 + 16px 여백 위치로 이동
         resourceContainer.style.left = `${craftRect.right + 420}px`;
     }
 
-    // 설계도 UI 토글 버튼 이벤트
     btnBlueprint.addEventListener('click', () => {
         isBlueprintMode = !isBlueprintMode;
         if (isBlueprintMode) {
@@ -481,15 +525,11 @@
             blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
 
             hideableUiGroup.style.display = 'none';
-            
-            // 캔버스 오른쪽 이동
             canvas.style.transform = 'translateX(10vw)';
             craftPanelFrame.classList.add('active');
 
-            // 자원 창을 제작 목록 우측 영역으로 정확히 이동
             updateResourceContainerPosition();
 
-            // iframe 크래프트 UI 최신화 알림
             const craftIframe = document.getElementById('craft-iframe');
             if (craftIframe && craftIframe.contentWindow && craftIframe.contentWindow.renderCraftList) {
                 craftIframe.contentWindow.renderCraftList();
@@ -502,11 +542,9 @@
             blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
             hideableUiGroup.style.display = 'block';
-            
             canvas.style.transform = 'translateX(0)';
             craftPanelFrame.classList.remove('active');
 
-            // 설계도 UI가 닫히면 원래 위치(좌측 하단 left: 1.5rem)로 복원
             resourceContainer.style.top = 'auto';
             resourceContainer.style.bottom = '6rem';
             resourceContainer.style.left = '1.5rem';
@@ -542,7 +580,6 @@
         resetCamera();
     });
 
-    // PlayerResource 모듈 동적 로드 및 렌더링
     function loadPlayerResourceModule() {
         fetch('PlayerResource.html')
             .then(response => response.text())
@@ -567,3 +604,5 @@
         render();
     });
 </script>
+</body>
+</html>
