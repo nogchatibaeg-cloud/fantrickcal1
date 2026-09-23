@@ -29,9 +29,11 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: auto;
             cursor: grab;
-            will-change: transform;
+            will-change: contents;
         }
         #map-canvas:active { cursor: grabbing; }
 
@@ -92,8 +94,8 @@
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
     <div id="map-viewport" class="relative w-full h-full overflow-hidden bg-slate-950">
+        <canvas id="map-canvas"></canvas>
         <div id="world-container">
-            <canvas id="map-canvas"></canvas>
             <div id="building-html-layer"></div>
         </div>
 
@@ -295,8 +297,14 @@
     }
 
     function resizeCanvas() {
-        canvas.width = MAP_WIDTH;
-        canvas.height = MAP_HEIGHT;
+        // 실제 Canvas는 화면 크기만 사용합니다.
+        // 8000x4000 전체 맵을 매 프레임 렌더링하던 구조를 제거합니다.
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, Math.floor(viewport.clientWidth * dpr));
+        canvas.height = Math.max(1, Math.floor(viewport.clientHeight * dpr));
+        canvas.style.width = `${viewport.clientWidth}px`;
+        canvas.style.height = `${viewport.clientHeight}px`;
+
         updateViewportRect();
         calculateMinScale();
         clampCamera();
@@ -348,68 +356,104 @@
     }
 
     // 렌더링 최적화
+    // Canvas는 viewport 크기이며, 월드 좌표를 카메라에 맞춰 그립니다.
     function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const viewW = viewport.clientWidth;
+        const viewH = viewport.clientHeight;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, viewW, viewH);
 
         ctx.save();
+        ctx.translate(cameraX, cameraY);
+        ctx.scale(scale, scale);
+
+        // 맵 전체를 칠하지 않고 현재 화면에 필요한 영역만 표시합니다.
+        ctx.fillStyle = isOuterRegion ? '#475569' : '#4ab255';
+        ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
         if (isOuterRegion) {
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(-OUTDOOR_MARGIN * 2, -OUTDOOR_MARGIN * 2, MAP_WIDTH + OUTDOOR_MARGIN * 4, MAP_HEIGHT + OUTDOOR_MARGIN * 4);
             ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 6 / scale;
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
-        } else {
-            ctx.fillStyle = '#b45309'; 
-            ctx.fillRect(-OUTDOOR_MARGIN, -OUTDOOR_MARGIN, MAP_WIDTH + OUTDOOR_MARGIN * 2, MAP_HEIGHT + OUTDOOR_MARGIN * 2);
+        } else if (isBlueprintMode || currentPlacingBuilding) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 1.5 / scale;
 
-            ctx.fillStyle = '#4ab255'; 
-            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            // 화면에 들어오는 격자선만 계산합니다.
+            const visibleLeft = Math.max(0, Math.floor((-cameraX / scale) / CELL_SIZE) - 1);
+            const visibleRight = Math.min(GRID_COLS, Math.ceil(((viewW - cameraX) / scale) / CELL_SIZE) + 1);
+            const visibleTop = Math.max(0, Math.floor((-cameraY / scale) / CELL_SIZE) - 1);
+            const visibleBottom = Math.min(GRID_ROWS, Math.ceil(((viewH - cameraY) / scale) / CELL_SIZE) + 1);
 
-            if (isBlueprintMode || currentPlacingBuilding) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-                ctx.lineWidth = 1.5;
+            ctx.beginPath();
 
-                ctx.beginPath();
-                for (let c = 0; c <= GRID_COLS; c++) {
-                    const x = c * CELL_SIZE;
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, MAP_HEIGHT);
-                }
-                for (let r = 0; r <= GRID_ROWS; r++) {
-                    const y = r * CELL_SIZE;
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(MAP_WIDTH, y);
-                }
-                ctx.stroke();
-
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            for (let c = visibleLeft; c <= visibleRight; c++) {
+                const x = c * CELL_SIZE;
+                ctx.moveTo(x, visibleTop * CELL_SIZE);
+                ctx.lineTo(x, visibleBottom * CELL_SIZE);
             }
 
-            if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0 && mouseGridCol < GRID_COLS && mouseGridRow < GRID_ROWS) {
-                const gx = mouseGridCol * CELL_SIZE;
-                const gy = mouseGridRow * CELL_SIZE;
-                const bw = CELL_SIZE * 2;
-                const bh = CELL_SIZE * 2;
-
-                const occupied = isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, isMovingExistingBuilding ? originalPlacedBuildingData : null);
-
-                ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.45)' : 'rgba(59, 130, 246, 0.45)';
-                ctx.fillRect(gx, gy, bw, bh);
-
-                ctx.strokeStyle = occupied ? '#ef4444' : '#60a5fa';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(gx, gy, bw, bh);
+            for (let r = visibleTop; r <= visibleBottom; r++) {
+                const y = r * CELL_SIZE;
+                ctx.moveTo(visibleLeft * CELL_SIZE, y);
+                ctx.lineTo(visibleRight * CELL_SIZE, y);
             }
 
-            citizens.forEach(citizen => {
-                citizen.update();
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4 / scale;
+            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+        }
+
+        // 시민은 월드 좌표에서 업데이트하되, 화면 밖이면 그리지 않습니다.
+        citizens.forEach(citizen => {
+            citizen.update();
+
+            const half = citizen.size / 2;
+            const visible =
+                citizen.x + half >= -cameraX / scale &&
+                citizen.x - half <= (viewW - cameraX) / scale &&
+                citizen.y + half >= -cameraY / scale &&
+                citizen.y - half <= (viewH - cameraY) / scale;
+
+            if (visible) {
                 citizen.draw(ctx);
-            });
+            }
+        });
+
+        // 배치 미리보기
+        if (currentPlacingBuilding &&
+            mouseGridCol >= 0 && mouseGridRow >= 0 &&
+            mouseGridCol < GRID_COLS && mouseGridRow < GRID_ROWS) {
+
+            const gx = mouseGridCol * CELL_SIZE;
+            const gy = mouseGridRow * CELL_SIZE;
+            const bw = CELL_SIZE * 2;
+            const bh = CELL_SIZE * 2;
+
+            const occupied = isSpaceOccupied(
+                mouseGridCol,
+                mouseGridRow,
+                2,
+                2,
+                isMovingExistingBuilding ? originalPlacedBuildingData : null
+            );
+
+            ctx.fillStyle = occupied
+                ? 'rgba(239, 68, 68, 0.45)'
+                : 'rgba(59, 130, 246, 0.45)';
+            ctx.fillRect(gx, gy, bw, bh);
+
+            ctx.strokeStyle = occupied ? '#ef4444' : '#60a5fa';
+            ctx.lineWidth = 4 / scale;
+            ctx.strokeRect(gx, gy, bw, bh);
         }
 
         ctx.restore();
+
         animationFrameId = requestAnimationFrame(render);
     }
 
