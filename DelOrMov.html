@@ -14,23 +14,23 @@
 </head>
 <body class="p-1 flex items-center justify-center">
 
-    <!-- 철거 / 위치 조정 메뉴 바 -->
-    <div class="w-full h-full bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-2xl backdrop-blur-md">
+    <!-- 철거 / 위치 조정 메뉴 바 (패딩 및 간격 여유 조절로 글자 넘침 방지) -->
+    <div class="w-full h-full bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-1.5 flex items-center justify-between gap-1.5 shadow-2xl backdrop-blur-md">
         
         <!-- 위치 조정 버튼 -->
-        <button onclick="sendAction('move')" class="action-btn flex-1 h-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 rounded-xl flex items-center justify-center gap-2 text-amber-300 font-extrabold text-xs shadow-md">
-            <i class="fa-solid fa-arrows-up-down-left-right text-sm"></i>
-            <span>위치 조정</span>
+        <button onclick="sendAction('move')" class="action-btn flex-1 h-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 rounded-xl flex items-center justify-center gap-1.5 px-2 text-amber-300 font-extrabold text-xs shadow-md">
+            <i class="fa-solid fa-arrows-up-down-left-right text-xs shrink-0"></i>
+            <span class="whitespace-nowrap">위치 조정</span>
         </button>
 
         <!-- 철거 버튼 -->
-        <button onclick="sendAction('delete')" class="action-btn flex-1 h-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/50 rounded-xl flex items-center justify-center gap-2 text-rose-300 font-extrabold text-xs shadow-md">
-            <i class="fa-solid fa-trash-can text-sm"></i>
-            <span>철거</span>
+        <button onclick="sendAction('delete')" class="action-btn flex-1 h-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/50 rounded-xl flex items-center justify-center gap-1.5 px-2 text-rose-300 font-extrabold text-xs shadow-md">
+            <i class="fa-solid fa-trash-can text-xs shrink-0"></i>
+            <span class="whitespace-nowrap">철거</span>
         </button>
 
         <!-- 닫기 버튼 -->
-        <button onclick="sendAction('close')" class="w-7 h-full bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl flex items-center justify-center text-slate-400 hover:text-white text-xs">
+        <button onclick="sendAction('close')" class="w-7 h-full bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl flex items-center justify-center text-slate-400 hover:text-white text-xs shrink-0">
             <i class="fa-solid fa-xmark"></i>
         </button>
 
