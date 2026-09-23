@@ -96,7 +96,7 @@
                 <span id="header-day-count" class="text-xs px-3 py-1 rounded-lg font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Day 1</span>
                 <!-- 내일로 버튼 -->
                 <button id="btn-next-day" class="px-3 py-1 text-xs font-black rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-md transition-all flex items-center gap-1">
-                    <i class="fa-solid fa-sun"></i> 내일로 (<span id="header-expedition-count">3/3</span>)
+                    <i class="fa-solid fa-sun"></i> 내일로 (<span id="header-expedition-count">5/5</span>)
                 </button>
             </div>
         </div>
@@ -293,7 +293,7 @@
 
         const DOM = {};
         let currentDay = 1;
-        let expeditionsLeft = 3;
+        let expeditionsLeft = 5;
         let currentRegionId = null;
         let isPanelOpen = false;
         
@@ -705,8 +705,8 @@
                 addResource('efficiency', Math.floor(1 * totalMult));
             }
 
-            // 8. 골드 (동일 확률 10000~50000)
-            const goldAmount = isMax ? 50000 : getRandomInt(10000, 50000);
+            // 8. 골드 (동일 확률 50~100)
+            const goldAmount = isMax ? 50000 : getRandomInt(50, 100);
             addResource('gold', Math.floor(goldAmount * totalMult));
         }
 
@@ -803,7 +803,7 @@
             }
 
             expeditionsLeft--;
-            DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/3`;
+            DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/5`;
 
             showRegionToast(region, isSuccess, pointGain, missionType, roll, successRate);
 
@@ -815,7 +815,7 @@
             currentDay++;
             expeditionsLeft = 3;
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
-            DOM.headerExpeditionCount.innerText = `3/3`;
+            DOM.headerExpeditionCount.innerText = `5/5`;
 
             Object.values(REGIONS_DATA).forEach(region => {
                 if (region.id === 'elf') return;
