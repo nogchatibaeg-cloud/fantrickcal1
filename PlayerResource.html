@@ -87,6 +87,7 @@
 
     const gainTimers = {};
     const gainAmounts = {};
+    const gainBadges = {};
 
     window.notifyResourceGain = function(resourceId, amount) {
         if (!amount || amount <= 0) return;
@@ -111,36 +112,63 @@
     };
 
     function updateGainBadgeUI(resourceId) {
-        const itemEl = document.querySelector(`.resource-item[data-resource-id="${resourceId}"]`);
+        const itemEl = document.querySelector(
+            `.resource-item[data-resource-id="${resourceId}"]`
+        );
+
         if (!itemEl) return;
 
-        const resData = window.PLAYER_RESOURCES_DATA.find(r => r.id === resourceId);
+        const resData = window.PLAYER_RESOURCES_DATA.find(
+            r => r.id === resourceId
+        );
+
         if (!resData) return;
 
-        let badgeEl = itemEl.querySelector(`.resource-gain-badge`);
+        let badgeEl = gainBadges[resourceId];
 
-        if (!gainAmounts[resourceId]) {
-            if (badgeEl) badgeEl.remove();
-            return;
-        }
-
-        if (!badgeEl) {
+        if (!badgeEl || !document.body.contains(badgeEl)) {
             badgeEl = document.createElement('div');
-            badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-1/2 ml-2.5 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/95 border border-emerald-500/80 rounded-lg shadow-2xl backdrop-blur-md pointer-events-none z-50 whitespace-nowrap';
-            itemEl.appendChild(badgeEl);
+            badgeEl.className = 'resource-gain-badge';
+
+            badgeEl.style.position = 'fixed';
+            badgeEl.style.zIndex = '99999';
+            badgeEl.style.display = 'flex';
+            badgeEl.style.alignItems = 'center';
+            badgeEl.style.gap = '6px';
+            badgeEl.style.padding = '4px 10px';
+            badgeEl.style.background = 'rgba(15, 23, 42, 0.95)';
+            badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.8)';
+            badgeEl.style.borderRadius = '8px';
+            badgeEl.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.45)';
+            badgeEl.style.backdropFilter = 'blur(8px)';
+            badgeEl.style.pointerEvents = 'none';
+            badgeEl.style.whiteSpace = 'nowrap';
+            badgeEl.style.transform = 'translateY(-50%)';
+
+            document.body.appendChild(badgeEl);
+            gainBadges[resourceId] = badgeEl;
         }
+
+        const rect = itemEl.getBoundingClientRect();
+
+        badgeEl.style.left = `${rect.right + 10}px`;
+        badgeEl.style.top = `${rect.top + (rect.height / 2)}px`;
 
         badgeEl.innerHTML = `
             <i class="${resData.icon} ${resData.color} text-[11px]"></i>
-            <span class="text-[11px] font-black text-emerald-400 font-mono">+${gainAmounts[resourceId].toLocaleString()}</span>
+            <span style="font-size:11px;font-weight:900;color:#34d399;font-family:monospace;">
+                +${gainAmounts[resourceId].toLocaleString()}
+            </span>
         `;
     }
 
     function removeGainBadgeUI(resourceId) {
-        const itemEl = document.querySelector(`.resource-item[data-resource-id="${resourceId}"]`);
-        if (!itemEl) return;
-        const badgeEl = itemEl.querySelector(`.resource-gain-badge`);
-        if (badgeEl) badgeEl.remove();
+        const badgeEl = gainBadges[resourceId];
+
+        if (badgeEl) {
+            badgeEl.remove();
+            delete gainBadges[resourceId];
+        }
     }
 
     window.renderPlayerResourcesUI = function() {
