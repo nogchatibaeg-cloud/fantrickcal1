@@ -25,8 +25,6 @@
             </h3>
             <div class="space-y-2 text-[11px]" id="resource-list-container">
             </div>
-            <!-- 요청 1: 리소스 칸 외부에 뜨는 자원 획득 알림 전용 플로팅 컨테이너 -->
-            <div id="resource-gain-floating-container" class="absolute left-full top-0 ml-8 w-32 space-y-1.5 pointer-events-none z-50"></div>
         </div>
     `;
 
@@ -107,7 +105,6 @@
 
         updateGainBadgeUI(resourceId);
 
-        // 요청 2: 3초 후 깔끔히 제거되도록 수정
         gainTimers[resourceId] = setTimeout(() => {
             delete gainAmounts[resourceId];
             delete gainTimers[resourceId];
@@ -116,13 +113,13 @@
     };
 
     function updateGainBadgeUI(resourceId) {
-        const floatingContainer = document.getElementById('resource-gain-floating-container');
-        if (!floatingContainer) return;
+        const itemEl = document.querySelector(`.resource-item[data-resource-id="${resourceId}"]`);
+        if (!itemEl) return;
 
         const resData = window.PLAYER_RESOURCES_DATA.find(r => r.id === resourceId);
         if (!resData) return;
 
-        let badgeEl = floatingContainer.querySelector(`[data-floating-id="${resourceId}"]`);
+        let badgeEl = itemEl.querySelector(`.resource-gain-badge`);
 
         if (!gainAmounts[resourceId]) {
             if (badgeEl) badgeEl.remove();
@@ -131,21 +128,20 @@
 
         if (!badgeEl) {
             badgeEl = document.createElement('div');
-            badgeEl.dataset.floatingId = resourceId;
-            badgeEl.className = 'flex items-center gap-1.5 px-2 py-1 bg-slate-900/95 border border-emerald-500/60 rounded-lg shadow-xl backdrop-blur-md animate-bounce';
-            floatingContainer.appendChild(badgeEl);
+            badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-1/2 ml-2 flex items-center gap-1 px-1.5 py-0.5 bg-slate-900/95 border border-emerald-500/80 rounded shadow-xl backdrop-blur-md animate-bounce pointer-events-none z-40 whitespace-nowrap';
+            itemEl.appendChild(badgeEl);
         }
 
         badgeEl.innerHTML = `
-            <i class="${resData.icon} ${resData.color} text-[10px]"></i>
+            <i class="${resData.icon} ${resData.color} text-[9px]"></i>
             <span class="text-[10px] font-black text-emerald-400 font-mono">+${gainAmounts[resourceId].toLocaleString()}</span>
         `;
     }
 
     function removeGainBadgeUI(resourceId) {
-        const floatingContainer = document.getElementById('resource-gain-floating-container');
-        if (!floatingContainer) return;
-        const badgeEl = floatingContainer.querySelector(`[data-floating-id="${resourceId}"]`);
+        const itemEl = document.querySelector(`.resource-item[data-resource-id="${resourceId}"]`);
+        if (!itemEl) return;
+        const badgeEl = itemEl.querySelector(`.resource-gain-badge`);
         if (badgeEl) badgeEl.remove();
     }
 
@@ -157,7 +153,7 @@
             const displayVal = (typeof res.value === 'number') ? res.value.toLocaleString() : res.value;
 
             return `
-            <div class="resource-item group flex items-center justify-between cursor-pointer py-0.5" data-resource-id="${res.id}">
+            <div class="resource-item group relative flex items-center justify-between cursor-pointer py-0.5" data-resource-id="${res.id}">
                 <div class="flex items-center gap-1.5 truncate">
                     <i class="${res.icon} ${res.color} text-[10px] w-3.5 text-center"></i>
                     <span class="text-slate-300 font-bold truncate text-[10px]">${res.name}</span>
