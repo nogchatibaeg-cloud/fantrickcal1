@@ -86,6 +86,18 @@
                 <div id="progress-bar" class="progress-bar-fill"></div>
             </div>
 
+            <!-- 실제 저장 진행 상태 -->
+            <p id="save-status" class="text-[11px] text-gray-400 font-medium tracking-tight min-h-[16px] text-center"></p>
+
+            <!-- 저장 실패 시 나타나는 안내 -->
+            <div id="save-error-panel" class="hidden w-full flex flex-col items-center gap-2 mt-1">
+                <p id="save-error-text" class="text-[11px] text-red-400/90 font-medium tracking-tight text-center leading-relaxed"></p>
+                <div class="flex items-center gap-2">
+                    <button id="btn-save-retry" class="px-3.5 py-1.5 text-[11px] font-bold rounded-lg bg-white/10 hover:bg-white/20 border border-white/30 text-white transition-all">다시 시도</button>
+                    <button id="btn-save-skip" class="px-3.5 py-1.5 text-[11px] font-bold rounded-lg bg-transparent hover:bg-white/10 border border-white/15 text-gray-400 hover:text-white transition-all">저장 없이 계속</button>
+                </div>
+            </div>
+
             <!-- 게임 팁 표시 영역 -->
             <div class="mt-4 text-center min-h-[48px] flex items-center justify-center">
                 <p id="tip-text" class="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed tracking-tight tip-fade">
@@ -106,7 +118,7 @@
             "tmi<br>본 게임은 개발자의 첫 작품이자 그림을 제외한 첫 2차 창작입니다!",
             "tmi<br>응원은 정말정말 큰 힘이 됩니다!",
             "tmi<br>감자 300만개는 약 600톤이라네요 ㄷㄷ",
-            "tmi<br>이 로딩은 사실 장식이랍니다!",
+            "tmi<br>이 로딩 화면에서 실제로 진행 상황이 저장되고 있어요!",
             "tmi<br>제작자 최애 엘프는 엘레나입니다.",
             "tmi<br>제작자는 요미 때 입문한 볼뉴비입니다! 여러분은 언제이신가요?"
         ];
@@ -184,6 +196,133 @@
             tipElement.innerHTML = GAME_TIPS[randomIndex];
         }
 
+        /* ------------------------------------------------------------------
+         *  실제 저장 연동 로딩
+         *  이전 화면이 남긴 임시 저장본을 menu.html 의 저장 엔진(EliasSave)으로
+         *  검사 → 확정 → 검증한 뒤에만 100% 가 되고 다음 화면으로 넘어간다.
+         * ------------------------------------------------------------------ */
+        let currentPct = 0;
+        let isNavigating = false;
+
+        function setPct(v) {
+            const val = Math.max(currentPct, Math.min(100, Math.floor(v)));
+            currentPct = val;
+            document.getElementById('progress-bar').style.width = val + '%';
+            document.getElementById('loading-percent').innerText = val + '%';
+        }
+
+        function tweenTo(target, duration) {
+            return new Promise(resolve => {
+                const from = currentPct;
+                if (target <= from || duration <= 0) { setPct(target); resolve(); return; }
+                const startTime = performance.now();
+                function frame(now) {
+                    const p = Math.min((now - startTime) / duration, 1);
+                    setPct(from + (target - from) * p);
+                    if (p < 1) requestAnimationFrame(frame);
+                    else { setPct(target); resolve(); }
+                }
+                requestAnimationFrame(frame);
+            });
+        }
+
+        function setSaveStatus(text) {
+            const el = document.getElementById('save-status');
+            if (el) el.innerText = text || '';
+        }
+
+        // EliasSave 가 콜백으로 호출: 문구를 바꾸고 진행바를 목표치까지 움직인 뒤 resolve
+        function reportStep(label, pct, minMs) {
+            setSaveStatus(label);
+            return tweenTo(pct, minMs);
+        }
+
+        function goToTarget() {
+            if (isNavigating) return;
+            isNavigating = true;
+            document.getElementById('loading-container').style.transition = 'opacity 0.3s ease';
+            document.getElementById('loading-container').style.opacity = '0';
+
+            setTimeout(() => {
+                window.location.href = TARGET_URL;
+            }, 300);
+        }
+
+        // menu.html 에서 저장 엔진 스크립트만 꺼내 실행 (메뉴 UI 는 이 화면에 붙이지 않는다)
+        function loadSaveEngine() {
+            if (window.EliasSave) return Promise.resolve(true);
+            return fetch('menu.html', { cache: 'no-cache' })
+                .then(response => {
+                    if (!response.ok) throw new Error('menu.html ' + response.status);
+                    return response.text();
+                })
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    doc.querySelectorAll('script').forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = oldScript.textContent;
+                        document.head.appendChild(newScript);
+                    });
+                    return !!window.EliasSave;
+                });
+        }
+
+        function summaryText(summary, committed) {
+            const head = committed ? '저장 완료' : '저장 확인 완료';
+            if (!summary) return head;
+            const parts = [];
+            if (summary.day !== undefined) parts.push('Day ' + summary.day);
+            parts.push('자원 ' + summary.resources + '종');
+            parts.push('지역 ' + summary.regions + '곳');
+            parts.push('건물 ' + summary.buildings + '채');
+            return head + ' - ' + parts.join(', ');
+        }
+
+        function showSaveError(message) {
+            document.getElementById('save-error-text').innerText =
+                '저장에 실패했습니다: ' + message + ' 브라우저 저장 공간을 확인한 뒤 다시 시도해 주세요.';
+            document.getElementById('save-error-panel').classList.remove('hidden');
+        }
+
+        function hideSaveError() {
+            document.getElementById('save-error-panel').classList.add('hidden');
+        }
+
+        async function runSaveSequence() {
+            hideSaveError();
+            const result = await window.EliasSave.finalizeForNavigation(reportStep);
+
+            if (!result.ok) {
+                setSaveStatus('저장을 완료하지 못해 이동을 멈췄습니다.');
+                showSaveError(result.error || '알 수 없는 오류');
+                return;
+            }
+
+            let doneText = result.summary ? summaryText(result.summary, result.committed) : '저장된 기록이 없어 새 진행으로 시작합니다.';
+            if (result.notes && result.notes.length) doneText += ' (' + result.notes.join(' ') + ')';
+            setSaveStatus(doneText);
+            await tweenTo(100, 350);
+            await new Promise(resolve => setTimeout(resolve, 250));
+            goToTarget();
+        }
+
+        async function startSaveLoadingSequence() {
+            setSaveStatus('저장 준비 중...');
+            let engineReady = false;
+            try {
+                engineReady = await loadSaveEngine();
+            } catch (err) {
+                console.warn('저장 엔진(menu.html)을 불러오지 못했습니다:', err);
+            }
+
+            if (!engineReady) {
+                // 저장 엔진이 없으면 (이전 화면도 저장할 수 없었으므로) 기존 연출 로딩으로 대체
+                startLoadingSequence(goToTarget);
+                return;
+            }
+            await runSaveSequence();
+        }
+
         window.onload = function() {
             setRandomTip();
 
@@ -193,14 +332,14 @@
                 if (errorMsgEl) errorMsgEl.classList.remove('hidden');
             }
 
-            startLoadingSequence(() => {
-                document.getElementById('loading-container').style.transition = 'opacity 0.3s ease';
-                document.getElementById('loading-container').style.opacity = '0';
-                
-                setTimeout(() => {
-                    window.location.href = TARGET_URL;
-                }, 300);
+            document.getElementById('btn-save-retry').addEventListener('click', () => { runSaveSequence(); });
+            document.getElementById('btn-save-skip').addEventListener('click', () => {
+                // 임시 저장본은 남아 있으므로 다음 화면이 열릴 때 한 번 더 확정을 시도한다
+                setSaveStatus('저장 없이 이동합니다.');
+                tweenTo(100, 200).then(goToTarget);
             });
+
+            startSaveLoadingSequence();
         };
     </script>
 </body>
