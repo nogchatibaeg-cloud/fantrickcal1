@@ -95,6 +95,27 @@
         color: #6ee7b7;
     }
 
+    /* [추가] 백업/불러오기 버튼 스타일 (파란색 계열) */
+    .menu-btn-export {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        border: 1px solid rgba(96, 165, 250, 0.4);
+    }
+    .menu-btn-export:hover {
+        background-color: rgba(59, 130, 246, 0.4);
+        color: #93c5fd;
+    }
+
+    .menu-btn-import {
+        background-color: rgba(168, 85, 247, 0.2);
+        color: #c084fc;
+        border: 1px solid rgba(192, 132, 252, 0.4);
+    }
+    .menu-btn-import:hover {
+        background-color: rgba(168, 85, 247, 0.4);
+        color: #e9d5ff;
+    }
+
     /* 초기화 버튼 (빨간색) */
     .menu-btn-reset {
         background-color: rgba(239, 68, 68, 0.2);
@@ -167,6 +188,21 @@
             <i class="fa-solid fa-floppy-disk"></i>
             <span>저장</span>
         </button>
+
+        <!-- [추가] 백업 파일 내보내기 버튼 -->
+        <button id="btn-action-export" class="menu-action-btn menu-btn-export" title="게임 데이터 내보내기 (JSON 백업)">
+            <i class="fa-solid fa-file-arrow-down"></i>
+            <span>내보내기</span>
+        </button>
+
+        <!-- [추가] 백업 파일 불러오기 버튼 -->
+        <button id="btn-action-import" class="menu-action-btn menu-btn-import" title="백업 파일 불러오기">
+            <i class="fa-solid fa-file-arrow-up"></i>
+            <span>불러오기</span>
+        </button>
+        <!-- hidden 파일 입력 요소 -->
+        <input type="file" id="input-import-file" accept=".json" style="display: none;" />
+
         <!-- 초기화 버튼 -->
         <button id="btn-action-reset" class="menu-action-btn menu-btn-reset" title="게임 데이터 초기화">
             <i class="fa-solid fa-rotate-left"></i>
@@ -325,6 +361,11 @@
             const btnYes = document.getElementById('btn-confirm-yes');
             const btnNo = document.getElementById('btn-confirm-no');
 
+            // [추가] 내보내기 / 불러오기 관련 버튼 DOM 요소
+            const btnExport = document.getElementById('btn-action-export');
+            const btnImport = document.getElementById('btn-action-import');
+            const inputImportFile = document.getElementById('input-import-file');
+
             // 손잡이 클릭 시 서랍 열기/닫기
             if (toggleBtn && drawer) {
                 toggleBtn.addEventListener('click', (e) => {
@@ -338,6 +379,64 @@
                 btnSave.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.saveGameState(false);
+                });
+            }
+
+            // [추가] 데이터 내보내기 (JSON 백업 파일 다운로드)
+            if (btnExport) {
+                btnExport.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.saveGameState(true); // 내보내기 전 현재 상태 자동 저장
+                    const currentData = localStorage.getItem(SAVE_KEY);
+                    if (!currentData) {
+                        showSaveToast("내보낼 데이터가 없습니다.");
+                        return;
+                    }
+                    const blob = new Blob([currentData], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `elias_save_backup_${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    showSaveToast("백업 파일이 성공적으로 다운로드되었습니다.");
+                });
+            }
+
+            // [추가] 데이터 불러오기 (JSON 파일 선택 UI 호출)
+            if (btnImport && inputImportFile) {
+                btnImport.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    inputImportFile.click();
+                });
+
+                inputImportFile.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            // 간단한 구조 검증
+                            if (parsed && (parsed.resources || parsed.mapData || parsed.buildings)) {
+                                localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+                                showSaveToast("백업 데이터를 정상적으로 적용하였습니다. 페이지를 새로고침합니다.");
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 1000);
+                            } else {
+                                alert("올바르지 않은 세이브 파일 형식입니다.");
+                            }
+                        } catch (err) {
+                            console.error("[SaveSystem] 백업 파일 파싱 실패:", err);
+                            alert("세이브 파일을 읽는 도중 오류가 발생했습니다.");
+                        }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = ''; // 재선택 가능하게 초기화
                 });
             }
 
