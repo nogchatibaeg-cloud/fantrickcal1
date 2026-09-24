@@ -521,6 +521,18 @@
             }, { passive: false });
         }
 
+        function resetView() {
+            scale = 0.4;
+            pointX = (DOM.viewport.clientWidth - 2000 * scale) / 2;
+            pointY = (DOM.viewport.clientHeight - 2000 * scale) / 2;
+            updateTransform();
+        }
+
+        function updateTransform() {
+            DOM.svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            if (DOM.hudZoom) DOM.hudZoom.innerText = Math.round(scale * 100);
+        }
+
         function togglePanel(forceOpen = null) {
             if (forceOpen !== null) {
                 isPanelOpen = forceOpen;
@@ -951,157 +963,86 @@
                 DOM.labelLeftPt.className = "text-rose-400 flex items-center gap-1";
                 DOM.labelRightPt.innerHTML = `<span class="text-emerald-400 flex items-center gap-1">우호 Pt: <span id="text-point-friendly">${region.friendlyPoints}</span> <i class="fa-solid fa-handshake text-[9px]"></i></span>`;
                 DOM.labelRightPt.className = "text-emerald-400 flex items-center gap-1";
-                DOM.graphCenterLine.classList.remove('hidden');
-
-                DOM.barPointFriendly.className = "h-full bg-emerald-500 transition-all duration-300 flex items-center justify-end pr-2";
                 
+                const total = region.friendlyPoints + region.hostilePoints;
+                const friendlyPct = total > 0 ? (region.friendlyPoints / total) * 100 : 50;
+                const hostilePct = 100 - friendlyPct;
+
+                DOM.barPointFriendly.style.width = `${friendlyPct}%`;
+                DOM.barPointHostile.style.width = `${hostilePct}%`;
+
                 DOM.panelAffinityPercent.innerText = `우호 ${region.friendlyPoints} | 적대 ${region.hostilePoints}`;
-                
-                const totalPoints = region.friendlyPoints + region.hostilePoints;
-                const hostileRatio = totalPoints > 0 ? (region.hostilePoints / totalPoints) * 100 : 50;
-                const friendlyRatio = totalPoints > 0 ? (region.friendlyPoints / totalPoints) * 100 : 50;
-
-                DOM.barPointHostile.style.width = `${hostileRatio}%`;
-                DOM.barPointFriendly.style.width = `${friendlyRatio}%`;
 
                 if (region.isOccupied) {
-                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-flag"></i> 점령지`;
+                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-crown"></i> 점령 완료 (자동 자원 수급)`;
                     DOM.panelGovernanceStatus.className = "text-sm font-black text-teal-400 flex items-center gap-2";
-                    DOM.panelHostileDaysInfo.classList.remove('hidden');
-                    DOM.labelHostileProgress.innerHTML = `👑 완전히 점령된 지역입니다.`;
-
-                    DOM.selectMissionType.innerHTML = `<option value="occupied" selected>🚩 점령 완료</option>`;
+                    DOM.panelHostileDaysInfo.classList.add('hidden');
                     DOM.selectMissionType.disabled = true;
                 } else if (region.isWar) {
-                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-swords"></i> 전쟁 상태 (WAR)`;
-                    DOM.panelGovernanceStatus.className = "text-sm font-black text-rose-500 flex items-center gap-2 animate-pulse";
+                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-swords text-rose-500"></i> 전쟁 상태 (7일 파병 필요)`;
+                    DOM.panelGovernanceStatus.className = "text-sm font-black text-rose-400 flex items-center gap-2";
                     DOM.panelHostileDaysInfo.classList.remove('hidden');
-                    DOM.labelHostileProgress.innerHTML = `⚔️ 연속 파병 성공: <span id="text-hostile-days" class="text-amber-400 font-extrabold">${region.consecutiveWarSuccesses}</span>일 / 7일`;
-
-                    const warRate = calculateWarSuccessRate(region);
-                    DOM.selectMissionType.innerHTML = `<option value="hostile" selected>⚔️ 군대 파병 (${warRate}%)</option>`;
+                    DOM.labelHostileProgress.innerText = `전쟁 승리 진행도: ${region.consecutiveWarSuccesses}일 / 7일`;
                     DOM.selectMissionType.disabled = true;
                 } else {
-                    const selected = region.selectedMissionType || 'friendly';
-                    DOM.selectMissionType.innerHTML = `
-                        <option value="friendly" ${selected === 'friendly' ? 'selected' : ''}>🤝 우호 작전 (Friendly Mission)</option>
-                        <option value="hostile" ${selected === 'hostile' ? 'selected' : ''}>⚔️ 적대 작전 (Hostile Mission)</option>
-                    `;
-                    DOM.selectMissionType.value = selected;
-                    DOM.selectMissionType.disabled = false;
+                    DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-handshake text-amber-400"></i> 일반 외교 구역`;
+                    DOM.panelGovernanceStatus.className = "text-sm font-black text-slate-200 flex items-center gap-2";
 
-                    if (statusText === 'FRIENDLY') {
-                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-handshake"></i> 협력 세력 (교류 활발)`;
-                        DOM.panelGovernanceStatus.className = "text-sm font-black text-emerald-400 flex items-center gap-2";
-                        DOM.panelHostileDaysInfo.classList.add('hidden');
-                    } else if (statusText === 'HOSTILE') {
-                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-burst"></i> 적대 세력`;
-                        DOM.panelGovernanceStatus.className = "text-sm font-black text-rose-400 flex items-center gap-2";
+                    const diff = region.friendlyPoints - region.hostilePoints;
+                    if (diff <= -100) {
                         DOM.panelHostileDaysInfo.classList.remove('hidden');
-                        DOM.labelHostileProgress.innerHTML = `⚠️ 적대 지속 기간: <span id="text-hostile-days">${region.hostileDays}</span>일 / 7일`;
+                        DOM.labelHostileProgress.innerText = `적대 지속 기간: ${region.hostileDays}일 / 7일`;
                     } else {
-                        DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> 중립 세력`;
-                        DOM.panelGovernanceStatus.className = "text-sm font-black text-amber-400 flex items-center gap-2";
                         DOM.panelHostileDaysInfo.classList.add('hidden');
                     }
+                    DOM.selectMissionType.disabled = false;
+                    DOM.selectMissionType.value = region.selectedMissionType || 'friendly';
                 }
             }
 
-            if (region.id === 'elf' || statusText === 'FRIENDLY' || region.isOccupied) {
-                DOM.panelCommander.innerText = region.commander;
-                DOM.panelCommander.className = "text-xs font-bold text-emerald-400";
-            } else {
-                DOM.panelCommander.innerText = "??? (협력 세력 전용)";
-                DOM.panelCommander.className = "text-xs font-bold text-slate-500 italic";
-            }
-
+            DOM.panelCommander.innerText = region.commander;
             DOM.panelSpecialty.innerText = region.specialty;
 
-            const { hostile, friendly } = region.probabilities;
+            DOM.barHostile.style.height = `${region.probabilities.hostile}%`;
+            DOM.barFriendly.style.height = `${region.probabilities.friendly}%`;
 
-            DOM.barHostile.style.height = `${Math.min(100, Math.max(0, hostile))}%`;
-            DOM.barFriendly.style.height = `${Math.min(100, Math.max(0, friendly))}%`;
-
-            DOM.textProbHostile.innerText = `${hostile}%`;
-            DOM.textProbFriendly.innerText = `${friendly}%`;
+            DOM.textProbHostile.innerText = `${region.probabilities.hostile}%`;
+            DOM.textProbFriendly.innerText = `${region.probabilities.friendly}%`;
 
             DOM.panelNotes.innerHTML = region.notes;
 
-            updateDispatchButtonText();
+            DOM.hudX.innerText = Math.round(region.center.x);
+            DOM.hudY.innerText = Math.round(region.center.y);
 
-            DOM.hudX.innerText = region.center.x;
-            DOM.hudY.innerText = region.center.y;
+            updateDispatchButtonText();
         }
 
         function updateDispatchButtonText() {
             if (!currentRegionId) return;
             const region = REGIONS_DATA[currentRegionId];
 
-            if (region.id === 'elf') {
+            if (region.id === 'elf' || region.friendlyPoints >= 200 || region.isOccupied) {
                 DOM.btnDispatch.disabled = false;
-                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
-                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer";
-                return;
-            }
-
-            if (region.isOccupied) {
+                DOM.btnDispatchIcon.className = "fa-solid fa-door-open";
+                DOM.btnDispatchText.innerText = `${region.regionName} 입장하기`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg";
+            } else if (region.isWar) {
                 DOM.btnDispatch.disabled = false;
-                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
-                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-red-950 hover:bg-red-900 border border-red-700/60 text-red-100 font-black text-sm rounded-xl shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 cursor-pointer";
-                return;
-            }
-
-            if (region.friendlyPoints >= 200) {
-                DOM.btnDispatch.disabled = false;
-                DOM.btnDispatchIcon.className = "fa-solid fa-arrow-right-to-bracket";
-                DOM.btnDispatchText.innerText = `${region.regionName}으로 들어 가기`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer";
-                return;
-            }
-
-            DOM.btnDispatch.disabled = false;
-            DOM.btnDispatchIcon.className = "fa-solid fa-paper-plane";
-
-            if (region.isWar) {
-                const warRate = calculateWarSuccessRate(region);
-                DOM.btnDispatchText.innerText = `${region.regionName} 군대 파병 (${warRate}%)`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-xl shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer";
-                return;
-            }
-
-            const val = DOM.selectMissionType.value;
-
-            if (val === 'hostile') {
-                DOM.btnDispatchText.innerText = `${region.regionName} 적대 작전 시행`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-rose-500 hover:bg-rose-400 text-white font-black text-sm rounded-xl shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer";
+                DOM.btnDispatchIcon.className = "fa-solid fa-shield-halved";
+                DOM.btnDispatchText.innerText = `지원 파병 (${region.consecutiveWarSuccesses}/7일)`;
+                DOM.btnDispatch.className = "btn-action w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg";
             } else {
-                DOM.btnDispatchText.innerText = `${region.regionName} 우호 작전 시행`;
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer";
+                DOM.btnDispatch.disabled = false;
+                DOM.btnDispatchIcon.className = "fa-solid fa-paper-plane";
+                const isFriendly = region.selectedMissionType === 'friendly';
+                DOM.btnDispatchText.innerText = isFriendly ? "우호 작전 개시" : "적대 작전 개시";
+                DOM.btnDispatch.className = isFriendly
+                    ? "btn-action w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+                    : "btn-action w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg";
             }
-        }
-
-        function updateTransform() {
-            DOM.svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            DOM.hudZoom.innerText = Math.round(scale * 100);
-        }
-
-        function resetView() {
-            scale = 0.4;
-            
-            const targetX = (REGIONS_DATA.fairy.center.x + REGIONS_DATA.witch.center.x) / 2;
-            const targetY = (REGIONS_DATA.fairy.center.y + REGIONS_DATA.witch.center.y) / 2;
-
-            const viewportWidth = DOM.viewport.clientWidth;
-            const viewportHeight = DOM.viewport.clientHeight;
-
-            pointX = (viewportWidth / 2) - (targetX * scale);
-            pointY = (viewportHeight / 2) - (targetY * scale);
-            
-            updateTransform();
         }
     </script>
+
     <div id="save-module-container"></div>
     <script>
         fetch('menu.html')
@@ -1110,7 +1051,6 @@
                 const container = document.getElementById('save-module-container');
                 container.innerHTML = html;
                 
-                // 불러온 HTML 내의 <script> 태그를 실행시키기 위한 처리
                 const scripts = container.querySelectorAll('script');
                 scripts.forEach(oldScript => {
                     const newScript = document.createElement('script');
