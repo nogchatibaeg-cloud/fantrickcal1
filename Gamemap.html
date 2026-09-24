@@ -84,6 +84,11 @@
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
+    <!-- 요청 4: 날짜 변경 시 타이프라이터 효과 전용 검은 레이어 -->
+    <div id="day-transition-overlay" class="fixed inset-0 bg-black z-50 hidden flex items-center justify-center cursor-pointer select-none">
+        <h1 id="day-transition-text" class="text-5xl md:text-7xl font-black text-white tracking-widest font-mono"></h1>
+    </div>
+
     <!-- 상단 헤더 -->
     <header class="h-14 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between flex-shrink-0 z-20">
         <div class="flex items-center space-x-3">
@@ -305,6 +310,8 @@
         let startX = 0;
         let startY = 0;
 
+        let typewriterTimeout = null;
+
         window.addEventListener('DOMContentLoaded', () => {
             initDOM();
             loadPlayerResourceModule();
@@ -384,6 +391,9 @@
             DOM.btnDispatchText = document.getElementById('btn-dispatch-text');
             DOM.btnDispatchIcon = document.getElementById('btn-dispatch-icon');
             DOM.btnResetView = document.getElementById('btn-reset-view');
+
+            DOM.dayOverlay = document.getElementById('day-transition-overlay');
+            DOM.dayOverlayText = document.getElementById('day-transition-text');
         }
 
         function renderLegend() {
@@ -497,6 +507,9 @@
             DOM.btnDispatch.addEventListener('click', handleButtonClick);
             DOM.btnResetView.addEventListener('click', resetView);
             DOM.btnNextDay.addEventListener('click', advanceDay);
+
+            // 요청 4: 오버레이 클릭 시 타이프라이터 효과 즉시 건너뛰기
+            DOM.dayOverlay.addEventListener('click', dismissDayOverlay);
 
             DOM.viewport.addEventListener('mousedown', (e) => {
                 isPanning = true;
@@ -651,13 +664,11 @@
 
             const totalMult = dayMult * actionMult;
 
-            // 1. 기술력
-            const techBonusCount = 1 + Math.floor(currentDay / 100);
             if (Math.random() < 0.3) {
+                const techBonusCount = 1 + Math.floor(currentDay / 100);
                 addResource('tech', Math.floor(techBonusCount * totalMult));
             }
 
-            // 2. 식량 (수인 3~6, 요정/마녀/용족 1~4)
             if (region.id === 'beast') {
                 const amount = isMax ? 6 : getRandomInt(3, 6);
                 addResource('food', Math.floor(amount * totalMult));
@@ -666,7 +677,6 @@
                 addResource('food', Math.floor(amount * totalMult));
             }
 
-            // 3. 세계수 잎 (요정/마녀 확정 1개, 나머지 50% 확률 1개, 유령/엘프 제외)
             if (['fairy', 'witch'].includes(region.id)) {
                 addResource('leaf', Math.floor(1 * totalMult));
             } else if (region.id !== 'ghost' && region.id !== 'elf') {
@@ -675,7 +685,6 @@
                 }
             }
 
-            // 4. 마력 (마녀 1~2 50%씩, 나머지 1~2 25%씩/0개 50%, 수인/엘프 제외)
             if (region.id === 'witch') {
                 const amount = isMax ? 2 : (Math.random() < 0.5 ? 1 : 2);
                 addResource('mana', Math.floor(amount * totalMult));
@@ -689,7 +698,6 @@
                 }
             }
 
-            // 5. 자재 (용족 3~6, 나머지 1~4, 요정/엘프 제외)
             if (region.id === 'dragon') {
                 const amount = isMax ? 6 : getRandomInt(3, 6);
                 addResource('mineral', Math.floor(amount * totalMult));
@@ -698,17 +706,14 @@
                 addResource('mineral', Math.floor(amount * totalMult));
             }
 
-            // 6. 에너지 (정령 확정 1개)
             if (region.id === 'spirit') {
                 addResource('energy', Math.floor(1 * totalMult));
             }
 
-            // 7. 효율성 (유령 확정 1개)
             if (region.id === 'ghost') {
                 addResource('efficiency', Math.floor(1 * totalMult));
             }
 
-            // 8. 골드 (동일 확률 50~100)
             const goldAmount = isMax ? 50000 : getRandomInt(50, 100);
             addResource('gold', Math.floor(goldAmount * totalMult));
         }
@@ -834,6 +839,7 @@
                 }
             }
 
+            // 요청 3: 원정 성공/실패와 상관없이 원정 가능 횟수 무조건 1회 감소
             expeditionsLeft--;
             DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/5`;
 
@@ -843,6 +849,7 @@
             selectRegion(currentRegionId);
         }
 
+        // 요청 4: 내일로 클릭 시 풀스크린 검은 화면 + 타이프라이터 효과
         function advanceDay() {
             currentDay++;
             expeditionsLeft = 5;
@@ -852,7 +859,6 @@
             Object.values(REGIONS_DATA).forEach(region => {
                 if (region.id === 'elf') return;
 
-                // 동맹(우호 Max) 및 식민지(적대 Max/전쟁 승리)의 자동 수급 로직 (2일에 1번)
                 if (currentDay % 2 === 0) {
                     if (region.friendlyPoints >= 200) {
                         processTradeRewards(region, 'friendly', false);
@@ -880,6 +886,34 @@
 
             updateAllRegionsState();
             if (currentRegionId) selectRegion(currentRegionId);
+
+            showDayTypewriterOverlay(`DAY ${currentDay}`);
+        }
+
+        function showDayTypewriterOverlay(text) {
+            if (typewriterTimeout) clearTimeout(typewriterTimeout);
+            
+            DOM.dayOverlayText.innerText = "";
+            DOM.dayOverlay.classList.remove('hidden');
+
+            let index = 0;
+            function typeNextChar() {
+                if (index < text.length) {
+                    DOM.dayOverlayText.innerText += text.charAt(index);
+                    index++;
+                    typewriterTimeout = setTimeout(typeNextChar, 120);
+                } else {
+                    typewriterTimeout = setTimeout(dismissDayOverlay, 1000);
+                }
+            }
+
+            typeNextChar();
+        }
+
+        function dismissDayOverlay() {
+            if (typewriterTimeout) clearTimeout(typewriterTimeout);
+            DOM.dayOverlay.classList.add('hidden');
+            DOM.dayOverlayText.innerText = "";
         }
 
         function updateAllRegionsState() {
