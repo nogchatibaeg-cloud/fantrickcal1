@@ -1,0 +1,267 @@
+<!-- save.html -->
+<style>
+    /* 세이브 UI 아이콘 스타일 (기존 지도 아이콘 버튼 위치에 새로 존재) */
+    #save-system-ui-btn {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 50; /* 다른 UI들과 동일 및 최우선 레벨 유지 */
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 0.875rem;
+        background-color: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(51, 65, 85, 0.8);
+        border-radius: 0.75rem;
+        color: #f1f5f9;
+        font-size: 0.75rem;
+        font-weight: 800;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        transition: all 0.2s ease;
+    }
+    #save-system-ui-btn:hover {
+        border-color: #f59e0b;
+        color: #fbbf24;
+        transform: translateY(-2px);
+    }
+    #save-system-ui-btn:active {
+        transform: translateY(0);
+    }
+
+    /* 저장 알림 모달/토스트 */
+    #save-toast-msg {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 100;
+        background-color: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(52, 211, 153, 0.8);
+        color: #34d399;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 800;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+    #save-toast-msg.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<!-- 세이브 UI (파일 모양 아이콘 버튼) -->
+<div id="save-system-ui-btn" title="게임 저장 및 관리">
+    <i class="fa-solid fa-floppy-disk text-amber-400 text-sm"></i>
+    <span>저장하기</span>
+</div>
+
+<!-- 저장 결과 안내 토스트 메시지 -->
+<div id="save-toast-msg">
+    <i class="fa-solid fa-check-circle mr-1.5"></i>
+    <span id="save-toast-text">게임 데이터가 저장되었습니다.</span>
+</div>
+
+<script>
+(function() {
+    // loading.html 에서는 세이브 UI 및 로직을 실행하지 않음
+    if (window.location.pathname.includes('loading.html')) {
+        return;
+    }
+
+    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
+    const AUTO_SAVE_INTERVAL = 5 * 60 * 1000; // 5분 (300,000 ms)
+    
+    // 종속 파일 키워드 (해당 키워드가 포함된 파일로 이동 시 자동 저장 안함)
+    const EXCLUDED_DEPENDENT_KEYWORDS = ['potato', 'sub', 'modal', 'popup', 'dialog'];
+
+    // 1. 모든 게임 정보 수집 함수 (자원, 날짜, 적대/우호도, 배치된 건물 등)
+    function collectAllGameData() {
+        const saveData = {
+            saveTime: new Date().toISOString(),
+            // 보유 자원 데이터
+            resources: window.PLAYER_RESOURCES_DATA ? window.PLAYER_RESOURCES_DATA.map(r => ({
+                id: r.id,
+                value: r.value,
+                rawValue: r.rawValue,
+                processedValue: r.processedValue
+            })) : null,
+            // 지도/날짜/파병 정보 (Gamemap.html 기준)
+            mapData: {
+                currentDay: typeof currentDay !== 'undefined' ? currentDay : 1,
+                expeditionsLeft: typeof expeditionsLeft !== 'undefined' ? expeditionsLeft : 5,
+                regions: typeof REGIONS_DATA !== 'undefined' ? JSON.parse(JSON.stringify(REGIONS_DATA)) : null
+            },
+            // 모나티엄 내부 건물 배치 정보 (InMonatium.html 기준)
+            buildings: typeof placedBuildings !== 'undefined' ? placedBuildings.map(b => ({
+                col: b.col,
+                row: b.row,
+                data: b.data
+            })) : []
+        };
+        return saveData;
+    }
+
+    // 2. Save 실행 로직 (LocalStorage 반영구 저장)
+    window.saveGameState = function(isAuto = false) {
+        try {
+            const data = collectAllGameData();
+            // 기존 데이터가 있다면 덮어쓰기 방식으로 병합
+            const existingRaw = localStorage.getItem(SAVE_KEY);
+            if (existingRaw) {
+                const existingData = JSON.parse(existingRaw);
+                if (!data.resources && existingData.resources) data.resources = existingData.resources;
+                if (!data.mapData.regions && existingData.mapData) data.mapData = existingData.mapData;
+                if (data.buildings.length === 0 && existingData.buildings) data.buildings = existingData.buildings;
+            }
+
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            if (!isAuto) showSaveToast("게임 데이터가 저장되었습니다!");
+            console.log("[SaveSystem] Saved successfully:", data);
+        } catch (err) {
+            console.error("[SaveSystem] Save failed:", err);
+            showSaveToast("저장 중 오류가 발생했습니다.");
+        }
+    };
+
+    // 저장 데이터 불러오기 함수
+    window.loadGameState = function() {
+        try {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return null;
+
+            const parsed = JSON.parse(raw);
+            
+            // 보유 자원 데이터 복원
+            if (parsed.resources && window.PLAYER_RESOURCES_DATA) {
+                parsed.resources.forEach(savedRes => {
+                    const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
+                    if (target) {
+                        if (savedRes.value !== undefined) target.value = savedRes.value;
+                        if (savedRes.rawValue !== undefined) target.rawValue = savedRes.rawValue;
+                        if (savedRes.processedValue !== undefined) target.processedValue = savedRes.processedValue;
+                    }
+                });
+                if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+            }
+
+            // 지도 데이터 복원
+            if (parsed.mapData) {
+                if (typeof currentDay !== 'undefined' && parsed.mapData.currentDay) {
+                    currentDay = parsed.mapData.currentDay;
+                    const el = document.getElementById('header-day-count');
+                    if (el) el.innerText = `Day ${currentDay}`;
+                }
+                if (typeof expeditionsLeft !== 'undefined' && parsed.mapData.expeditionsLeft) {
+                    expeditionsLeft = parsed.mapData.expeditionsLeft;
+                    const el = document.getElementById('header-expedition-count');
+                    if (el) el.innerText = `${expeditionsLeft}/5`;
+                }
+                if (typeof REGIONS_DATA !== 'undefined' && parsed.mapData.regions) {
+                    Object.assign(REGIONS_DATA, parsed.mapData.regions);
+                    if (typeof renderStatusBadges === 'function') renderStatusBadges();
+                }
+            }
+
+            // 건물 배치 복원
+            if (parsed.buildings && typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings)) {
+                placedBuildings.length = 0;
+                parsed.buildings.forEach(b => {
+                    placedBuildings.push(b);
+                    if (typeof addBuildingElement === 'function') {
+                        addBuildingElement(b);
+                    }
+                });
+            }
+
+            return parsed;
+        } catch (err) {
+            console.error("[SaveSystem] Load failed:", err);
+            return null;
+        }
+    };
+
+    // 저장 데이터 초기화
+    window.clearGameState = function() {
+        if (confirm("정말로 모든 세이브 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+            localStorage.removeItem(SAVE_KEY);
+            alert("세이브 데이터가 초기화되었습니다.");
+            window.location.reload();
+        }
+    };
+
+    // 저장 안내 토스트 팝업 띄우기
+    function showSaveToast(message) {
+        const toast = document.getElementById('save-toast-msg');
+        const toastText = document.getElementById('save-toast-text');
+        if (!toast || !toastText) return;
+
+        toastText.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+    }
+
+    // 세이브 UI 및 이벤트 바인딩
+    function setupSaveButtonUI() {
+        const btn = document.getElementById('save-system-ui-btn');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.saveGameState(false);
+            });
+        }
+
+        const oldMapLinks = document.querySelectorAll('a[href*="Gamemap.html"]');
+        oldMapLinks.forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+
+    // 5분마다 자동 세이브 타이머 동작
+    function startAutoSaveTimer() {
+        setInterval(() => {
+            window.saveGameState(true);
+        }, AUTO_SAVE_INTERVAL);
+    }
+
+    // [신규 기능] 페이지 이동 시 자동 저장 처리 (종속 파일 제외)
+    let targetNavigationUrl = '';
+
+    // 링크 클릭 시 이동하려는 URL 수집
+    document.addEventListener('click', (e) => {
+        const anchor = e.target.closest('a');
+        if (anchor && anchor.href) {
+            targetNavigationUrl = anchor.href.toLowerCase();
+        }
+    }, true);
+
+    // 페이지 이탈(이동) 시 자동 저장 함수
+    function handlePageNavigationSave() {
+        // 종속 파일(potato 등)로 이동 시 저장 제외
+        const isDependentTarget = EXCLUDED_DEPENDENT_KEYWORDS.some(keyword => targetNavigationUrl.includes(keyword));
+        
+        if (!isDependentTarget) {
+            window.saveGameState(true);
+        }
+    }
+
+    window.addEventListener('beforeunload', handlePageNavigationSave);
+    window.addEventListener('pagehide', handlePageNavigationSave);
+
+    // 페이지 로드 완료 시 자동 실행
+    window.addEventListener('DOMContentLoaded', () => {
+        setupSaveButtonUI();
+        window.loadGameState(); // 진입 시 저장된 정보 복원
+        startAutoSaveTimer();
+    });
+
+})();
+</script>
