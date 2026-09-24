@@ -84,12 +84,6 @@
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
-    <!-- 요청 4: 날짜 변경 시 타이프라이터 효과 전용 검은 레이어 -->
-    <div id="day-transition-overlay" class="fixed inset-0 bg-black z-50 hidden flex items-center justify-center cursor-pointer select-none">
-        <h1 id="day-transition-text" class="text-5xl md:text-7xl font-black text-white tracking-widest font-mono"></h1>
-    </div>
-
-    <!-- 상단 헤더 -->
     <header class="h-14 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between flex-shrink-0 z-20">
         <div class="flex items-center space-x-3">
             <div class="bg-amber-500/20 text-amber-400 p-2 rounded-xl border border-amber-500/30">
@@ -99,7 +93,6 @@
                 <h1 class="font-extrabold text-lg text-white tracking-wide">엘리아스 어웨이</h1>
                 <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">지도</span>
                 <span id="header-day-count" class="text-xs px-3 py-1 rounded-lg font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Day 1</span>
-                <!-- 내일로 버튼 -->
                 <button id="btn-next-day" class="px-3 py-1 text-xs font-black rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-md transition-all flex items-center gap-1">
                     <i class="fa-solid fa-sun"></i> 내일로 (<span id="header-expedition-count">5/5</span>)
                 </button>
@@ -113,7 +106,6 @@
         </div>
     </header>
 
-    <!-- 메인 컨테이너 -->
     <div class="flex-grow flex relative overflow-hidden">
         <div id="map-viewport" class="flex-grow h-full bg-slate-950 relative overflow-hidden cursor-grab active:cursor-grabbing">
             
@@ -132,9 +124,7 @@
                 <g id="map-toast-layer" class="pointer-events-none"></g>
             </svg>
 
-            <!-- 범례 및 외부 자원 모듈 인클루드 영역 -->
             <div class="absolute top-4 left-4 flex flex-col gap-3 w-36 z-10" onclick="event.stopPropagation()">
-                <!-- 범례 -->
                 <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-2xl">
                     <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
                         <span>범례 & 세력</span>
@@ -143,11 +133,9 @@
                     <div class="space-y-1 text-[11px] font-bold" id="legend-list"></div>
                 </div>
 
-                <!-- PlayerResource.html 코드가 들어오는 자원 컨테이너 -->
                 <div id="resource-module-container"></div>
             </div>
 
-            <!-- 하단 HUD -->
             <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-1.5 text-[11px] text-slate-300 font-mono flex items-center gap-3 shadow-xl z-10" onclick="event.stopPropagation()">
                 <div>X: <span id="hud-x" class="text-amber-400 font-bold">-</span></div>
                 <div>Y: <span id="hud-y" class="text-amber-400 font-bold">-</span></div>
@@ -155,7 +143,6 @@
             </div>
         </div>
 
-        <!-- 우측 패널 -->
         <div id="side-panel" class="w-96 bg-slate-900 border-l border-slate-800 flex flex-col justify-between h-full z-20 flex-shrink-0 shadow-2xl absolute right-0 top-0 transition-transform duration-300 ease-in-out translate-x-full" onclick="event.stopPropagation()">
             <button id="btn-toggle-panel" class="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-14 bg-slate-900 border-l border-t border-b border-slate-700 text-slate-300 hover:text-white rounded-l-xl flex items-center justify-center shadow-lg transition-colors cursor-pointer z-30">
                 <i id="toggle-icon" class="fa-solid fa-chevron-left text-xs"></i>
@@ -302,15 +289,12 @@
         let currentRegionId = null;
         let isPanelOpen = false;
         
-        const BASE_SCALE = 1.0; 
-        let scale = 1;
+        let scale = 0.4;
         let pointX = 0;
         let pointY = 0;
         let isPanning = false;
         let startX = 0;
         let startY = 0;
-
-        let typewriterTimeout = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             initDOM();
@@ -391,9 +375,6 @@
             DOM.btnDispatchText = document.getElementById('btn-dispatch-text');
             DOM.btnDispatchIcon = document.getElementById('btn-dispatch-icon');
             DOM.btnResetView = document.getElementById('btn-reset-view');
-
-            DOM.dayOverlay = document.getElementById('day-transition-overlay');
-            DOM.dayOverlayText = document.getElementById('day-transition-text');
         }
 
         function renderLegend() {
@@ -508,9 +489,6 @@
             DOM.btnResetView.addEventListener('click', resetView);
             DOM.btnNextDay.addEventListener('click', advanceDay);
 
-            // 요청 4: 오버레이 클릭 시 타이프라이터 효과 즉시 건너뛰기
-            DOM.dayOverlay.addEventListener('click', dismissDayOverlay);
-
             DOM.viewport.addEventListener('mousedown', (e) => {
                 isPanning = true;
                 startX = e.clientX - pointX;
@@ -533,7 +511,7 @@
                 const delta = -e.deltaY;
                 const zoomFactor = delta > 0 ? 1.08 : 1 / 1.08;
                 
-                const newScale = Math.min(Math.max(0.2, scale * zoomFactor), 4.0);
+                const newScale = Math.min(Math.max(0.1, scale * zoomFactor), 4.0);
 
                 pointX = centerX - (centerX - pointX) * (newScale / scale);
                 pointY = centerY - (centerY - pointY) * (newScale / scale);
@@ -839,7 +817,6 @@
                 }
             }
 
-            // 요청 3: 원정 성공/실패와 상관없이 원정 가능 횟수 무조건 1회 감소
             expeditionsLeft--;
             DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/5`;
 
@@ -849,7 +826,6 @@
             selectRegion(currentRegionId);
         }
 
-        // 요청 4: 내일로 클릭 시 풀스크린 검은 화면 + 타이프라이터 효과
         function advanceDay() {
             currentDay++;
             expeditionsLeft = 5;
@@ -886,34 +862,6 @@
 
             updateAllRegionsState();
             if (currentRegionId) selectRegion(currentRegionId);
-
-            showDayTypewriterOverlay(`DAY ${currentDay}`);
-        }
-
-        function showDayTypewriterOverlay(text) {
-            if (typewriterTimeout) clearTimeout(typewriterTimeout);
-            
-            DOM.dayOverlayText.innerText = "";
-            DOM.dayOverlay.classList.remove('hidden');
-
-            let index = 0;
-            function typeNextChar() {
-                if (index < text.length) {
-                    DOM.dayOverlayText.innerText += text.charAt(index);
-                    index++;
-                    typewriterTimeout = setTimeout(typeNextChar, 120);
-                } else {
-                    typewriterTimeout = setTimeout(dismissDayOverlay, 1000);
-                }
-            }
-
-            typeNextChar();
-        }
-
-        function dismissDayOverlay() {
-            if (typewriterTimeout) clearTimeout(typewriterTimeout);
-            DOM.dayOverlay.classList.add('hidden');
-            DOM.dayOverlayText.innerText = "";
         }
 
         function updateAllRegionsState() {
@@ -1136,14 +1084,14 @@
 
         function updateTransform() {
             DOM.svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            DOM.hudZoom.innerText = Math.round((scale / BASE_SCALE) * 100);
+            DOM.hudZoom.innerText = Math.round(scale * 100);
         }
 
         function resetView() {
-            scale = BASE_SCALE;
+            scale = 0.4;
             
-            const targetX = REGIONS_DATA.elf.center.x;
-            const targetY = REGIONS_DATA.elf.center.y;
+            const targetX = (REGIONS_DATA.fairy.center.x + REGIONS_DATA.witch.center.x) / 2;
+            const targetY = (REGIONS_DATA.fairy.center.y + REGIONS_DATA.witch.center.y) / 2;
 
             const viewportWidth = DOM.viewport.clientWidth;
             const viewportHeight = DOM.viewport.clientHeight;
