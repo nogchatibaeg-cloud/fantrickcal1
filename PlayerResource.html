@@ -128,13 +128,13 @@
 
         if (!badgeEl) {
             badgeEl = document.createElement('div');
-            badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-1/2 ml-2 flex items-center gap-1 px-1.5 py-0.5 bg-slate-900/95 border border-emerald-500/80 rounded shadow-xl backdrop-blur-md animate-bounce pointer-events-none z-40 whitespace-nowrap';
+            badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-1/2 ml-2.5 flex items-center gap-1.5 px-2 py-1 bg-slate-900/95 border border-emerald-500/80 rounded-lg shadow-2xl backdrop-blur-md animate-bounce pointer-events-none z-50 whitespace-nowrap';
             itemEl.appendChild(badgeEl);
         }
 
         badgeEl.innerHTML = `
-            <i class="${resData.icon} ${resData.color} text-[9px]"></i>
-            <span class="text-[10px] font-black text-emerald-400 font-mono">+${gainAmounts[resourceId].toLocaleString()}</span>
+            <i class="${resData.icon} ${resData.color} text-[10px]"></i>
+            <span class="text-[11px] font-black text-emerald-400 font-mono">+${gainAmounts[resourceId].toLocaleString()}</span>
         `;
     }
 
