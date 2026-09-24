@@ -624,6 +624,9 @@
             if (window.renderPlayerResourcesUI) {
                 window.renderPlayerResourcesUI();
             }
+            if (window.notifyResourceGain) {
+                window.notifyResourceGain(id, amount);
+            }
         }
 
         function processTradeRewards(region, missionType, isMax = false) {
@@ -710,7 +713,7 @@
             addResource('gold', Math.floor(goldAmount * totalMult));
         }
 
-        function showRegionToast(region, isSuccess, pointGain, missionType, diceRoll, successRate) {
+        function showRegionToast(region, isSuccess, pointGain, missionType) {
             const toastG = document.createElementNS("http://www.w3.org/2000/svg", "g");
             toastG.setAttribute("transform", `translate(${region.center.x}, ${region.center.y - 90})`);
             
@@ -738,7 +741,35 @@
                         <div class="flex flex-col justify-center leading-tight">
                             <span class="text-lg font-black tracking-tight" style="color: ${badgeBorder};">${resultTitle}</span>
                             <span class="text-sm font-bold text-slate-200 mt-1">${changeText}</span>
-                            <span class="text-xs font-medium text-slate-400 mt-1">확률 ${successRate}% (주사위 ${diceRoll})</span>
+                        </div>
+                    </div>
+                </foreignObject>
+            `;
+
+            DOM.toastLayer.appendChild(toastG);
+
+            setTimeout(() => {
+                if (toastG && toastG.parentNode) {
+                    toastG.parentNode.removeChild(toastG);
+                }
+            }, 3000);
+        }
+
+        function showExpeditionExhaustedToast(region) {
+            const toastG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            const posX = region ? region.center.x : 1000;
+            const posY = region ? region.center.y - 90 : 1000;
+            toastG.setAttribute("transform", `translate(${posX}, ${posY})`);
+
+            toastG.innerHTML = `
+                <foreignObject x="-150" y="-70" width="300" height="140" class="overflow-visible">
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="region-toast flex items-center gap-4 px-5 py-4 bg-slate-900/95 border-2 border-amber-500/80 rounded-2xl shadow-2xl backdrop-blur-md text-white" style="transform: scale(2.5); transform-origin: center;">
+                        <div class="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black flex-shrink-0 bg-amber-600 border-2 border-amber-400 text-white">
+                            ⚠️
+                        </div>
+                        <div class="flex flex-col justify-center leading-tight">
+                            <span class="text-lg font-black tracking-tight text-amber-400">원정 횟수 소진</span>
+                            <span class="text-sm font-bold text-slate-200 mt-1">오늘의 원정 횟수를 모두 사용했습니다.</span>
                         </div>
                     </div>
                 </foreignObject>
@@ -755,12 +786,13 @@
 
         function executeExpedition() {
             if (!currentRegionId) return;
+            const region = REGIONS_DATA[currentRegionId];
+
             if (expeditionsLeft <= 0) {
-                alert("오늘의 원정 횟수를 모두 소진했습니다. 내일로 버튼을 눌러 하루를 보내세요!");
+                showExpeditionExhaustedToast(region);
                 return;
             }
 
-            const region = REGIONS_DATA[currentRegionId];
             if (region.id === 'elf' || region.isOccupied || region.friendlyPoints >= 200) return;
 
             let successRate = 0;
@@ -805,7 +837,7 @@
             expeditionsLeft--;
             DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/5`;
 
-            showRegionToast(region, isSuccess, pointGain, missionType, roll, successRate);
+            showRegionToast(region, isSuccess, pointGain, missionType);
 
             updateAllRegionsState();
             selectRegion(currentRegionId);
@@ -813,7 +845,7 @@
 
         function advanceDay() {
             currentDay++;
-            expeditionsLeft = 3;
+            expeditionsLeft = 5;
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
             DOM.headerExpeditionCount.innerText = `5/5`;
 
