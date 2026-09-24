@@ -4,7 +4,6 @@
     if (document.getElementById('player-resource-root')) return;
 
     const externalContainer = document.getElementById('resource-module-container');
-    
     const container = externalContainer || document.createElement('div');
     container.id = 'player-resource-root';
     
@@ -32,58 +31,21 @@
         document.body.prepend(container);
     }
 
-    window.PLAYER_RESOURCES_DATA = [
-        {
-            id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "",
-            desc: "<b>모성에서도, 지구에서도 끊임없이 발휘되는, 무엇이든 만들 수 있는 기술력이다. 주로 우리 스스로 늘려야 한다.</b><br><br>\"엘프들의 기술력은 우주 제일!\" - 오르",
-            goodRegions: ["elf"], badRegions: []
-        },
-        {
-            id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W", max: 0,
-            desc: "<b>에너지를 여러 방식으로 가공하여 만들어낸, 문명에 그 무엇보다 소중한 자원. 반드시 우리 스스로 늘려야 한다. 저장할 배터리는 필수이다.</b><br><br>이게 ⚡엘레나님⚙️의 협조🤝로 만들어진 '엘레나-노바 테이저건 20🔫'다 순간 전력⚡ 1500볼트에 일회용🗑️인 전기지짐이가 충전 시간⏰ 24시간이고요. 친환경🌱 에너지 이용하고, 심지어 세일🏷️ 기간이ㄱ- 야! 내가 비효율적이라고 말하는거 빼랬지! - 알레트, 아이시아",
-            goodRegions: ["elf"], badRegions: ["fairy", "witch", "spirit", "dragon", "beast", "ghost"]
-        },
-        {
-            id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, unit: "",
-            desc: "<b>아무리 배고파도 죽진 않는 세계 같지만, 일단 고통스러운 건 마찬가지라 정상적으로 살기 위해선 반드시 필요하다. 가공해야 하루가 지날 때 먹일 수 있다. 주로 수인들에게서 얻을 수 있다. 유령과 정령들에게선 얻을 수 없다.</b><br><br>\"돈까스는 없나요?\" - 로네",
-            goodRegions: ["beast"], badRegions: ["spirit", "ghost"]
-        },
-        {
-            id: "leaf", name: "세계수 잎", icon: "fa-solid fa-leaf", color: "text-emerald-400", value: 0, unit: "",
-            desc: "<b>이곳의 세계수는 신적인 존재인 듯 하다. 신비한 현상을 일으킬 수 있다. 주로 요정과 마녀들에게서 얻을 수 있다. 유령들에게선 얻을 수 없다.</b><br><br>\"뭔가 엄청 비싸보이지 말입니다...\" - 칸나",
-            goodRegions: ["fairy", "witch"], badRegions: ["ghost"]
-        },
-        {
-            id: "mana", name: "마력", icon: "fa-solid fa-wand-magic-sparkles", color: "text-purple-400", value: 0, unit: "",
-            desc: "<b>이곳에선 재능에 따라 마법을 쓸 수 있는 듯 하다. 우리의 기술에 접목시킬 수 있다. 주로 마녀들에게서 얻을 수 있다. 수인들에게선 얻을 수 없다.</b><br><br>\"잘만 사용하면... 시장님 최면 마법도...!\" - 아멜리아",
-            goodRegions: ["witch"], badRegions: ["beast"]
-        },
-        {
-            id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, unit: "",
-            desc: "<b>이곳은 어디서 나오는지도 모를 광물들이 끊임없이 발생한다. 가공해야 사용 가능한 자재로 인정받는다. 주로 용족들에게서 얻을 수 있다. 요정들에게선 얻을 수 없다.</b><br><br>\"용족들이 시끄럽다면서 돌을 던진 적이 있는데, 주워보니 하나하나가 우리집 창문 가격급 보석이었어!\" - 페스타",
-            goodRegions: ["dragon"], badRegions: ["fairy"]
-        },
-        {
-            id: "energy", name: "에너지", icon: "fa-solid fa-bolt", color: "text-cyan-400", value: 0, unit: "",
-            desc: "<b>정령들은 문자 그대로 무한한 에너지를 지니고 있다. 마땅한 에너지원에 생기기 전에는 쓸만해보인다. 반드시 정령들에게서만 얻을 수 있다.</b><br><br>\"냉각기를 불 정령의 화력 발전으로 돌리는 건, 꽤 인지부조화 온단 말이지...\" - 아이시아",
-            goodRegions: ["spirit"], badRegions: ["fairy", "witch", "dragon", "beast", "ghost", "elf"]
-        },
-        {
-            id: "efficiency", name: "효율성", icon: "fa-solid fa-gauge-high", color: "text-rose-400", value: 0, unit: "%",
-            desc: "<b>오직 유령들만이 마음대로 차원문을 열고 닫을 수 있다. 극도로 까다롭지만, 이용할 수만 있다면...! 반드시 유령들에게서만 얻을 수 있다.</b><br><br>\"저저저런 거검증되지도 않은 차차차원문을 드드들어가라고요?!\" - 캐시",
-            goodRegions: ["ghost"], badRegions: ["fairy", "witch", "dragon", "spirit", "beast", "elf"]
-        },
-        {
-            id: "potato", name: "감자", icon: "fa-solid fa-database", color: "text-yellow-600", value: 3000927, unit: "개",
-            desc: "<b>식량 창고에는 감자와, 감자, 그 친구 감자와 그의 가족 감자, 그리고 감자가 있었다... 대략 300만 개가 존재한다.</b><br><br>\"모두를 골든 리트리버 정도 지능으로 만들어 버리는 무시무시한 바이러스의 행성이 있었지... 그곳에서 약 5년... 아니 3년 동안 감자만 먹고 살았다.\" - 헤일리",
-            goodRegions: [], badRegions: []
-        },
-        {
-            id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G",
-            desc: "<b>이곳에선 금본위제를 쓰는 줄 알았는데... 어느날 장식용 금고에 넣어 놓은 애착 게임기를 꺼내려다 골드가 쏟아져 나와 큰일날 뻔 했다. 자연 발생인 듯 하다.</b><br><br>\"제 다음으로 반짝거리며 카메라 렌즈 다음으로 반짝거리네요!\" - 하이디",
-            goodRegions: [], badRegions: []
-        }
-    ];
+    // 전역 자원 원본 배열 정의
+    if (!window.PLAYER_RESOURCES_DATA) {
+        window.PLAYER_RESOURCES_DATA = [
+            { id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "", desc: "<b>모성에서도, 지구에서도 끊임없이 발휘되는, 무엇이든 만들 수 있는 기술력이다. 주로 우리 스스로 늘려야 한다.</b><br><br>\"엘프들의 기술력은 우주 제일!\" - 오르", goodRegions: ["elf"], badRegions: [] },
+            { id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W", max: 100, desc: "<b>에너지를 여러 방식으로 가공하여 만들어낸 자원. 문명에 필수적이다.</b>", goodRegions: ["elf"], badRegions: ["fairy", "witch", "spirit", "dragon", "beast", "ghost"] },
+            { id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, unit: "", desc: "<b>가공해야 식사로 이용 가능합니다. 수인들에게서 주로 얻습니다.</b>", goodRegions: ["beast"], badRegions: ["spirit", "ghost"] },
+            { id: "leaf", name: "세계수 잎", icon: "fa-solid fa-leaf", color: "text-emerald-400", value: 0, unit: "", desc: "<b>신비한 현상을 일으키는 세계수의 잎사귀.</b>", goodRegions: ["fairy", "witch"], badRegions: ["ghost"] },
+            { id: "mana", name: "마력", icon: "fa-solid fa-wand-magic-sparkles", color: "text-purple-400", value: 0, unit: "", desc: "<b>기술 접목이 가능한 자원.</b>", goodRegions: ["witch"], badRegions: ["beast"] },
+            { id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, unit: "", desc: "<b>건축 및 가공 자재. 광물 자원.</b>", goodRegions: ["dragon"], badRegions: ["fairy"] },
+            { id: "energy", name: "에너지", icon: "fa-solid fa-bolt", color: "text-cyan-400", value: 0, unit: "", desc: "<b>정령들에게서 무한히 추출되는 에너지.</b>", goodRegions: ["spirit"], badRegions: ["fairy", "witch", "dragon", "beast", "ghost", "elf"] },
+            { id: "efficiency", name: "효율성", icon: "fa-solid fa-gauge-high", color: "text-rose-400", value: 0, unit: "%", desc: "<b>차원문 가동 효율.</b>", goodRegions: ["ghost"], badRegions: ["fairy", "witch", "dragon", "spirit", "beast", "elf"] },
+            { id: "potato", name: "감자", icon: "fa-solid fa-database", color: "text-yellow-600", value: 3000927, unit: "개", desc: "<b>주식으로 사용하는 감자.</b>", goodRegions: [], badRegions: [] },
+            { id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G", desc: "<b>기본 화폐.</b>", goodRegions: [], badRegions: [] }
+        ];
+    }
 
     const gainTimers = {};
     const gainAmounts = {};
@@ -91,15 +53,10 @@
     window.notifyResourceGain = function(resourceId, amount) {
         if (!amount || amount <= 0) return;
 
-        if (gainAmounts[resourceId]) {
-            gainAmounts[resourceId] += amount;
-        } else {
-            gainAmounts[resourceId] = amount;
-        }
+        if (gainAmounts[resourceId]) gainAmounts[resourceId] += amount;
+        else gainAmounts[resourceId] = amount;
 
-        if (gainTimers[resourceId]) {
-            clearTimeout(gainTimers[resourceId]);
-        }
+        if (gainTimers[resourceId]) clearTimeout(gainTimers[resourceId]);
 
         updateGainBadgeUI(resourceId);
 
@@ -118,7 +75,6 @@
         if (!resData) return;
 
         let badgeEl = itemEl.querySelector(`.resource-gain-badge`);
-
         if (!gainAmounts[resourceId]) {
             if (badgeEl) badgeEl.remove();
             return;
@@ -149,8 +105,6 @@
 
         listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
             let displayVal = '';
-
-            // 식량 및 자재의 미가공/가공 표기를 안전하게 계산
             if (res.id === 'food' || res.id === 'mineral') {
                 const proc = (res.processedValue || 0).toLocaleString();
                 const raw = (res.rawValue || 0).toLocaleString();
@@ -192,11 +146,8 @@
             });
         });
 
-        // 자원 목록이 다시 렌더링되어도 현재 표시 중인 모든 획득 알림을 복원합니다.
         Object.keys(gainAmounts).forEach(resourceId => {
-            if (gainAmounts[resourceId] > 0) {
-                updateGainBadgeUI(resourceId);
-            }
+            if (gainAmounts[resourceId] > 0) updateGainBadgeUI(resourceId);
         });
     };
 

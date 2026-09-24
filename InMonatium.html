@@ -170,19 +170,6 @@
     </div>
 
 <script>
-    window.PLAYER_RESOURCES_DATA = [
-        { id: "tech", name: "기술력", icon: "fa-solid fa-microchip", color: "text-teal-400", value: 10, unit: "", desc: "기술력입니다." },
-        { id: "power", name: "전력", icon: "fa-solid fa-bolt-lightning", color: "text-yellow-300", value: 0, unit: "W" },
-        { id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; } },
-        { id: "leaf", name: "세계수 잎", icon: "fa-solid fa-leaf", color: "text-emerald-400", value: 0 },
-        { id: "mana", name: "마력", icon: "fa-solid fa-wand-magic-sparkles", color: "text-purple-400", value: 0 },
-        { id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; } },
-        { id: "energy", name: "에너지", icon: "fa-solid fa-bolt", color: "text-cyan-400", value: 0 },
-        { id: "efficiency", name: "효율성", icon: "fa-solid fa-gauge-high", color: "text-rose-400", value: 0, unit: "%" },
-        { id: "potato", name: "감자", icon: "fa-solid fa-database", color: "text-yellow-600", value: 3000927, unit: "개" },
-        { id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G" }
-    ];
-
     const BUILDING_ICON_MAP = {
         potato1: 'fa-solid fa-industry',
         potato2: 'fa-solid fa-plug-circle-bolt',
@@ -196,7 +183,6 @@
     const CELL_SIZE = 160;
     const MAP_WIDTH = GRID_COLS * CELL_SIZE;  // 8000px
     const MAP_HEIGHT = GRID_ROWS * CELL_SIZE; // 4000px
-    const OUTDOOR_MARGIN = 1500; 
 
     const canvas = document.getElementById('map-canvas');
     const ctx = canvas.getContext('2d');
@@ -217,7 +203,7 @@
     let isBlueprintMode = false; 
     let animationFrameId = null;
 
-    const placedBuildings = [];
+    window.placedBuildings = window.placedBuildings || [];
     let currentPlacingBuilding = null;
     let selectedBuildingForAction = null;
     let isMovingExistingBuilding = false;
@@ -225,13 +211,10 @@
 
     let mouseGridCol = -1;
     let mouseGridRow = -1;
-
     let viewportRect = { left: 0, top: 0 };
 
     function updateViewportRect() {
-        if (viewport) {
-            viewportRect = viewport.getBoundingClientRect();
-        }
+        if (viewport) viewportRect = viewport.getBoundingClientRect();
     }
 
     const citizens = [];
@@ -344,7 +327,7 @@
 
     function isSpaceOccupied(col, row, width = 2, height = 2, ignoreBuilding = null) {
         if (col < 0 || row < 0 || col + width > GRID_COLS || row + height > GRID_ROWS) return true;
-        return placedBuildings.some(b => {
+        return window.placedBuildings.some(b => {
             if (ignoreBuilding && b === ignoreBuilding) return false;
             return (col < b.col + 2 && col + width > b.col &&
                     row < b.row + 2 && row + height > b.row);
@@ -380,19 +363,16 @@
             const visibleBottom = Math.min(GRID_ROWS, Math.ceil(((viewH - cameraY) / scale) / CELL_SIZE) + 1);
 
             ctx.beginPath();
-
             for (let c = visibleLeft; c <= visibleRight; c++) {
                 const x = c * CELL_SIZE;
                 ctx.moveTo(x, visibleTop * CELL_SIZE);
                 ctx.lineTo(x, visibleBottom * CELL_SIZE);
             }
-
             for (let r = visibleTop; r <= visibleBottom; r++) {
                 const y = r * CELL_SIZE;
                 ctx.moveTo(visibleLeft * CELL_SIZE, y);
                 ctx.lineTo(visibleRight * CELL_SIZE, y);
             }
-
             ctx.stroke();
 
             ctx.strokeStyle = '#ffffff';
@@ -402,7 +382,6 @@
 
         citizens.forEach(citizen => {
             citizen.update();
-
             const half = citizen.size / 2;
             const visible =
                 citizen.x + half >= -cameraX / scale &&
@@ -410,9 +389,7 @@
                 citizen.y + half >= -cameraY / scale &&
                 citizen.y - half <= (viewH - cameraY) / scale;
 
-            if (visible) {
-                citizen.draw(ctx);
-            }
+            if (visible) citizen.draw(ctx);
         });
 
         if (currentPlacingBuilding &&
@@ -432,9 +409,7 @@
                 isMovingExistingBuilding ? originalPlacedBuildingData : null
             );
 
-            ctx.fillStyle = occupied
-                ? 'rgba(239, 68, 68, 0.45)'
-                : 'rgba(59, 130, 246, 0.45)';
+            ctx.fillStyle = occupied ? 'rgba(239, 68, 68, 0.45)' : 'rgba(59, 130, 246, 0.45)';
             ctx.fillRect(gx, gy, bw, bh);
 
             ctx.strokeStyle = occupied ? '#ef4444' : '#60a5fa';
@@ -443,7 +418,6 @@
         }
 
         ctx.restore();
-
         animationFrameId = requestAnimationFrame(render);
     }
 
@@ -482,20 +456,15 @@
         return wrapper;
     }
 
-    function addBuildingElement(b) {
+    window.addBuildingElement = function(b) {
         buildingHtmlLayer.appendChild(createBuildingElement(b));
-    }
+    };
 
     function removeBuildingElement(b) {
         if (b._el && b._el.parentNode) {
             b._el.parentNode.removeChild(b._el);
         }
         b._el = null;
-    }
-
-    function syncBuildingHtmlIcons() {
-        buildingHtmlLayer.innerHTML = '';
-        placedBuildings.forEach((b) => addBuildingElement(b));
     }
 
     function openDelOrMov(building) {
@@ -534,12 +503,13 @@
         if (!selectedBuildingForAction) return;
 
         if (action === 'delete') {
-            const idx = placedBuildings.indexOf(selectedBuildingForAction);
+            const idx = window.placedBuildings.indexOf(selectedBuildingForAction);
             if (idx !== -1) {
                 removeBuildingElement(selectedBuildingForAction);
-                placedBuildings.splice(idx, 1);
+                window.placedBuildings.splice(idx, 1);
             }
             closeDelOrMov();
+            if (window.saveGameState) window.saveGameState(true);
         } else if (action === 'move') {
             const buildingToMove = selectedBuildingForAction;
             closeDelOrMov();
@@ -547,8 +517,8 @@
             isMovingExistingBuilding = true;
             originalPlacedBuildingData = buildingToMove;
 
-            const idx = placedBuildings.indexOf(buildingToMove);
-            if (idx !== -1) placedBuildings.splice(idx, 1);
+            const idx = window.placedBuildings.indexOf(buildingToMove);
+            if (idx !== -1) window.placedBuildings.splice(idx, 1);
             removeBuildingElement(buildingToMove);
 
             startBuildingPlacement(buildingToMove.data);
@@ -582,11 +552,11 @@
             const ignoreObj = isMovingExistingBuilding ? originalPlacedBuildingData : null;
             if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, ignoreObj)) {
                 
-                if (!isMovingExistingBuilding) {
+                if (!isMovingExistingBuilding && window.PLAYER_RESOURCES_DATA) {
                     const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
                     const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
 
-                    if (potatoRes) potatoRes.value -= currentPlacingBuilding.reqPotato;
+                    if (potatoRes) potatoRes.value -= (currentPlacingBuilding.reqPotato || 0);
                     if (techRes) techRes.value += 5;
                     if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
                 }
@@ -596,7 +566,7 @@
                     row: mouseGridRow,
                     data: currentPlacingBuilding
                 };
-                placedBuildings.push(newBuilding);
+                window.placedBuildings.push(newBuilding);
 
                 addBuildingElement(newBuilding);
                 finishBuildingPlacement();
@@ -681,7 +651,7 @@
 
     window.cancelBuildingPlacement = function() {
         if (isMovingExistingBuilding && originalPlacedBuildingData) {
-            placedBuildings.push(originalPlacedBuildingData);
+            window.placedBuildings.push(originalPlacedBuildingData);
             addBuildingElement(originalPlacedBuildingData);
         }
 
@@ -698,6 +668,7 @@
         originalPlacedBuildingData = null;
 
         restoreCraftingUI();
+        if (window.saveGameState) window.saveGameState(true);
     }
 
     function restoreCraftingUI() {

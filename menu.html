@@ -1,142 +1,156 @@
 <!-- menu.html -->
 <style>
-    /* Drawer Menu Style */
-    #global-menu-drawer {
+    /* 상단 중앙 서랍 토글 버튼 */
+    #menu-drawer-toggle-btn {
         position: fixed;
         top: 0;
-        right: -320px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100000;
+        background: #1e1e24;
+        color: #60a5fa;
+        border: 2px solid #3b82f6;
+        border-top: none;
+        padding: 6px 22px;
+        border-bottom-left-radius: 14px;
+        border-bottom-right-radius: 14px;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 0.85rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        transition: all 0.25s ease;
+    }
+    #menu-drawer-toggle-btn:hover {
+        background: #2563eb;
+        color: #ffffff;
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    /* 오른쪽 상단 서랍 메뉴 패널 */
+    #global-menu-drawer {
+        position: fixed;
+        top: -420px;
+        right: 20px;
         width: 300px;
-        height: 100vh;
         background-color: #1e1e24;
         color: #ffffff;
-        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
-        transition: right 0.3s ease-in-out;
+        border-bottom-left-radius: 18px;
+        border-bottom-right-radius: 18px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+        transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         z-index: 99999;
         display: flex;
         flex-direction: column;
         padding: 20px;
         box-sizing: border-box;
-        font-family: sans-serif;
+        border: 2px solid #3b82f6;
+        border-top: none;
     }
     #global-menu-drawer.open {
-        right: 0;
+        top: 0;
     }
-    #menu-drawer-toggle-btn {
-        position: fixed;
-        top: 15px;
-        right: 15px;
-        z-index: 100000;
-        background: #2b2d42;
-        color: #fff;
-        border: 1px solid #4a4e69;
-        padding: 10px 14px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
+
     .menu-header {
-        font-size: 1.2rem;
-        font-weight: bold;
-        border-bottom: 2px solid #4a4e69;
+        font-size: 1.05rem;
+        font-weight: 800;
+        border-bottom: 2px solid #374151;
         padding-bottom: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
+        text-align: center;
+        color: #60a5fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
     .menu-btn {
-        background: #3a3d52;
+        background: #2b2d42;
         color: #fff;
-        border: none;
-        padding: 12px;
-        border-radius: 6px;
-        margin-bottom: 10px;
+        border: 1px solid #4b5563;
+        padding: 10px 14px;
+        border-radius: 10px;
+        margin-bottom: 8px;
         cursor: pointer;
-        text-align: left;
-        font-size: 0.95rem;
-        transition: background 0.2s;
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
-    .menu-btn:hover {
-        background: #4a4e69;
-    }
-    .menu-btn.danger {
-        background: #8d99ae;
-        color: #d90429;
-        font-weight: bold;
-        margin-top: auto;
-    }
-    .menu-btn.danger:hover {
-        background: #d90429;
-        color: #fff;
-    }
+    .menu-btn:hover { background: #3b82f6; border-color: #60a5fa; }
+    .menu-btn.danger { background: #7f1d1d; color: #fca5a5; border-color: #ef4444; margin-top: 10px; }
+    .menu-btn.danger:hover { background: #dc2626; color: #fff; }
     
     /* Confirm Modal */
     #menu-confirm-modal {
         display: none;
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.8);
         z-index: 100001;
         justify-content: center;
         align-items: center;
+        backdrop-filter: blur(4px);
     }
-    #menu-confirm-modal.active {
-        display: flex;
-    }
-    .modal-box {
-        background: #2b2d42;
-        padding: 20px;
-        border-radius: 8px;
-        text-align: center;
-        max-width: 300px;
-    }
-    .modal-btns {
-        margin-top: 15px;
-        display: flex;
-        justify-content: space-around;
-    }
-    .modal-btns button {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
+    #menu-confirm-modal.active { display: flex; }
+    .modal-box { background: #1e1e24; border: 2px solid #ef4444; padding: 22px; border-radius: 18px; text-align: center; max-width: 320px; color: white; box-shadow: 0 20px 40px rgba(0,0,0,0.8); }
+    .modal-btns { margin-top: 18px; display: flex; justify-content: space-around; gap: 10px; }
+    .modal-btns button { flex: 1; padding: 10px 16px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+    .modal-btns button:hover { opacity: 0.9; }
 
-    /* Toast Msg */
+    /* Toast */
     #menu-toast-msg {
         position: fixed;
-        bottom: -50px;
+        bottom: -60px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.85);
-        color: #fff;
-        padding: 10px 20px;
+        background: rgba(15, 23, 42, 0.95);
+        color: #38bdf8;
+        border: 1px solid #0284c7;
+        padding: 10px 24px;
         border-radius: 20px;
         z-index: 100002;
-        transition: bottom 0.3s ease;
+        transition: bottom 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         pointer-events: none;
+        font-weight: 800;
+        font-size: 0.85rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
-    #menu-toast-msg.show {
-        bottom: 20px;
-    }
+    #menu-toast-msg.show { bottom: 30px; }
 </style>
 
-<button id="menu-drawer-toggle-btn">☰ 메뉴</button>
+<button id="menu-drawer-toggle-btn">▼ MENU</button>
 
 <div id="global-menu-drawer">
-    <div class="menu-header">게임 메뉴</div>
-    <button class="menu-btn" id="btn-action-save">💾 게임 저장</button>
-    <button class="menu-btn" id="btn-action-export">📤 세이브 파일 내보내기</button>
-    <button class="menu-btn" id="btn-action-import">📥 세이브 파일 불러오기</button>
+    <div class="menu-header">
+        <i class="fa-solid fa-gamepad"></i>
+        <span>게임 메뉴</span>
+    </div>
+    <button class="menu-btn" id="btn-action-save">
+        <i class="fa-solid fa-floppy-disk"></i> 수동 저장하기
+    </button>
+    <button class="menu-btn" id="btn-action-export">
+        <i class="fa-solid fa-file-export"></i> 세이브 파일 내보내기
+    </button>
+    <button class="menu-btn" id="btn-action-import">
+        <i class="fa-solid fa-file-import"></i> 세이브 파일 불러오기
+    </button>
     <input type="file" id="input-import-file" accept=".json" style="display: none;" />
     
-    <button class="menu-btn danger" id="btn-action-reset">⚠️ 데이터 초기화</button>
+    <button class="menu-btn danger" id="btn-action-reset">
+        <i class="fa-solid fa-triangle-exclamation"></i> 데이터 초기화
+    </button>
 </div>
 
 <div id="menu-confirm-modal">
     <div class="modal-box">
-        <p>정말로 모든 진행 데이터를 초기화하시겠습니까?</p>
+        <p class="font-bold text-sm leading-relaxed">정말로 모든 진행 데이터(건물, 적대 우호도, 자원)를 초기화하시겠습니까?</p>
         <div class="modal-btns">
-            <button id="btn-confirm-yes" style="background:#d90429; color:white;">예</button>
-            <button id="btn-confirm-no" style="background:#8d99ae; color:white;">아니오</button>
+            <button id="btn-confirm-yes" style="background:#dc2626; color:white;">초기화</button>
+            <button id="btn-confirm-no" style="background:#4b5563; color:white;">취소</button>
         </div>
     </div>
 </div>
@@ -144,26 +158,28 @@
 <div id="menu-toast-msg"><span id="menu-toast-text">저장되었습니다.</span></div>
 
 <script>
-if (window.location.pathname.includes('loading.html')) {
-    const drawer = document.getElementById('global-menu-drawer');
-    const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
-    if (drawer) drawer.style.display = 'none';
-    if (toggleBtn) toggleBtn.style.display = 'none';
-} else {
-    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
-    const AUTO_SAVE_INTERVAL = 5 * 60 * 1000; // 5분 자동 저장
+(function() {
+    if (window.location.pathname.includes('loading.html')) {
+        const drawer = document.getElementById('global-menu-drawer');
+        const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
+        if (drawer) drawer.style.display = 'none';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        return;
+    }
 
-    // 1. 현재 화면의 데이터를 기존 세이브 데이터와 통합 (Merge)
-    function collectAllGameData() {
+    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
+
+    // 1. 전역 통합 데이터 수집 (모나티엄 건물 배치 + 지역 우호도 + 자원 수치)
+    window.collectAllGameData = function() {
         let existingData = {};
         try {
             const raw = localStorage.getItem(SAVE_KEY);
             if (raw) existingData = JSON.parse(raw);
         } catch (e) {
-            console.error("기존 세이브 데이터 읽기 실패:", e);
+            console.error("[SaveEngine] 세이브 읽기 실패:", e);
         }
 
-        // A. 자원 데이터 수집
+        // 자원 정보 수집
         let resources = existingData.resources || null;
         if (window.PLAYER_RESOURCES_DATA) {
             resources = window.PLAYER_RESOURCES_DATA.map(r => ({
@@ -174,16 +190,16 @@ if (window.location.pathname.includes('loading.html')) {
             }));
         }
 
-        // B. 지도(Gamemap) 데이터 수집
+        // 지도 및 적대/우호도 수집
         let mapData = existingData.mapData || { currentDay: 1, expeditionsLeft: 5, regions: null };
-        if (typeof currentDay !== 'undefined') mapData.currentDay = currentDay;
-        if (typeof expeditionsLeft !== 'undefined') mapData.expeditionsLeft = expeditionsLeft;
-        if (typeof REGIONS_DATA !== 'undefined') mapData.regions = JSON.parse(JSON.stringify(REGIONS_DATA));
+        if (typeof window.currentDay !== 'undefined') mapData.currentDay = window.currentDay;
+        if (typeof window.expeditionsLeft !== 'undefined') mapData.expeditionsLeft = window.expeditionsLeft;
+        if (typeof window.REGIONS_DATA !== 'undefined') mapData.regions = JSON.parse(JSON.stringify(window.REGIONS_DATA));
 
-        // C. 모나티엄(InMonatium) 건물 배치 데이터 수집
+        // 모나티엄 건물 수집
         let buildings = existingData.buildings || [];
-        if (typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings) && placedBuildings.length > 0) {
-            buildings = placedBuildings.map(b => ({
+        if (typeof window.placedBuildings !== 'undefined' && Array.isArray(window.placedBuildings)) {
+            buildings = window.placedBuildings.map(b => ({
                 col: b.col, 
                 row: b.row, 
                 data: b.data
@@ -192,33 +208,32 @@ if (window.location.pathname.includes('loading.html')) {
 
         return {
             saveTime: new Date().toISOString(),
+            lastTickTime: existingData.lastTickTime || Date.now(),
             resources: resources,
             mapData: mapData,
             buildings: buildings
         };
-    }
+    };
 
-    // 2. 통합 세이브 함수
+    // 2. 통합 세이브
     window.saveGameState = function(isAuto = false) {
         try {
-            const data = collectAllGameData();
+            const data = window.collectAllGameData();
             localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-            console.log('[SaveSystem] 데이터 저장 완료:', data);
             if (!isAuto) showSaveToast("게임 데이터가 성공적으로 저장되었습니다.");
         } catch (err) {
-            console.error("[SaveSystem] 저장 실패:", err);
-            if (!isAuto) showSaveToast("저장 중 오류가 발생했습니다.");
+            console.error("[SaveEngine] 저장 오류:", err);
         }
     };
 
-    // 3. 통합 로드 함수
+    // 3. 통합 로드
     window.loadGameState = function() {
         try {
             const raw = localStorage.getItem(SAVE_KEY);
             if (!raw) return null;
             const parsed = JSON.parse(raw);
 
-            // A. 자원 데이터 동기화
+            // 자원 복원
             if (parsed.resources && window.PLAYER_RESOURCES_DATA) {
                 parsed.resources.forEach(savedRes => {
                     const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
@@ -233,61 +248,102 @@ if (window.location.pathname.includes('loading.html')) {
                 }
             }
 
-            // B. 지도(Gamemap) 데이터 동기화
+            // 지도 및 적대 우호도 복원
             if (parsed.mapData) {
-                if (typeof currentDay !== 'undefined' && parsed.mapData.currentDay) {
+                if (parsed.mapData.currentDay !== undefined) {
                     window.currentDay = parsed.mapData.currentDay;
                     const el = document.getElementById('header-day-count');
                     if (el) el.innerText = `Day ${window.currentDay}`;
                 }
-                if (typeof expeditionsLeft !== 'undefined' && parsed.mapData.expeditionsLeft) {
+                if (parsed.mapData.expeditionsLeft !== undefined) {
                     window.expeditionsLeft = parsed.mapData.expeditionsLeft;
                     const el = document.getElementById('header-expedition-count');
                     if (el) el.innerText = `${window.expeditionsLeft}/5`;
                 }
-                if (typeof REGIONS_DATA !== 'undefined' && parsed.mapData.regions) {
-                    Object.assign(REGIONS_DATA, parsed.mapData.regions);
-                    if (typeof renderStatusBadges === 'function') renderStatusBadges();
+                if (window.REGIONS_DATA && parsed.mapData.regions) {
+                    Object.assign(window.REGIONS_DATA, parsed.mapData.regions);
+                    if (typeof window.renderStatusBadges === 'function') window.renderStatusBadges();
                 }
             }
 
-            // C. 모나티엄(InMonatium) 건물 동기화
-            if (parsed.buildings && typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings)) {
-                placedBuildings.length = 0;
+            // 모나티엄 건물 배치 복원
+            if (parsed.buildings && window.placedBuildings && Array.isArray(window.placedBuildings)) {
+                window.placedBuildings.length = 0;
                 const buildingLayer = document.getElementById('building-html-layer');
                 if (buildingLayer) buildingLayer.innerHTML = '';
 
                 parsed.buildings.forEach(b => {
-                    placedBuildings.push(b);
-                    if (typeof addBuildingElement === 'function') {
-                        addBuildingElement(b);
+                    window.placedBuildings.push(b);
+                    if (typeof window.addBuildingElement === 'function') {
+                        window.addBuildingElement(b);
                     }
                 });
             }
             return parsed;
         } catch (err) {
-            console.error("[SaveSystem] 불러오기 실패:", err);
+            console.error("[SaveEngine] 로드 오류:", err);
             return null;
         }
     };
 
-    // 4. 초기화 함수
-    window.clearGameState = function() {
-        localStorage.removeItem(SAVE_KEY);
-        window.location.reload();
-    };
+    // 4. 백그라운드 엔진 ("독립 메인 서버")
+    function runBackgroundServerTick() {
+        let raw = localStorage.getItem(SAVE_KEY);
+        let saveData = raw ? JSON.parse(raw) : window.collectAllGameData();
+        
+        let now = Date.now();
+        let lastTick = saveData.lastTickTime || now;
+        let elapsedSeconds = Math.floor((now - lastTick) / 1000);
+
+        if (elapsedSeconds > 0) {
+            // 연산: 설치된 모나티엄 발전소 건물에 따른 실시간 전력 수급
+            let powerRate = 0;
+            if (saveData.buildings) {
+                saveData.buildings.forEach(b => {
+                    if (b.data && b.data.id === 'potato2') powerRate += 1;
+                });
+            }
+
+            if (powerRate > 0 && window.PLAYER_RESOURCES_DATA) {
+                const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
+                if (powerRes) {
+                    const maxVal = powerRes.max || 100;
+                    powerRes.value = Math.min(maxVal, (powerRes.value || 0) + (powerRate * elapsedSeconds));
+                }
+            }
+
+            saveData.lastTickTime = now;
+            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+            if (typeof window.renderPlayerResourcesUI === 'function') {
+                window.renderPlayerResourcesUI();
+            }
+        }
+    }
+
+    // 1초 주기로 백그라운드 틱 실행
+    setInterval(runBackgroundServerTick, 1000);
+    runBackgroundServerTick(); // 초기 이탈 경과 시간 즉시 통산 계산
+
+    // 5. '마땅히 자동 저장' (Navigation & Unload Interceptor)
+    window.addEventListener('beforeunload', () => { window.saveGameState(true); });
+    window.addEventListener('pagehide', () => { window.saveGameState(true); });
+
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && !link.href.startsWith('javascript:')) {
+            window.saveGameState(true);
+        }
+    }, true);
 
     function showSaveToast(msg) {
         const toast = document.getElementById('menu-toast-msg');
         const toastText = document.getElementById('menu-toast-text');
         if (!toast || !toastText) return;
-
         toastText.innerText = msg;
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 2500);
+        setTimeout(() => toast.classList.remove('show'), 2200);
     }
 
-    // UI 이벤트 리스너 연결
     function setupMenuEvents() {
         const drawer = document.getElementById('global-menu-drawer');
         const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
@@ -304,6 +360,7 @@ if (window.location.pathname.includes('loading.html')) {
             toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 drawer.classList.toggle('open');
+                toggleBtn.innerText = drawer.classList.contains('open') ? '▲ CLOSE' : '▼ MENU';
             });
         }
 
@@ -319,20 +376,16 @@ if (window.location.pathname.includes('loading.html')) {
                 e.stopPropagation();
                 window.saveGameState(true);
                 const currentData = localStorage.getItem(SAVE_KEY);
-                if (!currentData) {
-                    showSaveToast("내보낼 데이터가 없습니다.");
-                    return;
-                }
+                if (!currentData) return;
                 const blob = new Blob([currentData], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `elias_save_backup_${new Date().toISOString().slice(0, 10)}.json`;
+                a.download = `elias_save_${new Date().toISOString().slice(0, 10)}.json`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 URL.revokeObjectURL(url);
-                showSaveToast("백업 파일이 다운로드되었습니다.");
             });
         }
 
@@ -345,20 +398,15 @@ if (window.location.pathname.includes('loading.html')) {
             inputImportFile.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        if (parsed && (parsed.resources || parsed.mapData || parsed.buildings)) {
-                            localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
-                            showSaveToast("백업 데이터를 적용했습니다.");
-                            setTimeout(() => window.location.reload(), 1000);
-                        } else {
-                            alert("올바르지 않은 세이브 파일 형식입니다.");
-                        }
+                        localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+                        showSaveToast("데이터가 복구되었습니다.");
+                        setTimeout(() => window.location.reload(), 600);
                     } catch (err) {
-                        alert("세이브 파일을 읽는 도중 오류가 발생했습니다.");
+                        alert("유효하지 않은 파일입니다.");
                     }
                 };
                 reader.readAsText(file);
@@ -373,16 +421,16 @@ if (window.location.pathname.includes('loading.html')) {
             });
         }
 
-        if (btnYes) btnYes.addEventListener('click', () => window.clearGameState());
-        if (btnNo) btnNo.addEventListener('click', () => { if (confirmModal) confirmModal.classList.remove('active'); });
+        if (btnYes) btnYes.addEventListener('click', () => {
+            localStorage.removeItem(SAVE_KEY);
+            window.location.reload();
+        });
+        if (btnNo) btnNo.addEventListener('click', () => {
+            if (confirmModal) confirmModal.classList.remove('active');
+        });
     }
 
     setupMenuEvents();
     window.loadGameState();
-
-    // 5분 마다 자동 저장
-    setInterval(() => {
-        window.saveGameState(true);
-    }, AUTO_SAVE_INTERVAL);
-}
+})();
 </script>
