@@ -45,7 +45,6 @@
         },
         {
             id: "food", name: "식량", icon: "fa-solid fa-utensils", color: "text-orange-400", rawValue: 0, processedValue: 0, unit: "",
-            get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
             desc: "<b>아무리 배고파도 죽진 않는 세계 같지만, 일단 고통스러운 건 마찬가지라 정상적으로 살기 위해선 반드시 필요하다. 가공해야 하루가 지날 때 먹일 수 있다. 주로 수인들에게서 얻을 수 있다. 유령과 정령들에게선 얻을 수 없다.</b><br><br>\"돈까스는 없나요?\" - 로네",
             goodRegions: ["beast"], badRegions: ["spirit", "ghost"]
         },
@@ -61,7 +60,6 @@
         },
         {
             id: "mineral", name: "자재", icon: "fa-solid fa-gem", color: "text-amber-400", rawValue: 0, processedValue: 0, unit: "",
-            get value() { return `${this.processedValue} (미가공 ${this.rawValue})`; },
             desc: "<b>이곳은 어디서 나오는지도 모를 광물들이 끊임없이 발생한다. 가공해야 사용 가능한 자재로 인정받는다. 주로 용족들에게서 얻을 수 있다. 요정들에게선 얻을 수 없다.</b><br><br>\"용족들이 시끄럽다면서 돌을 던진 적이 있는데, 주워보니 하나하나가 우리집 창문 가격급 보석이었어!\" - 페스타",
             goodRegions: ["dragon"], badRegions: ["fairy"]
         },
@@ -128,12 +126,10 @@
 
         if (!badgeEl) {
             badgeEl = document.createElement('div');
-            // -translate-y-[calc(50%+5px)] : 이미지 속 알림 레이아웃을 그대로 유지하면서 위치만 정확히 위로 5px 올려줍니다.
             badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-[calc(50%+5px)] ml-2.5 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/95 border border-emerald-500/80 rounded-lg shadow-2xl backdrop-blur-md animate-bounce pointer-events-none z-50 whitespace-nowrap';
             itemEl.appendChild(badgeEl);
         }
 
-        // 이미지에 맞춰 각 자원의 고유 아이콘 + 자원 색상 + 초록색 수치 형태로 렌더링
         badgeEl.innerHTML = `
             <i class="${resData.icon} ${resData.color} text-[11px]"></i>
             <span class="text-[11px] font-black text-emerald-400 font-mono">+${gainAmounts[resourceId].toLocaleString()}</span>
@@ -152,7 +148,18 @@
         if (!listContainer) return;
 
         listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
-            const displayVal = (typeof res.value === 'number') ? res.value.toLocaleString() : res.value;
+            let displayVal = '';
+
+            // 식량 및 자재의 미가공/가공 표기를 안전하게 계산
+            if (res.id === 'food' || res.id === 'mineral') {
+                const proc = (res.processedValue || 0).toLocaleString();
+                const raw = (res.rawValue || 0).toLocaleString();
+                displayVal = `${proc} (미가공 ${raw})`;
+            } else if (typeof res.value === 'number') {
+                displayVal = res.value.toLocaleString();
+            } else {
+                displayVal = res.value || '0';
+            }
 
             return `
             <div class="resource-item group relative flex items-center justify-between cursor-pointer py-0.5" data-resource-id="${res.id}">
