@@ -864,8 +864,7 @@
 </script>
 <div id="save-module-container"></div>
     <script>
-        // save.html을 불러와 화면에 주입
-        fetch('save.html')
+        fetch('menu.html')
             .then(response => response.text())
             .then(html => {
                 const container = document.getElementById('save-module-container');
@@ -880,7 +879,7 @@
                     oldScript.parentNode.replaceChild(newScript, oldScript);
                 });
             })
-            .catch(err => console.error('save.html 로드 실패:', err));
+            .catch(err => console.error('menu.html 로드 실패:', err));
     </script>
 </body>
 </html>
