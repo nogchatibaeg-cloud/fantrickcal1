@@ -87,17 +87,66 @@
         }
     ];
 
+    const gainTimers = {};
+    const gainAmounts = {};
+
+    window.notifyResourceGain = function(resourceId, amount) {
+        if (!amount || amount <= 0) return;
+
+        if (gainAmounts[resourceId]) {
+            gainAmounts[resourceId] += amount;
+        } else {
+            gainAmounts[resourceId] = amount;
+        }
+
+        if (gainTimers[resourceId]) {
+            clearTimeout(gainTimers[resourceId]);
+        }
+
+        updateGainBadgeUI(resourceId);
+
+        gainTimers[resourceId] = setTimeout(() => {
+            delete gainAmounts[resourceId];
+            delete gainTimers[resourceId];
+            updateGainBadgeUI(resourceId);
+        }, 3000);
+    };
+
+    function updateGainBadgeUI(resourceId) {
+        const itemEl = document.querySelector(`.resource-item[data-resource-id="${resourceId}"]`);
+        if (!itemEl) return;
+
+        let badgeEl = itemEl.querySelector('.resource-gain-badge');
+
+        if (!gainAmounts[resourceId]) {
+            if (badgeEl) badgeEl.remove();
+            return;
+        }
+
+        if (!badgeEl) {
+            badgeEl = document.createElement('span');
+            badgeEl.className = 'resource-gain-badge text-[9px] font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-1 rounded ml-1 animate-pulse';
+            itemEl.querySelector('.flex.items-center.gap-1.5').appendChild(badgeEl);
+        }
+
+        badgeEl.textContent = `+${gainAmounts[resourceId].toLocaleString()}`;
+    }
+
     window.renderPlayerResourcesUI = function() {
         const listContainer = document.getElementById('resource-list-container');
         if (!listContainer) return;
 
         listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
             const displayVal = (typeof res.value === 'number') ? res.value.toLocaleString() : res.value;
+            const currentGain = gainAmounts[res.id];
+            const gainBadgeHTML = currentGain ? `<span class="resource-gain-badge text-[9px] font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-1 rounded ml-1 animate-pulse">+${currentGain.toLocaleString()}</span>` : '';
+
             return `
             <div class="resource-item group flex items-center justify-between cursor-pointer py-0.5" data-resource-id="${res.id}">
                 <div class="flex items-center gap-1.5 truncate">
                     <i class="${res.icon} ${res.color} text-[10px] w-3.5 text-center"></i>
                     <span class="text-slate-300 font-bold truncate text-[10px]">${res.name}</span>
+                    ${gainBadgeHTML}
                 </div>
                 <span class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}${res.unit || ''}</span>
                 
