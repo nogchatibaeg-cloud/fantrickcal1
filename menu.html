@@ -5,7 +5,8 @@
         position: fixed;
         top: 0;
         left: 50%;
-        transform: translateX(-50%) translateY(-100%);
+        /* 닫힌 상태에서도 손잡이(높이 22px)는 화면에 보이도록 22px만큼 남겨둠 */
+        transform: translateX(-50%) translateY(calc(-100% + 22px));
         z-index: 9999;
         display: flex;
         flex-direction: column;
