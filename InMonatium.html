@@ -183,8 +183,6 @@
         { id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G" }
     ];
 
-    // 건물 iframe 대신 부모 문서에서 직접 렌더링하기 위한 아이콘 매핑
-    // (potato1~5.html 의 아이콘 클래스와 동일하게 유지)
     const BUILDING_ICON_MAP = {
         potato1: 'fa-solid fa-industry',
         potato2: 'fa-solid fa-plug-circle-bolt',
@@ -297,8 +295,6 @@
     }
 
     function resizeCanvas() {
-        // 실제 Canvas는 화면 크기만 사용합니다.
-        // 8000x4000 전체 맵을 매 프레임 렌더링하던 구조를 제거합니다.
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = Math.max(1, Math.floor(viewport.clientWidth * dpr));
         canvas.height = Math.max(1, Math.floor(viewport.clientHeight * dpr));
@@ -355,8 +351,6 @@
         });
     }
 
-    // 렌더링 최적화
-    // Canvas는 viewport 크기이며, 월드 좌표를 카메라에 맞춰 그립니다.
     function render() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const viewW = viewport.clientWidth;
@@ -369,7 +363,6 @@
         ctx.translate(cameraX, cameraY);
         ctx.scale(scale, scale);
 
-        // 맵 전체를 칠하지 않고 현재 화면에 필요한 영역만 표시합니다.
         ctx.fillStyle = isOuterRegion ? '#475569' : '#4ab255';
         ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
@@ -381,7 +374,6 @@
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
             ctx.lineWidth = 1.5 / scale;
 
-            // 화면에 들어오는 격자선만 계산합니다.
             const visibleLeft = Math.max(0, Math.floor((-cameraX / scale) / CELL_SIZE) - 1);
             const visibleRight = Math.min(GRID_COLS, Math.ceil(((viewW - cameraX) / scale) / CELL_SIZE) + 1);
             const visibleTop = Math.max(0, Math.floor((-cameraY / scale) / CELL_SIZE) - 1);
@@ -408,7 +400,6 @@
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
         }
 
-        // 시민은 월드 좌표에서 업데이트하되, 화면 밖이면 그리지 않습니다.
         citizens.forEach(citizen => {
             citizen.update();
 
@@ -424,7 +415,6 @@
             }
         });
 
-        // 배치 미리보기
         if (currentPlacingBuilding &&
             mouseGridCol >= 0 && mouseGridRow >= 0 &&
             mouseGridCol < GRID_COLS && mouseGridRow < GRID_ROWS) {
@@ -457,7 +447,6 @@
         animationFrameId = requestAnimationFrame(render);
     }
 
-    // 건물 1개에 대한 DOM 요소 생성 (iframe 없이 직접 렌더링 -> Tailwind/FontAwesome 재로딩 방지)
     function createBuildingElement(b) {
         const bx = b.col * CELL_SIZE;
         const by = b.row * CELL_SIZE;
@@ -493,12 +482,10 @@
         return wrapper;
     }
 
-    // 건물 1개만 추가 (다른 건물의 DOM은 건드리지 않음 - 렉 방지 핵심)
     function addBuildingElement(b) {
         buildingHtmlLayer.appendChild(createBuildingElement(b));
     }
 
-    // 건물 1개만 제거 (다른 건물의 DOM은 건드리지 않음 - 렉 방지 핵심)
     function removeBuildingElement(b) {
         if (b._el && b._el.parentNode) {
             b._el.parentNode.removeChild(b._el);
@@ -506,8 +493,6 @@
         b._el = null;
     }
 
-    // 초기 로드 등 전체를 다시 그려야 할 때만 사용하는 전체 재생성 함수
-    // (평상시 배치/삭제/이동에는 더 이상 사용하지 않음)
     function syncBuildingHtmlIcons() {
         buildingHtmlLayer.innerHTML = '';
         placedBuildings.forEach((b) => addBuildingElement(b));
@@ -626,7 +611,6 @@
         startY = e.clientY - cameraY;
     });
 
-    // 리플로우 방지 마우스 이동 로직
     window.addEventListener('mousemove', (e) => {
         const mouseX = e.clientX - viewportRect.left;
         const mouseY = e.clientY - viewportRect.top;
@@ -870,7 +854,6 @@
                 const container = document.getElementById('save-module-container');
                 container.innerHTML = html;
                 
-                // 불러온 HTML 내의 <script> 태그를 실행시키기 위한 처리
                 const scripts = container.querySelectorAll('script');
                 scripts.forEach(oldScript => {
                     const newScript = document.createElement('script');

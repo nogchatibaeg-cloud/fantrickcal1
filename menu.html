@@ -1,475 +1,388 @@
 <!-- menu.html -->
 <style>
-    /* 1. 중앙 상단 메뉴 슬라이드 서랍 컨테이너 */
+    /* Drawer Menu Style */
     #global-menu-drawer {
         position: fixed;
         top: 0;
-        left: 50%;
-        /* 닫힌 상태에서도 손잡이(높이 22px)는 화면에 보이도록 22px만큼 남겨둠 */
-        transform: translateX(-50%) translateY(calc(-100% + 22px));
-        z-index: 9999;
+        right: -320px;
+        width: 300px;
+        height: 100vh;
+        background-color: #1e1e24;
+        color: #ffffff;
+        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
+        transition: right 0.3s ease-in-out;
+        z-index: 99999;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-        pointer-events: auto;
+        padding: 20px;
+        box-sizing: border-box;
+        font-family: sans-serif;
     }
-
-    /* 서랍 열림 상태 */
     #global-menu-drawer.open {
-        transform: translateX(-50%) translateY(0);
+        right: 0;
     }
-
-    /* 메뉴 패널 바디 */
-    .menu-drawer-content {
-        background-color: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(51, 65, 85, 0.9);
-        border-top: none;
-        border-bottom-left-radius: 1rem;
-        border-bottom-right-radius: 1rem;
-        padding: 0.75rem 1.25rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(12px);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    /* 메뉴 손잡이 (화살표 버튼) */
     #menu-drawer-toggle-btn {
-        width: 52px;
-        height: 22px;
-        background-color: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(51, 65, 85, 0.9);
-        border-top: none;
-        border-bottom-left-radius: 0.6rem;
-        border-bottom-right-radius: 0.6rem;
-        color: #fbbf24;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        z-index: 100000;
+        background: #2b2d42;
+        color: #fff;
+        border: 1px solid #4a4e69;
+        padding: 10px 14px;
+        border-radius: 8px;
         cursor: pointer;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(8px);
-        transition: all 0.2s ease;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-
-    #menu-drawer-toggle-btn:hover {
-        background-color: rgba(30, 41, 59, 1);
-        color: #f59e0b;
+    .menu-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-bottom: 2px solid #4a4e69;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
     }
-
-    #menu-drawer-toggle-btn i {
-        font-size: 0.85rem;
-        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    /* 서랍이 열렸을 때 화살표 반전 */
-    #global-menu-drawer.open #menu-drawer-toggle-btn i {
-        transform: rotate(180deg);
-    }
-
-    /* 메뉴 버튼 통일 스타일 */
-    .menu-action-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.5rem 0.875rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 900;
-        cursor: pointer;
-        transition: all 0.15s ease;
+    .menu-btn {
+        background: #3a3d52;
+        color: #fff;
         border: none;
-        white-space: nowrap;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        text-align: left;
+        font-size: 0.95rem;
+        transition: background 0.2s;
     }
-
-    /* 세이브 버튼 (녹색) */
-    .menu-btn-save {
-        background-color: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        border: 1px solid rgba(52, 211, 153, 0.4);
+    .menu-btn:hover {
+        background: #4a4e69;
     }
-    .menu-btn-save:hover {
-        background-color: rgba(16, 185, 129, 0.4);
-        color: #6ee7b7;
+    .menu-btn.danger {
+        background: #8d99ae;
+        color: #d90429;
+        font-weight: bold;
+        margin-top: auto;
     }
-
-    /* [추가] 백업/불러오기 버튼 스타일 (파란색 계열) */
-    .menu-btn-export {
-        background-color: rgba(59, 130, 246, 0.2);
-        color: #60a5fa;
-        border: 1px solid rgba(96, 165, 250, 0.4);
+    .menu-btn.danger:hover {
+        background: #d90429;
+        color: #fff;
     }
-    .menu-btn-export:hover {
-        background-color: rgba(59, 130, 246, 0.4);
-        color: #93c5fd;
-    }
-
-    .menu-btn-import {
-        background-color: rgba(168, 85, 247, 0.2);
-        color: #c084fc;
-        border: 1px solid rgba(192, 132, 252, 0.4);
-    }
-    .menu-btn-import:hover {
-        background-color: rgba(168, 85, 247, 0.4);
-        color: #e9d5ff;
-    }
-
-    /* 초기화 버튼 (빨간색) */
-    .menu-btn-reset {
-        background-color: rgba(239, 68, 68, 0.2);
-        color: #f87171;
-        border: 1px solid rgba(248, 113, 113, 0.4);
-    }
-    .menu-btn-reset:hover {
-        background-color: rgba(239, 68, 68, 0.4);
-        color: #fca5a5;
-    }
-
-    /* 2. 중앙 초기화 확인 모달 */
+    
+    /* Confirm Modal */
     #menu-confirm-modal {
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.75);
-        backdrop-filter: blur(6px);
-        z-index: 10000;
-        align-items: center;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 100001;
         justify-content: center;
+        align-items: center;
     }
     #menu-confirm-modal.active {
         display: flex;
     }
-    .menu-modal-card {
-        background-color: #0f172a;
-        border: 2px solid #ef4444;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        width: 320px;
+    .modal-box {
+        background: #2b2d42;
+        padding: 20px;
+        border-radius: 8px;
         text-align: center;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        max-width: 300px;
+    }
+    .modal-btns {
+        margin-top: 15px;
+        display: flex;
+        justify-content: space-around;
+    }
+    .modal-btns button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
     }
 
-    /* 3. 저장 결과 알림 토스트 */
+    /* Toast Msg */
     #menu-toast-msg {
         position: fixed;
-        bottom: 1.5rem;
-        right: 1.5rem;
-        z-index: 10001;
-        background-color: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(52, 211, 153, 0.8);
-        color: #34d399;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.75rem;
-        font-size: 0.8rem;
-        font-weight: 800;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(8px);
-        opacity: 0;
-        transform: translateY(10px);
-        transition: all 0.3s ease;
+        bottom: -50px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 20px;
+        z-index: 100002;
+        transition: bottom 0.3s ease;
         pointer-events: none;
     }
     #menu-toast-msg.show {
-        opacity: 1;
-        transform: translateY(0);
+        bottom: 20px;
     }
 </style>
 
-<!-- 상단 중앙 서랍 메뉴 UI -->
+<button id="menu-drawer-toggle-btn">☰ 메뉴</button>
+
 <div id="global-menu-drawer">
-    <div class="menu-drawer-content">
-        <!-- 세이브 버튼 -->
-        <button id="btn-action-save" class="menu-action-btn menu-btn-save" title="게임 데이터 저장">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span>저장</span>
-        </button>
-
-        <!-- [추가] 백업 파일 내보내기 버튼 -->
-        <button id="btn-action-export" class="menu-action-btn menu-btn-export" title="게임 데이터 내보내기 (JSON 백업)">
-            <i class="fa-solid fa-file-arrow-down"></i>
-            <span>내보내기</span>
-        </button>
-
-        <!-- [추가] 백업 파일 불러오기 버튼 -->
-        <button id="btn-action-import" class="menu-action-btn menu-btn-import" title="백업 파일 불러오기">
-            <i class="fa-solid fa-file-arrow-up"></i>
-            <span>불러오기</span>
-        </button>
-        <!-- hidden 파일 입력 요소 -->
-        <input type="file" id="input-import-file" accept=".json" style="display: none;" />
-
-        <!-- 초기화 버튼 -->
-        <button id="btn-action-reset" class="menu-action-btn menu-btn-reset" title="게임 데이터 초기화">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>초기화</span>
-        </button>
-    </div>
-    <!-- 아래로 펼치는 화살표 손잡이 -->
-    <button id="menu-drawer-toggle-btn" title="메뉴 열기/닫기">
-        <i class="fa-solid fa-chevron-down"></i>
-    </button>
+    <div class="menu-header">게임 메뉴</div>
+    <button class="menu-btn" id="btn-action-save">💾 게임 저장</button>
+    <button class="menu-btn" id="btn-action-export">📤 세이브 파일 내보내기</button>
+    <button class="menu-btn" id="btn-action-import">📥 세이브 파일 불러오기</button>
+    <input type="file" id="input-import-file" accept=".json" style="display: none;" />
+    
+    <button class="menu-btn danger" id="btn-action-reset">⚠️ 데이터 초기화</button>
 </div>
 
-<!-- 초기화 확인 모달 -->
 <div id="menu-confirm-modal">
-    <div class="menu-modal-card">
-        <div style="font-size: 1.875rem; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <h3 style="font-size: 1rem; font-weight: 900; color: #ffffff; margin-bottom: 0.25rem;">정말 초기화하시겠습니까?</h3>
-        <p style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-bottom: 1.25rem;">모든 진행 기록과 자원이 완전히 삭제됩니다.</p>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-            <button id="btn-confirm-yes" style="padding: 0.5rem 1rem; background-color: #e11d48; color: #ffffff; font-weight: 900; font-size: 0.75rem; border-radius: 0.5rem; border: none; cursor: pointer;">예</button>
-            <button id="btn-confirm-no" style="padding: 0.5rem 1rem; background-color: #1e293b; color: #e2e8f0; font-weight: 900; font-size: 0.75rem; border-radius: 0.5rem; border: none; cursor: pointer;">아니오</button>
+    <div class="modal-box">
+        <p>정말로 모든 진행 데이터를 초기화하시겠습니까?</p>
+        <div class="modal-btns">
+            <button id="btn-confirm-yes" style="background:#d90429; color:white;">예</button>
+            <button id="btn-confirm-no" style="background:#8d99ae; color:white;">아니오</button>
         </div>
     </div>
 </div>
 
-<!-- 저장 결과 알림 토스트 -->
-<div id="menu-toast-msg">
-    <i class="fa-solid fa-check-circle" style="margin-right: 0.375rem;"></i>
-    <span id="menu-toast-text">게임 데이터가 저장되었습니다.</span>
-</div>
+<div id="menu-toast-msg"><span id="menu-toast-text">저장되었습니다.</span></div>
 
 <script>
-    // 로딩 파일(loading.html)에서는 메뉴 비활성화
-    if (window.location.pathname.includes('loading.html')) {
-        const drawer = document.getElementById('global-menu-drawer');
-        if (drawer) drawer.style.display = 'none';
-    } else {
-        const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
-        const AUTO_SAVE_INTERVAL = 5 * 60 * 1000; // 5분 자동 저장
+if (window.location.pathname.includes('loading.html')) {
+    const drawer = document.getElementById('global-menu-drawer');
+    const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
+    if (drawer) drawer.style.display = 'none';
+    if (toggleBtn) toggleBtn.style.display = 'none';
+} else {
+    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
+    const AUTO_SAVE_INTERVAL = 5 * 60 * 1000; // 5분 자동 저장
 
-        // 1. 저장할 데이터 수집
-        function collectAllGameData() {
-            return {
-                saveTime: new Date().toISOString(),
-                resources: window.PLAYER_RESOURCES_DATA ? window.PLAYER_RESOURCES_DATA.map(r => ({
-                    id: r.id, value: r.value, rawValue: r.rawValue, processedValue: r.processedValue
-                })) : null,
-                mapData: {
-                    currentDay: typeof currentDay !== 'undefined' ? currentDay : 1,
-                    expeditionsLeft: typeof expeditionsLeft !== 'undefined' ? expeditionsLeft : 5,
-                    regions: typeof REGIONS_DATA !== 'undefined' ? JSON.parse(JSON.stringify(REGIONS_DATA)) : null
-                },
-                buildings: typeof placedBuildings !== 'undefined' ? placedBuildings.map(b => ({
-                    col: b.col, row: b.row, data: b.data
-                })) : []
-            };
+    // 1. 현재 화면의 데이터를 기존 세이브 데이터와 통합 (Merge)
+    function collectAllGameData() {
+        let existingData = {};
+        try {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (raw) existingData = JSON.parse(raw);
+        } catch (e) {
+            console.error("기존 세이브 데이터 읽기 실패:", e);
         }
 
-        // 2. LocalStorage 저장 함수
-        window.saveGameState = function(isAuto = false) {
-            try {
-                const data = collectAllGameData();
-                const existingRaw = localStorage.getItem(SAVE_KEY);
-                if (existingRaw) {
-                    const existingData = JSON.parse(existingRaw);
-                    if (!data.resources && existingData.resources) data.resources = existingData.resources;
-                    if (!data.mapData.regions && existingData.mapData) data.mapData = existingData.mapData;
-                    if (data.buildings.length === 0 && existingData.buildings) data.buildings = existingData.buildings;
-                }
+        // A. 자원 데이터 수집
+        let resources = existingData.resources || null;
+        if (window.PLAYER_RESOURCES_DATA) {
+            resources = window.PLAYER_RESOURCES_DATA.map(r => ({
+                id: r.id, 
+                value: r.value, 
+                rawValue: r.rawValue, 
+                processedValue: r.processedValue
+            }));
+        }
 
-                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-                console.log('[SaveSystem] 저장 성공:', data);
-                if (!isAuto) showSaveToast("게임 데이터가 성공적으로 저장되었습니다.");
-            } catch (err) {
-                console.error("[SaveSystem] 저장 실패:", err);
-                if (!isAuto) showSaveToast("저장 중 오류가 발생했습니다.");
-            }
+        // B. 지도(Gamemap) 데이터 수집
+        let mapData = existingData.mapData || { currentDay: 1, expeditionsLeft: 5, regions: null };
+        if (typeof currentDay !== 'undefined') mapData.currentDay = currentDay;
+        if (typeof expeditionsLeft !== 'undefined') mapData.expeditionsLeft = expeditionsLeft;
+        if (typeof REGIONS_DATA !== 'undefined') mapData.regions = JSON.parse(JSON.stringify(REGIONS_DATA));
+
+        // C. 모나티엄(InMonatium) 건물 배치 데이터 수집
+        let buildings = existingData.buildings || [];
+        if (typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings) && placedBuildings.length > 0) {
+            buildings = placedBuildings.map(b => ({
+                col: b.col, 
+                row: b.row, 
+                data: b.data
+            }));
+        }
+
+        return {
+            saveTime: new Date().toISOString(),
+            resources: resources,
+            mapData: mapData,
+            buildings: buildings
         };
-
-        // 3. 불러오기 함수
-        window.loadGameState = function() {
-            try {
-                const raw = localStorage.getItem(SAVE_KEY);
-                if (!raw) return null;
-                const parsed = JSON.parse(raw);
-
-                if (parsed.resources && window.PLAYER_RESOURCES_DATA) {
-                    parsed.resources.forEach(savedRes => {
-                        const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
-                        if (target) {
-                            if (savedRes.value !== undefined) target.value = savedRes.value;
-                            if (savedRes.rawValue !== undefined) target.rawValue = savedRes.rawValue;
-                            if (savedRes.processedValue !== undefined) target.processedValue = savedRes.processedValue;
-                        }
-                    });
-                    if (typeof window.renderPlayerResourcesUI === 'function') {
-                        window.renderPlayerResourcesUI();
-                    }
-                }
-
-                if (parsed.mapData) {
-                    if (typeof currentDay !== 'undefined' && parsed.mapData.currentDay) {
-                        currentDay = parsed.mapData.currentDay;
-                        const el = document.getElementById('header-day-count');
-                        if (el) el.innerText = `Day ${currentDay}`;
-                    }
-                    if (typeof expeditionsLeft !== 'undefined' && parsed.mapData.expeditionsLeft) {
-                        expeditionsLeft = parsed.mapData.expeditionsLeft;
-                        const el = document.getElementById('header-expedition-count');
-                        if (el) el.innerText = `${expeditionsLeft}/5`;
-                    }
-                    if (typeof REGIONS_DATA !== 'undefined' && parsed.mapData.regions) {
-                        Object.assign(REGIONS_DATA, parsed.mapData.regions);
-                        if (typeof renderStatusBadges === 'function') renderStatusBadges();
-                    }
-                }
-
-                if (parsed.buildings && typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings)) {
-                    placedBuildings.length = 0;
-                    parsed.buildings.forEach(b => {
-                        placedBuildings.push(b);
-                        if (typeof addBuildingElement === 'function') addBuildingElement(b);
-                    });
-                }
-                return parsed;
-            } catch (err) {
-                console.error("[SaveSystem] 불러오기 실패:", err);
-                return null;
-            }
-        };
-
-        // 4. 초기화 함수
-        window.clearGameState = function() {
-            localStorage.removeItem(SAVE_KEY);
-            window.location.reload();
-        };
-
-        // 토스트 알림 표시
-        function showSaveToast(msg) {
-            const toast = document.getElementById('menu-toast-msg');
-            const toastText = document.getElementById('menu-toast-text');
-            if (!toast || !toastText) return;
-
-            toastText.innerText = msg;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2500);
-        }
-
-        // UI 이벤트 연결
-        function setupMenuEvents() {
-            const drawer = document.getElementById('global-menu-drawer');
-            const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
-            const btnSave = document.getElementById('btn-action-save');
-            const btnReset = document.getElementById('btn-action-reset');
-            const confirmModal = document.getElementById('menu-confirm-modal');
-            const btnYes = document.getElementById('btn-confirm-yes');
-            const btnNo = document.getElementById('btn-confirm-no');
-
-            // [추가] 내보내기 / 불러오기 관련 버튼 DOM 요소
-            const btnExport = document.getElementById('btn-action-export');
-            const btnImport = document.getElementById('btn-action-import');
-            const inputImportFile = document.getElementById('input-import-file');
-
-            // 손잡이 클릭 시 서랍 열기/닫기
-            if (toggleBtn && drawer) {
-                toggleBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    drawer.classList.toggle('open');
-                });
-            }
-
-            // 저장 버튼 클릭
-            if (btnSave) {
-                btnSave.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.saveGameState(false);
-                });
-            }
-
-            // [추가] 데이터 내보내기 (JSON 백업 파일 다운로드)
-            if (btnExport) {
-                btnExport.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.saveGameState(true); // 내보내기 전 현재 상태 자동 저장
-                    const currentData = localStorage.getItem(SAVE_KEY);
-                    if (!currentData) {
-                        showSaveToast("내보낼 데이터가 없습니다.");
-                        return;
-                    }
-                    const blob = new Blob([currentData], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `elias_save_backup_${new Date().toISOString().slice(0, 10)}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                    showSaveToast("백업 파일이 성공적으로 다운로드되었습니다.");
-                });
-            }
-
-            // [추가] 데이터 불러오기 (JSON 파일 선택 UI 호출)
-            if (btnImport && inputImportFile) {
-                btnImport.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    inputImportFile.click();
-                });
-
-                inputImportFile.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        try {
-                            const parsed = JSON.parse(event.target.result);
-                            // 간단한 구조 검증
-                            if (parsed && (parsed.resources || parsed.mapData || parsed.buildings)) {
-                                localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
-                                showSaveToast("백업 데이터를 정상적으로 적용하였습니다. 페이지를 새로고침합니다.");
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 1000);
-                            } else {
-                                alert("올바르지 않은 세이브 파일 형식입니다.");
-                            }
-                        } catch (err) {
-                            console.error("[SaveSystem] 백업 파일 파싱 실패:", err);
-                            alert("세이브 파일을 읽는 도중 오류가 발생했습니다.");
-                        }
-                    };
-                    reader.readAsText(file);
-                    e.target.value = ''; // 재선택 가능하게 초기화
-                });
-            }
-
-            // 초기화 버튼 클릭
-            if (btnReset) {
-                btnReset.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (confirmModal) confirmModal.classList.add('active');
-                });
-            }
-
-            // 모달 예 / 아니오
-            if (btnYes) {
-                btnYes.addEventListener('click', () => {
-                    window.clearGameState();
-                });
-            }
-            if (btnNo) {
-                btnNo.addEventListener('click', () => {
-                    if (confirmModal) confirmModal.classList.remove('active');
-                });
-            }
-        }
-
-        // 5분 자동 저장 타이머
-        function startAutoSaveTimer() {
-            setInterval(() => {
-                window.saveGameState(true);
-            }, AUTO_SAVE_INTERVAL);
-        }
-
-        setupMenuEvents();
-        window.loadGameState();
-        startAutoSaveTimer();
     }
+
+    // 2. 통합 세이브 함수
+    window.saveGameState = function(isAuto = false) {
+        try {
+            const data = collectAllGameData();
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            console.log('[SaveSystem] 데이터 저장 완료:', data);
+            if (!isAuto) showSaveToast("게임 데이터가 성공적으로 저장되었습니다.");
+        } catch (err) {
+            console.error("[SaveSystem] 저장 실패:", err);
+            if (!isAuto) showSaveToast("저장 중 오류가 발생했습니다.");
+        }
+    };
+
+    // 3. 통합 로드 함수
+    window.loadGameState = function() {
+        try {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+
+            // A. 자원 데이터 동기화
+            if (parsed.resources && window.PLAYER_RESOURCES_DATA) {
+                parsed.resources.forEach(savedRes => {
+                    const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
+                    if (target) {
+                        if (savedRes.value !== undefined) target.value = savedRes.value;
+                        if (savedRes.rawValue !== undefined) target.rawValue = savedRes.rawValue;
+                        if (savedRes.processedValue !== undefined) target.processedValue = savedRes.processedValue;
+                    }
+                });
+                if (typeof window.renderPlayerResourcesUI === 'function') {
+                    window.renderPlayerResourcesUI();
+                }
+            }
+
+            // B. 지도(Gamemap) 데이터 동기화
+            if (parsed.mapData) {
+                if (typeof currentDay !== 'undefined' && parsed.mapData.currentDay) {
+                    window.currentDay = parsed.mapData.currentDay;
+                    const el = document.getElementById('header-day-count');
+                    if (el) el.innerText = `Day ${window.currentDay}`;
+                }
+                if (typeof expeditionsLeft !== 'undefined' && parsed.mapData.expeditionsLeft) {
+                    window.expeditionsLeft = parsed.mapData.expeditionsLeft;
+                    const el = document.getElementById('header-expedition-count');
+                    if (el) el.innerText = `${window.expeditionsLeft}/5`;
+                }
+                if (typeof REGIONS_DATA !== 'undefined' && parsed.mapData.regions) {
+                    Object.assign(REGIONS_DATA, parsed.mapData.regions);
+                    if (typeof renderStatusBadges === 'function') renderStatusBadges();
+                }
+            }
+
+            // C. 모나티엄(InMonatium) 건물 동기화
+            if (parsed.buildings && typeof placedBuildings !== 'undefined' && Array.isArray(placedBuildings)) {
+                placedBuildings.length = 0;
+                const buildingLayer = document.getElementById('building-html-layer');
+                if (buildingLayer) buildingLayer.innerHTML = '';
+
+                parsed.buildings.forEach(b => {
+                    placedBuildings.push(b);
+                    if (typeof addBuildingElement === 'function') {
+                        addBuildingElement(b);
+                    }
+                });
+            }
+            return parsed;
+        } catch (err) {
+            console.error("[SaveSystem] 불러오기 실패:", err);
+            return null;
+        }
+    };
+
+    // 4. 초기화 함수
+    window.clearGameState = function() {
+        localStorage.removeItem(SAVE_KEY);
+        window.location.reload();
+    };
+
+    function showSaveToast(msg) {
+        const toast = document.getElementById('menu-toast-msg');
+        const toastText = document.getElementById('menu-toast-text');
+        if (!toast || !toastText) return;
+
+        toastText.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // UI 이벤트 리스너 연결
+    function setupMenuEvents() {
+        const drawer = document.getElementById('global-menu-drawer');
+        const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
+        const btnSave = document.getElementById('btn-action-save');
+        const btnReset = document.getElementById('btn-action-reset');
+        const confirmModal = document.getElementById('menu-confirm-modal');
+        const btnYes = document.getElementById('btn-confirm-yes');
+        const btnNo = document.getElementById('btn-confirm-no');
+        const btnExport = document.getElementById('btn-action-export');
+        const btnImport = document.getElementById('btn-action-import');
+        const inputImportFile = document.getElementById('input-import-file');
+
+        if (toggleBtn && drawer) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                drawer.classList.toggle('open');
+            });
+        }
+
+        if (btnSave) {
+            btnSave.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.saveGameState(false);
+            });
+        }
+
+        if (btnExport) {
+            btnExport.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.saveGameState(true);
+                const currentData = localStorage.getItem(SAVE_KEY);
+                if (!currentData) {
+                    showSaveToast("내보낼 데이터가 없습니다.");
+                    return;
+                }
+                const blob = new Blob([currentData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `elias_save_backup_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showSaveToast("백업 파일이 다운로드되었습니다.");
+            });
+        }
+
+        if (btnImport && inputImportFile) {
+            btnImport.addEventListener('click', (e) => {
+                e.stopPropagation();
+                inputImportFile.click();
+            });
+
+            inputImportFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (parsed && (parsed.resources || parsed.mapData || parsed.buildings)) {
+                            localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+                            showSaveToast("백업 데이터를 적용했습니다.");
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            alert("올바르지 않은 세이브 파일 형식입니다.");
+                        }
+                    } catch (err) {
+                        alert("세이브 파일을 읽는 도중 오류가 발생했습니다.");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+        }
+
+        if (btnReset) {
+            btnReset.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirmModal) confirmModal.classList.add('active');
+            });
+        }
+
+        if (btnYes) btnYes.addEventListener('click', () => window.clearGameState());
+        if (btnNo) btnNo.addEventListener('click', () => { if (confirmModal) confirmModal.classList.remove('active'); });
+    }
+
+    setupMenuEvents();
+    window.loadGameState();
+
+    // 5분 마다 자동 저장
+    setInterval(() => {
+        window.saveGameState(true);
+    }, AUTO_SAVE_INTERVAL);
+}
 </script>
