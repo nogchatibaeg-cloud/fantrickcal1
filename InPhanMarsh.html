@@ -17,6 +17,25 @@
     <a href="loading.html?target=Gamemap.html" class="mt-8 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-xl border border-slate-700 transition-all">
         ← 지도로 돌아가기
     </a>
-
+<div id="save-module-container"></div>
+    <script>
+        // save.html을 불러와 화면에 주입
+        fetch('save.html')
+            .then(response => response.text())
+            .then(html => {
+                const container = document.getElementById('save-module-container');
+                container.innerHTML = html;
+                
+                // 불러온 HTML 내의 <script> 태그를 실행시키기 위한 처리
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            })
+            .catch(err => console.error('save.html 로드 실패:', err));
+    </script>
 </body>
 </html>
