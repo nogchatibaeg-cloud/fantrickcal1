@@ -1,3 +1,4 @@
+<!-- DelOrMov.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -6,40 +7,41 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { user-select: none; box-sizing: border-box; }
-        body { margin: 0; padding: 0; width: 100vw; height: 100vh; background: transparent; overflow: hidden; }
-        .action-btn { transition: all 0.15s ease; }
-        .action-btn:hover { transform: translateY(-2px) scale(1.03); }
-        .action-btn:active { transform: translateY(0) scale(0.97); }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; overflow: visible; }
     </style>
 </head>
-<body class="p-1 flex items-center justify-center">
+<body class="w-full h-full flex items-center justify-center p-1">
 
-    <!-- 철거 / 위치 조정 메뉴 바 (패딩 및 간격 여유 조절로 글자 넘침 방지) -->
-    <div class="w-full h-full bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-1.5 flex items-center justify-between gap-1.5 shadow-2xl backdrop-blur-md">
-        
-        <!-- 위치 조정 버튼 -->
-        <button onclick="sendAction('move')" class="action-btn flex-1 h-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 rounded-xl flex items-center justify-center gap-1.5 px-2 text-amber-300 font-extrabold text-xs shadow-md">
-            <i class="fa-solid fa-arrows-up-down-left-right text-xs shrink-0"></i>
-            <span class="whitespace-nowrap">위치 조정</span>
+    <div class="flex items-center gap-2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-1.5 rounded-2xl shadow-2xl">
+        <!-- 철거 버튼 -->
+        <button id="btn-delete" class="px-3 py-2 bg-rose-600/90 hover:bg-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>철거</span>
         </button>
 
-        <!-- 철거 버튼 -->
-        <button onclick="sendAction('delete')" class="action-btn flex-1 h-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/50 rounded-xl flex items-center justify-center gap-1.5 px-2 text-rose-300 font-extrabold text-xs shadow-md">
-            <i class="fa-solid fa-trash-can text-xs shrink-0"></i>
-            <span class="whitespace-nowrap">철거</span>
+        <!-- 이동 버튼 -->
+        <button id="btn-move" class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-arrows-up-down-left-right"></i>
+            <span>이동</span>
         </button>
 
         <!-- 닫기 버튼 -->
-        <button onclick="sendAction('close')" class="w-7 h-full bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl flex items-center justify-center text-slate-400 hover:text-white text-xs shrink-0">
+        <button id="btn-close" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center cursor-pointer border border-slate-700">
             <i class="fa-solid fa-xmark"></i>
         </button>
-
     </div>
 
     <script>
-        function sendAction(actionType) {
-            window.parent.postMessage({ type: 'BUILDING_ACTION', action: actionType }, '*');
+        function sendAction(action) {
+            window.parent.postMessage({
+                type: 'BUILDING_ACTION',
+                action: action
+            }, '*');
         }
+
+        document.getElementById('btn-delete').addEventListener('click', () => sendAction('delete'));
+        document.getElementById('btn-move').addEventListener('click', () => sendAction('move'));
+        document.getElementById('btn-close').addEventListener('click', () => sendAction('close'));
     </script>
 </body>
 </html>
