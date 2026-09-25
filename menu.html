@@ -140,6 +140,11 @@
     </button>
     <input type="file" id="input-import-file" accept=".json" style="display: none;" />
     
+    <div style="text-align:center; font-size:0.7rem; line-height:1.5; color:#9ca3af; margin-top:2px;">
+        <div id="menu-last-save">마지막 저장: 기록 없음</div>
+        <div>5분마다, 화면을 옮길 때마다 자동 저장됩니다.</div>
+    </div>
+
     <button class="menu-btn danger" id="btn-action-reset">
         <i class="fa-solid fa-triangle-exclamation"></i> 데이터 초기화
     </button>
@@ -159,182 +164,111 @@
 
 <script>
 (function() {
-    if (window.location.pathname.includes('loading.html')) {
-        const drawer = document.getElementById('global-menu-drawer');
-        const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
-        if (drawer) drawer.style.display = 'none';
-        if (toggleBtn) toggleBtn.style.display = 'none';
-        return;
+    'use strict';
+
+    // 같은 페이지에 두 번 실행되어도 타이머/리스너가 겹치지 않도록 방어
+    if (window.__eliasSaveEngineLoaded) return;
+    window.__eliasSaveEngineLoaded = true;
+
+    /* =====================================================================
+     *  ELIAS AWAY 통합 세이브 엔진
+     *
+     *  [저장 흐름]
+     *   1) 플레이어가 조작하는 동안의 데이터는 각 페이지의 메모리(임시 상태)에만 존재한다.
+     *   2) 다른 파일로 넘어가는 순간(beforeunload / pagehide) 현재 메모리 상태를
+     *      '임시 저장본(STAGE)'으로 기록한다.
+     *   3) loading.html 이 이 엔진을 불러와 임시 저장본을 검사 → 본 저장(SAVE)으로 확정
+     *      → 다시 읽어 검증한다. 검증이 끝나기 전에는 로딩이 100%가 되지 않는다.
+     *   4) 확정 전에 탭이 닫히는 등 예외가 생겨도, 다음 페이지가 열릴 때
+     *      남아 있는 임시 저장본을 자동으로 확정한다(recoverOrphanStage).
+     *   5) 위와 별개로 수동 저장 / 건물 배치·철거 / 5분 주기 자동 저장은 즉시 확정 저장한다.
+     * ===================================================================== */
+
+    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';          // 본 저장 (기존 키 유지: 예전 세이브/내보내기 파일과 호환)
+    const BACKUP_KEY = 'ELIAS_AWAY_SAVE_BACKUP_V1';      // 직전 정상 저장본
+    const STAGE_KEY = 'ELIAS_AWAY_SAVE_STAGE_V1';        // 이동 직전 임시 저장본
+    const SCHEMA_VERSION = 2;
+    const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;          // 실제 시간 5분
+    const SHOW_AUTOSAVE_TOAST = true;
+    const IS_LOADING_PAGE = window.location.pathname.includes('loading.html');
+
+    // 지역 데이터 중 '플레이어 진행에 따라 변하는' 값만 저장한다.
+    // (이름/설명/확률/이동 경로 같은 고정값은 코드가 바뀌면 코드 쪽 값을 그대로 쓰도록 저장하지 않는다.)
+    const REGION_DYNAMIC_FIELDS = [
+        'friendlyPoints', 'hostilePoints', 'hostileDays',
+        'isWar', 'isOccupied', 'consecutiveWarSuccesses', 'selectedMissionType'
+    ];
+
+    let suppressPersist = false;   // 초기화/불러오기 직후 새로고침 때 예전 메모리 상태로 덮어쓰는 것을 막는다
+    let leavingPage = false;       // 페이지를 떠나는 중
+    let pendingSave = null;        // 이 페이지가 열릴 때 읽어 둔 저장 데이터 (복원 원본)
+    const ready = { resources: false, map: false, buildings: false };  // 복원이 끝난 시스템만 저장 대상에 포함한다
+
+    /* ---------------------------------------------------------------
+     *  공통 유틸
+     * --------------------------------------------------------------- */
+    function pageName() {
+        const last = window.location.pathname.split('/').pop();
+        return last || 'index.html';
     }
 
-    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';
-
-    // 1. 전역 통합 데이터 수집 (모나티엄 건물 배치 + 지역 우호도 + 자원 수치)
-    window.collectAllGameData = function() {
-        let existingData = {};
-        try {
-            const raw = localStorage.getItem(SAVE_KEY);
-            if (raw) existingData = JSON.parse(raw);
-        } catch (e) {
-            console.error("[SaveEngine] 세이브 읽기 실패:", e);
+    function hashString(str) {   // FNV-1a 32bit (임시 저장본 손상 여부 확인용)
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = Math.imul(h, 0x01000193);
         }
-
-        // 자원 정보 수집
-        let resources = existingData.resources || null;
-        if (window.PLAYER_RESOURCES_DATA) {
-            resources = window.PLAYER_RESOURCES_DATA.map(r => ({
-                id: r.id, 
-                value: r.value, 
-                rawValue: r.rawValue, 
-                processedValue: r.processedValue
-            }));
-        }
-
-        // 지도 및 적대/우호도 수집
-        let mapData = existingData.mapData || { currentDay: 1, expeditionsLeft: 5, regions: null };
-        if (typeof window.currentDay !== 'undefined') mapData.currentDay = window.currentDay;
-        if (typeof window.expeditionsLeft !== 'undefined') mapData.expeditionsLeft = window.expeditionsLeft;
-        if (typeof window.REGIONS_DATA !== 'undefined') mapData.regions = JSON.parse(JSON.stringify(window.REGIONS_DATA));
-
-        // 모나티엄 건물 수집
-        let buildings = existingData.buildings || [];
-        if (typeof window.placedBuildings !== 'undefined' && Array.isArray(window.placedBuildings)) {
-            buildings = window.placedBuildings.map(b => ({
-                col: b.col, 
-                row: b.row, 
-                data: b.data
-            }));
-        }
-
-        return {
-            saveTime: new Date().toISOString(),
-            lastTickTime: existingData.lastTickTime || Date.now(),
-            resources: resources,
-            mapData: mapData,
-            buildings: buildings
-        };
-    };
-
-    // 2. 통합 세이브
-    window.saveGameState = function(isAuto = false) {
-        try {
-            const data = window.collectAllGameData();
-            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-            if (!isAuto) showSaveToast("게임 데이터가 성공적으로 저장되었습니다.");
-        } catch (err) {
-            console.error("[SaveEngine] 저장 오류:", err);
-        }
-    };
-
-    // 3. 통합 로드
-    window.loadGameState = function() {
-        try {
-            const raw = localStorage.getItem(SAVE_KEY);
-            if (!raw) return null;
-            const parsed = JSON.parse(raw);
-
-            // 자원 복원
-            if (parsed.resources && window.PLAYER_RESOURCES_DATA) {
-                parsed.resources.forEach(savedRes => {
-                    const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
-                    if (target) {
-                        if (savedRes.value !== undefined) target.value = savedRes.value;
-                        if (savedRes.rawValue !== undefined) target.rawValue = savedRes.rawValue;
-                        if (savedRes.processedValue !== undefined) target.processedValue = savedRes.processedValue;
-                    }
-                });
-                if (typeof window.renderPlayerResourcesUI === 'function') {
-                    window.renderPlayerResourcesUI();
-                }
-            }
-
-            // 지도 및 적대 우호도 복원
-            if (parsed.mapData) {
-                if (parsed.mapData.currentDay !== undefined) {
-                    window.currentDay = parsed.mapData.currentDay;
-                    const el = document.getElementById('header-day-count');
-                    if (el) el.innerText = `Day ${window.currentDay}`;
-                }
-                if (parsed.mapData.expeditionsLeft !== undefined) {
-                    window.expeditionsLeft = parsed.mapData.expeditionsLeft;
-                    const el = document.getElementById('header-expedition-count');
-                    if (el) el.innerText = `${window.expeditionsLeft}/5`;
-                }
-                if (window.REGIONS_DATA && parsed.mapData.regions) {
-                    Object.assign(window.REGIONS_DATA, parsed.mapData.regions);
-                    if (typeof window.renderStatusBadges === 'function') window.renderStatusBadges();
-                }
-            }
-
-            // 모나티엄 건물 배치 복원
-            if (parsed.buildings && window.placedBuildings && Array.isArray(window.placedBuildings)) {
-                window.placedBuildings.length = 0;
-                const buildingLayer = document.getElementById('building-html-layer');
-                if (buildingLayer) buildingLayer.innerHTML = '';
-
-                parsed.buildings.forEach(b => {
-                    window.placedBuildings.push(b);
-                    if (typeof window.addBuildingElement === 'function') {
-                        window.addBuildingElement(b);
-                    }
-                });
-            }
-            return parsed;
-        } catch (err) {
-            console.error("[SaveEngine] 로드 오류:", err);
-            return null;
-        }
-    };
-
-    // 4. 백그라운드 엔진 ("독립 메인 서버")
-    function runBackgroundServerTick() {
-        let raw = localStorage.getItem(SAVE_KEY);
-        let saveData = raw ? JSON.parse(raw) : window.collectAllGameData();
-        
-        let now = Date.now();
-        let lastTick = saveData.lastTickTime || now;
-        let elapsedSeconds = Math.floor((now - lastTick) / 1000);
-
-        if (elapsedSeconds > 0) {
-            // 연산: 설치된 모나티엄 발전소 건물에 따른 실시간 전력 수급
-            let powerRate = 0;
-            if (saveData.buildings) {
-                saveData.buildings.forEach(b => {
-                    if (b.data && b.data.id === 'potato2') powerRate += 1;
-                });
-            }
-
-            if (powerRate > 0 && window.PLAYER_RESOURCES_DATA) {
-                const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
-                if (powerRes) {
-                    const maxVal = powerRes.max || 100;
-                    powerRes.value = Math.min(maxVal, (powerRes.value || 0) + (powerRate * elapsedSeconds));
-                }
-            }
-
-            saveData.lastTickTime = now;
-            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-            if (typeof window.renderPlayerResourcesUI === 'function') {
-                window.renderPlayerResourcesUI();
-            }
-        }
+        return (h >>> 0).toString(16) + ':' + str.length;
     }
 
-    // 1초 주기로 백그라운드 틱 실행
-    setInterval(runBackgroundServerTick, 1000);
-    runBackgroundServerTick(); // 초기 이탈 경과 시간 즉시 통산 계산
+    function safeParse(raw) {
+        try { return JSON.parse(raw); } catch (e) { return null; }
+    }
 
-    // 5. '마땅히 자동 저장' (Navigation & Unload Interceptor)
-    window.addEventListener('beforeunload', () => { window.saveGameState(true); });
-    window.addEventListener('pagehide', () => { window.saveGameState(true); });
+    function lsGet(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function lsSet(key, value) {          // 실패 시 예외를 그대로 던져 호출자가 알 수 있게 한다
+        localStorage.setItem(key, value);
+    }
+    function lsRemove(key) {
+        try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    }
 
-    document.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.href && !link.href.startsWith('javascript:')) {
-            window.saveGameState(true);
+    function isPlainObject(v) {
+        return !!v && typeof v === 'object' && !Array.isArray(v);
+    }
+
+    function isValidSave(obj) {
+        if (!isPlainObject(obj)) return false;
+        if (obj.resources != null && !Array.isArray(obj.resources)) return false;
+        if (obj.buildings != null && !Array.isArray(obj.buildings)) return false;
+        if (obj.mapData != null && !isPlainObject(obj.mapData)) return false;
+        return true;
+    }
+
+    function readBestSave() {   // 본 저장이 정상이면 본 저장, 아니면 백업
+        const rawMain = lsGet(SAVE_KEY);
+        if (rawMain) {
+            const parsed = safeParse(rawMain);
+            if (isValidSave(parsed)) return { data: parsed, source: 'main', raw: rawMain };
         }
-    }, true);
+        const rawBackup = lsGet(BACKUP_KEY);
+        if (rawBackup) {
+            const parsed = safeParse(rawBackup);
+            if (isValidSave(parsed)) return { data: parsed, source: 'backup', raw: rawBackup };
+        }
+        return { data: null, source: null, raw: null };
+    }
 
+    function isPlacingBuilding() {
+        try { return typeof currentPlacingBuilding !== 'undefined' && !!currentPlacingBuilding; }
+        catch (e) { return false; }
+    }
+
+    /* ---------------------------------------------------------------
+     *  UI 보조 (토스트 / 마지막 저장 시각)
+     * --------------------------------------------------------------- */
     function showSaveToast(msg) {
         const toast = document.getElementById('menu-toast-msg');
         const toastText = document.getElementById('menu-toast-text');
@@ -344,6 +278,636 @@
         setTimeout(() => toast.classList.remove('show'), 2200);
     }
 
+    function updateLastSaveLabel(ms) {
+        const el = document.getElementById('menu-last-save');
+        if (!el) return;
+        if (!ms) { el.textContent = '마지막 저장: 기록 없음'; return; }
+        const t = new Date(ms);
+        const pad = n => String(n).padStart(2, '0');
+        el.textContent = '마지막 저장: ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+    }
+
+    /* ---------------------------------------------------------------
+     *  1. 전역 통합 데이터 수집
+     *     - 아직 복원이 끝나지 않은 시스템은 '기존 저장값'을 그대로 보존한다.
+     *       (복원 전에 기본값으로 저장해서 진행 상황을 덮어쓰는 사고 방지)
+     *     - 해당 시스템이 없는 페이지(예: 지역 페이지)에서도 다른 시스템 데이터는 유지된다.
+     * --------------------------------------------------------------- */
+    function getLiveMap() {
+        // Gamemap.html 의 REGIONS_DATA(const), currentDay / expeditionsLeft(let) 는
+        // window 속성이 아니라 전역 렉시컬 바인딩이므로 식별자로 직접 접근해야 한다.
+        try {
+            if (typeof REGIONS_DATA === 'undefined' || !REGIONS_DATA) return null;
+            return {
+                regions: REGIONS_DATA,
+                currentDay: (typeof currentDay !== 'undefined') ? currentDay : undefined,
+                expeditionsLeft: (typeof expeditionsLeft !== 'undefined') ? expeditionsLeft : undefined
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function pickRegionDynamic(region) {
+        const out = {};
+        REGION_DYNAMIC_FIELDS.forEach(k => { if (region[k] !== undefined) out[k] = region[k]; });
+        return out;
+    }
+
+    function collectLiveBuildings() {
+        const list = window.placedBuildings.slice();
+        // '위치 조정' 도중에는 원래 건물이 배열에서 잠시 빠져 있다. 이때 저장돼도 건물이 사라지지 않게 포함한다.
+        try {
+            if (typeof isMovingExistingBuilding !== 'undefined' && isMovingExistingBuilding &&
+                typeof originalPlacedBuildingData !== 'undefined' && originalPlacedBuildingData &&
+                list.indexOf(originalPlacedBuildingData) === -1) {
+                list.push(originalPlacedBuildingData);
+            }
+        } catch (e) { /* ignore */ }
+        return list.map(b => ({ col: b.col, row: b.row, data: b.data }));
+    }
+
+    window.collectAllGameData = function() {
+        const existing = readBestSave().data || {};
+
+        // 자원
+        let resources = Array.isArray(existing.resources) ? existing.resources : null;
+        if (ready.resources && Array.isArray(window.PLAYER_RESOURCES_DATA)) {
+            resources = window.PLAYER_RESOURCES_DATA.map(r => ({
+                id: r.id,
+                value: r.value,
+                rawValue: r.rawValue,
+                processedValue: r.processedValue
+            }));
+        }
+
+        // 지도 / 일차 / 원정 횟수 / 지역별 우호·적대·전쟁·점령
+        const mapData = isPlainObject(existing.mapData)
+            ? Object.assign({}, existing.mapData)
+            : { currentDay: 1, expeditionsLeft: 5, regions: null };
+        const live = ready.map ? getLiveMap() : null;
+        if (live) {
+            if (live.currentDay !== undefined) mapData.currentDay = live.currentDay;
+            if (live.expeditionsLeft !== undefined) mapData.expeditionsLeft = live.expeditionsLeft;
+            const regions = {};
+            Object.keys(live.regions).forEach(id => { regions[id] = pickRegionDynamic(live.regions[id]); });
+            mapData.regions = regions;
+        }
+
+        // 모나티엄 건물
+        let buildings = Array.isArray(existing.buildings) ? existing.buildings : [];
+        if (ready.buildings && Array.isArray(window.placedBuildings)) {
+            buildings = collectLiveBuildings();
+        }
+
+        // 진행 기록 (마지막으로 머문 화면 등)
+        const progress = isPlainObject(existing.progress) ? Object.assign({}, existing.progress) : {};
+        progress.visited = Object.assign({}, progress.visited);
+        if (!IS_LOADING_PAGE) {
+            progress.lastPage = pageName();
+            progress.visited[pageName()] = true;
+        }
+
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            saveTime: new Date().toISOString(),
+            savedAtMs: Date.now(),
+            lastTickTime: existing.lastTickTime || Date.now(),
+            resources: resources,
+            mapData: mapData,
+            buildings: buildings,
+            progress: progress
+        };
+    };
+
+    /* ---------------------------------------------------------------
+     *  2. 저장 (확정 / 임시)
+     * --------------------------------------------------------------- */
+    // 본 저장으로 확정: 직전 정상본 백업 → 기록 → 다시 읽어 일치 확인 → 임시 저장본 제거
+    function commitPayload(payload) {
+        // 저장 직전 데이터 자체를 먼저 검증한다.
+        const parsedPayload = safeParse(payload);
+
+        if (!isValidSave(parsedPayload)) {
+            throw new Error('저장하려는 데이터가 유효하지 않습니다.');
+        }
+
+        // 직전 정상 저장본을 백업한다.
+        const prevRaw = lsGet(SAVE_KEY);
+
+        if (prevRaw && prevRaw !== payload) {
+            const prevData = safeParse(prevRaw);
+
+            if (isValidSave(prevData)) {
+                try {
+                    lsSet(BACKUP_KEY, prevRaw);
+                } catch (e) {
+                    console.warn('[SaveEngine] 백업 저장 실패:', e);
+                }
+            }
+        }
+
+        // 본 저장
+        lsSet(SAVE_KEY, payload);
+
+        // 문자열 자체가 정확히 기록되었는지 검증
+        const savedRaw = lsGet(SAVE_KEY);
+
+        if (savedRaw !== payload) {
+            throw new Error('저장 후 원본 데이터 검증 실패');
+        }
+
+        // JSON 구조까지 다시 검증
+        const savedData = safeParse(savedRaw);
+
+        if (!isValidSave(savedData)) {
+            throw new Error('저장 후 JSON 구조 검증 실패');
+        }
+
+        // 임시 저장본 제거
+        lsRemove(STAGE_KEY);
+
+        // UI 갱신
+        updateLastSaveLabel(savedData.savedAtMs);
+
+        console.log(
+            '[SaveEngine] 저장 성공:',
+            savedData.savedAtMs
+        );
+    }
+
+    // 즉시 확정 저장 (수동 저장, 건물 배치/철거, 자동 저장 등)
+    window.saveGameState = function(isAuto = false) {
+        if (suppressPersist) return false;
+        try {
+            const payload = JSON.stringify(window.collectAllGameData());
+            commitPayload(payload);
+            if (!isAuto) showSaveToast('게임 데이터가 성공적으로 저장되었습니다.');
+            return true;
+        } catch (err) {
+            console.error('[SaveEngine] 저장 오류:', err);
+            if (!isAuto) showSaveToast('저장에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
+            return false;
+        }
+    };
+
+    // 다른 파일로 넘어가기 직전: 현재 메모리 상태를 임시 저장본으로 기록 (확정은 loading.html 이 담당)
+    function stageForNavigation(reason) {
+        if (suppressPersist) return false;
+
+        try {
+            const payload =
+                JSON.stringify(
+                    window.collectAllGameData()
+                );
+
+            // 저장할 데이터 자체를 먼저 검증
+            if (!isValidSave(safeParse(payload))) {
+                throw new Error(
+                    '임시 저장할 데이터가 유효하지 않습니다.'
+                );
+            }
+
+            const record = {
+                v: SCHEMA_VERSION,
+                from: pageName(),
+                reason: reason || 'navigate',
+                createdAt: Date.now(),
+                hash: hashString(payload),
+                payload: payload
+            };
+
+            const stagePayload =
+                JSON.stringify(record);
+
+            lsSet(
+                STAGE_KEY,
+                stagePayload
+            );
+
+            // 실제로 기록됐는지 즉시 검증
+            const written =
+                lsGet(STAGE_KEY);
+
+            if (written !== stagePayload) {
+                throw new Error(
+                    '임시 저장 후 검증에 실패했습니다.'
+                );
+            }
+
+            const writtenRecord =
+                safeParse(written);
+
+            if (
+                !isPlainObject(writtenRecord) ||
+                writtenRecord.hash !==
+                    hashString(writtenRecord.payload)
+            ) {
+                throw new Error(
+                    '임시 저장 데이터 무결성 검증에 실패했습니다.'
+                );
+            }
+
+            console.log(
+                '[SaveEngine] 이동용 임시 저장 성공:',
+                writtenRecord.from,
+                writtenRecord.reason
+            );
+
+            return true;
+
+        } catch (err) {
+            console.error(
+                '[SaveEngine] 임시 저장 오류:',
+                err
+            );
+            return false;
+        }
+    }
+
+    function flushOnLeave(reason) {
+        if (suppressPersist) return;
+        leavingPage = true;
+        setTimeout(() => { leavingPage = false; }, 2000);   // 이동이 취소된 경우를 대비
+        if (!stageForNavigation(reason)) {
+            window.saveGameState(true);   // 임시 저장 실패 시 즉시 확정 저장으로 대체
+        }
+    }
+
+    function inspectStage() {
+        const raw = lsGet(STAGE_KEY);
+        if (!raw) return { status: 'none', record: null, data: null };
+        const record = safeParse(raw);
+        if (!isPlainObject(record) || typeof record.payload !== 'string' || record.hash !== hashString(record.payload)) {
+            return { status: 'corrupt', record: null, data: null };
+        }
+        const data = safeParse(record.payload);
+        if (!isValidSave(data)) return { status: 'corrupt', record: null, data: null };
+        return { status: 'valid', record: record, data: data };
+    }
+
+    // 확정되지 못하고 남은 임시 저장본을 복구 (탭이 갑자기 닫힌 경우 등)
+    function recoverOrphanStage() {
+        const stage = inspectStage();
+        if (stage.status === 'none') return 'none';
+        if (stage.status === 'corrupt') { lsRemove(STAGE_KEY); return 'corrupt'; }
+
+        const main = safeParse(lsGet(SAVE_KEY));
+        const mainAt = (isValidSave(main) && Number(main.savedAtMs)) || 0;
+        const stageAt = Number(stage.data.savedAtMs) || 0;
+        if (stageAt >= mainAt) {
+            try { commitPayload(stage.record.payload); return 'committed'; }
+            catch (e) { console.error('[SaveEngine] 임시 저장본 복구 실패:', e); return 'failed'; }
+        }
+        lsRemove(STAGE_KEY);   // 이미 더 새로운 저장본이 있음
+        return 'discarded';
+    }
+
+    /* ---------------------------------------------------------------
+     *  3. loading.html 연동: 이동 전 저장 확정 + 검증
+     *     report(label, pct, minMs) 는 로딩 화면의 진행바/문구를 갱신하고
+     *     연출이 끝나면 resolve 되는 Promise 를 돌려주는 콜백.
+     * --------------------------------------------------------------- */
+    function summarize(data) {
+        if (!isPlainObject(data)) return null;
+        return {
+            resources: Array.isArray(data.resources) ? data.resources.length : 0,
+            regions: isPlainObject(data.mapData) && isPlainObject(data.mapData.regions) ? Object.keys(data.mapData.regions).length : 0,
+            buildings: Array.isArray(data.buildings) ? data.buildings.length : 0,
+            day: isPlainObject(data.mapData) ? data.mapData.currentDay : undefined
+        };
+    }
+
+    function verifySaveIntegrity(expectedPayload) {
+        const rawMain = lsGet(SAVE_KEY);
+        const main = rawMain ? safeParse(rawMain) : null;
+
+        if (expectedPayload) {
+            if (rawMain !== expectedPayload || !isValidSave(main)) {
+                throw new Error('저장된 데이터가 임시 저장본과 일치하지 않습니다.');
+            }
+            return { data: main, repaired: false, corrupted: false };
+        }
+
+        if (isValidSave(main)) return { data: main, repaired: false, corrupted: false };
+
+        // 본 저장이 없거나 손상됨 → 백업으로 복구 시도
+        const rawBackup = lsGet(BACKUP_KEY);
+        const backup = rawBackup ? safeParse(rawBackup) : null;
+        if (isValidSave(backup)) {
+            lsSet(SAVE_KEY, rawBackup);
+            if (lsGet(SAVE_KEY) !== rawBackup) throw new Error('백업 복구 후 검증에 실패했습니다.');
+            return { data: backup, repaired: true, corrupted: false };
+        }
+        return { data: null, repaired: false, corrupted: !!rawMain };   // 저장 기록 없음(새 게임) 또는 복구 불가
+    }
+
+    async function finalizeForNavigation(report) {
+        const say = (typeof report === 'function') ? report : function() { return Promise.resolve(); };
+        const result = { ok: true, hadPending: false, committed: false, repaired: false, from: null, summary: null, notes: [], error: null };
+
+        try {
+            // 1) 저장 대기 데이터 확인
+            let anim = say('이동 전 저장할 데이터를 확인하는 중...', 20, 350);
+            const stage = inspectStage();
+            await anim;
+            result.hadPending = stage.status !== 'none';
+            result.from = stage.record ? stage.record.from : null;
+
+            // 2) 무결성 검사
+            anim = say('데이터 무결성을 검사하는 중...', 45, 400);
+            if (stage.status === 'corrupt') {
+                lsRemove(STAGE_KEY);
+                result.notes.push('임시 저장본이 손상되어 기존 저장본을 유지합니다.');
+            }
+            await anim;
+
+            // 3) 본 저장으로 확정 (실패 시 최대 3회 재시도)
+            anim = say(stage.status === 'valid' ? '진행 상황을 저장하는 중... (자원 / 지도 / 건물)' : '저장본을 확인하는 중...', 75, 500);
+            if (stage.status === 'valid') {
+                let lastErr = null;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try { commitPayload(stage.record.payload); lastErr = null; break; }
+                    catch (e) { lastErr = e; }
+                }
+                if (lastErr) throw lastErr;
+                result.committed = true;
+            }
+            await anim;
+
+            // 4) 저장 결과 검증
+            anim = say('저장 결과를 검증하는 중...', 92, 400);
+            const check = verifySaveIntegrity(result.committed ? stage.record.payload : null);
+            result.repaired = check.repaired;
+            result.summary = summarize(check.data);
+            if (check.repaired) result.notes.push('저장본이 손상되어 직전 백업으로 복구했습니다.');
+            if (check.corrupted) result.notes.push('저장본이 손상되어 복구할 수 없습니다. 새 진행으로 시작합니다.');
+            await anim;
+        } catch (err) {
+            console.error('[SaveEngine] 이동 전 저장 실패:', err);
+            result.ok = false;
+            result.error = (err && err.message) ? err.message : String(err);
+        }
+        return result;
+    }
+
+    // 다른 코드에서 명시적으로 화면을 전환할 때 쓸 수 있는 도우미 (임시 저장 후 이동)
+    function navigateWithSave(url) {
+        stageForNavigation('navigate');
+        window.location.href = url;
+    }
+
+    window.EliasSave = {
+        keys: { save: SAVE_KEY, backup: BACKUP_KEY, stage: STAGE_KEY },
+        collect: function() { return window.collectAllGameData(); },
+        save: function(isAuto) { return window.saveGameState(!!isAuto); },
+        stage: stageForNavigation,
+        navigate: navigateWithSave,
+        finalizeForNavigation: finalizeForNavigation,
+        recoverOrphanStage: recoverOrphanStage,
+        isReady: function() { return Object.assign({}, ready); }
+    };
+
+    /* ---------------------------------------------------------------
+     *  loading.html 에서는 저장 API 만 제공하고 메뉴 UI/타이머/복원은 동작하지 않는다.
+     * --------------------------------------------------------------- */
+    if (IS_LOADING_PAGE) {
+        const drawer = document.getElementById('global-menu-drawer');
+        const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
+        if (drawer) drawer.style.display = 'none';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        return;
+    }
+
+    /* ---------------------------------------------------------------
+     *  4. 통합 로드 (복원)
+     *     자원 모듈(PlayerResource)과 지도 화면은 페이지가 열린 뒤 비동기로 준비되므로,
+     *     준비되는 순서대로 복원하고 복원이 끝난 시스템부터 저장 대상에 포함한다.
+     * --------------------------------------------------------------- */
+    function refreshCraftPanel() {
+        try {
+            const frame = document.getElementById('craft-iframe');
+            if (frame && frame.contentWindow && typeof frame.contentWindow.renderCraftList === 'function') {
+                frame.contentWindow.renderCraftList();
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function tryRestoreResources() {
+        if (ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) return;
+        const saved = pendingSave && Array.isArray(pendingSave.resources) ? pendingSave.resources : null;
+        if (saved) {
+            saved.forEach(savedRes => {
+                if (!savedRes) return;
+                const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
+                if (!target) return;
+                if (savedRes.value != null) target.value = savedRes.value;
+                if (savedRes.rawValue != null) target.rawValue = savedRes.rawValue;
+                if (savedRes.processedValue != null) target.processedValue = savedRes.processedValue;
+            });
+        }
+        ready.resources = true;
+        if (typeof window.renderPlayerResourcesUI === 'function') window.renderPlayerResourcesUI();
+        refreshCraftPanel();
+    }
+
+    function tryRestoreMap() {
+        if (ready.map) return;
+        const live = getLiveMap();
+        if (!live) return;
+        let domReady = false;
+        try { domReady = (typeof DOM !== 'undefined') && !!DOM && !!DOM.statusLayer; } catch (e) { domReady = false; }
+        if (!domReady) return;   // 지도 DOM 초기화(DOMContentLoaded) 전
+
+        const md = pendingSave && isPlainObject(pendingSave.mapData) ? pendingSave.mapData : null;
+        if (md) {
+            if (Number.isFinite(md.currentDay) && typeof currentDay !== 'undefined') currentDay = md.currentDay;
+            if (Number.isFinite(md.expeditionsLeft) && typeof expeditionsLeft !== 'undefined') expeditionsLeft = md.expeditionsLeft;
+
+            if (isPlainObject(md.regions)) {
+                Object.keys(md.regions).forEach(id => {
+                    const target = live.regions[id];
+                    const src = md.regions[id];
+                    if (!target || !isPlainObject(src)) return;
+                    REGION_DYNAMIC_FIELDS.forEach(k => {
+                        const v = src[k];
+                        if (v === undefined || v === null) return;
+                        if (k === 'isWar' || k === 'isOccupied') {
+                            if (typeof v === 'boolean') target[k] = v;
+                        } else if (k === 'selectedMissionType') {
+                            if (v === 'friendly' || v === 'hostile') target[k] = v;
+                        } else if (Number.isFinite(v)) {
+                            target[k] = v;
+                        }
+                    });
+                });
+            }
+
+            const dayEl = document.getElementById('header-day-count');
+            if (dayEl && typeof currentDay !== 'undefined') dayEl.innerText = 'Day ' + currentDay;
+            const expEl = document.getElementById('header-expedition-count');
+            if (expEl && typeof expeditionsLeft !== 'undefined') expEl.innerText = expeditionsLeft + '/5';
+            if (typeof window.renderStatusBadges === 'function') window.renderStatusBadges();
+            if (typeof window.updateAllRegionsState === 'function') window.updateAllRegionsState();
+            try {
+                if (typeof currentRegionId !== 'undefined' && currentRegionId && typeof window.selectRegion === 'function') {
+                    window.selectRegion(currentRegionId);
+                }
+            } catch (e) { /* ignore */ }
+        }
+        ready.map = true;
+    }
+
+    function tryRestoreBuildings() {
+        if (ready.buildings) return;
+        if (!Array.isArray(window.placedBuildings) || typeof window.addBuildingElement !== 'function') return;
+        const layer = document.getElementById('building-html-layer');
+        if (!layer) return;
+
+        const saved = pendingSave && Array.isArray(pendingSave.buildings) ? pendingSave.buildings : null;
+        if (saved) {
+            window.placedBuildings.length = 0;
+            layer.innerHTML = '';
+            saved.forEach(b => {
+                if (!b || !Number.isFinite(b.col) || !Number.isFinite(b.row) || !b.data) return;
+                const restored = { col: b.col, row: b.row, data: b.data };
+                window.placedBuildings.push(restored);
+                window.addBuildingElement(restored);
+            });
+        }
+        ready.buildings = true;
+    }
+
+    function tryRestoreAll() {
+        [tryRestoreResources, tryRestoreMap, tryRestoreBuildings].forEach(fn => {
+            try { fn(); } catch (e) { console.error('[SaveEngine] 로드 오류:', e); }
+        });
+    }
+
+    window.loadGameState = function() {
+        try {
+            const best = readBestSave();
+            pendingSave = best.data;
+            ready.resources = ready.map = ready.buildings = false;
+            tryRestoreAll();
+            return best.data;
+        } catch (err) {
+            console.error('[SaveEngine] 로드 오류:', err);
+            return null;
+        }
+    };
+
+    /* ---------------------------------------------------------------
+     *  5. 백그라운드 엔진 ("독립 메인 서버")
+     *     복원이 끝나기 전에는 경과 시간을 소모하지 않는다(초기값 위에 더해져 버려지는 것 방지).
+     *     자원 모듈이 없는 페이지에서는 경과 시간을 그대로 보존했다가 자원 모듈이 있는 페이지에서 통산한다.
+     * --------------------------------------------------------------- */
+    function runBackgroundServerTick() {
+        if (suppressPersist) return;
+
+        tryRestoreAll();
+
+        if (
+            !ready.resources ||
+            !Array.isArray(window.PLAYER_RESOURCES_DATA)
+        ) {
+            return;
+        }
+
+        try {
+            /*
+             * 중요:
+             * localStorage의 오래된 SAVE_DATA를 현재 게임 상태로
+             * 다시 덮어쓰지 않는다.
+             *
+             * 현재 페이지의 실제 메모리 상태를 기준으로 계산한다.
+             */
+            const now = Date.now();
+
+            const currentData =
+                window.collectAllGameData();
+
+            const lastTick =
+                Number(currentData.lastTickTime) || now;
+
+            const elapsedSeconds =
+                Math.floor((now - lastTick) / 1000);
+
+            if (elapsedSeconds <= 0) {
+                return;
+            }
+
+            /*
+             * 설치된 발전소에 따른 전력 생산
+             */
+            let powerRate = 0;
+
+            if (Array.isArray(window.placedBuildings)) {
+                window.placedBuildings.forEach(building => {
+                    if (
+                        building &&
+                        building.data &&
+                        building.data.id === 'potato2'
+                    ) {
+                        powerRate += 1;
+                    }
+                });
+            }
+
+            if (powerRate > 0) {
+                const powerRes =
+                    window.PLAYER_RESOURCES_DATA.find(
+                        r => r.id === 'power'
+                    );
+
+                if (powerRes) {
+                    const maxVal =
+                        Number(powerRes.max) || 100;
+
+                    const currentValue =
+                        Number(powerRes.value) || 0;
+
+                    powerRes.value = Math.min(
+                        maxVal,
+                        currentValue +
+                        (powerRate * elapsedSeconds)
+                    );
+                }
+            }
+
+            /*
+             * 전력 계산 후 현재 실제 게임 상태를 다시 수집한다.
+             */
+            const latestData =
+                window.collectAllGameData();
+
+            latestData.lastTickTime = now;
+
+            /*
+             * 오래된 SAVE_DATA가 아니라 현재 게임 상태를 저장한다.
+             */
+            commitPayload(
+                JSON.stringify(latestData)
+            );
+
+            if (
+                typeof window.renderPlayerResourcesUI ===
+                'function'
+            ) {
+                window.renderPlayerResourcesUI();
+            }
+
+        } catch (error) {
+            console.error(
+                '[SaveEngine] 백그라운드 저장 오류:',
+                error
+            );
+        }
+    }
+
+    /* ---------------------------------------------------------------
+     *  6. 메뉴 UI 이벤트
+     * --------------------------------------------------------------- */
     function setupMenuEvents() {
         const drawer = document.getElementById('global-menu-drawer');
         const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
@@ -375,13 +939,13 @@
             btnExport.addEventListener('click', (e) => {
                 e.stopPropagation();
                 window.saveGameState(true);
-                const currentData = localStorage.getItem(SAVE_KEY);
+                const currentData = lsGet(SAVE_KEY);
                 if (!currentData) return;
                 const blob = new Blob([currentData], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `elias_save_${new Date().toISOString().slice(0, 10)}.json`;
+                a.download = 'elias_save_' + new Date().toISOString().slice(0, 10) + '.json';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -402,11 +966,20 @@
                 reader.onload = function(event) {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
-                        showSaveToast("데이터가 복구되었습니다.");
+                        const looksLikeSave = isValidSave(parsed) &&
+                            (Array.isArray(parsed.resources) || isPlainObject(parsed.mapData) || Array.isArray(parsed.buildings));
+                        if (!looksLikeSave) throw new Error('invalid save');
+
+                        // 새로고침 중 pagehide 가 '현재 메모리 상태'로 불러온 데이터를 덮어쓰지 못하게 막는다
+                        suppressPersist = true;
+                        parsed.savedAtMs = Date.now();
+                        lsRemove(STAGE_KEY);
+                        commitPayload(JSON.stringify(parsed));
+                        showSaveToast('데이터가 복구되었습니다.');
                         setTimeout(() => window.location.reload(), 600);
                     } catch (err) {
-                        alert("유효하지 않은 파일입니다.");
+                        suppressPersist = false;
+                        alert('유효하지 않은 파일입니다.');
                     }
                 };
                 reader.readAsText(file);
@@ -422,7 +995,11 @@
         }
 
         if (btnYes) btnYes.addEventListener('click', () => {
-            localStorage.removeItem(SAVE_KEY);
+            // 새로고침 중 pagehide/틱이 현재 메모리 상태를 다시 저장하지 못하게 막은 뒤 모든 저장 데이터를 제거
+            suppressPersist = true;
+            lsRemove(SAVE_KEY);
+            lsRemove(BACKUP_KEY);
+            lsRemove(STAGE_KEY);
             window.location.reload();
         });
         if (btnNo) btnNo.addEventListener('click', () => {
@@ -430,7 +1007,103 @@
         });
     }
 
+    /* ---------------------------------------------------------------
+     *  저장소 자체 사용 가능 여부 확인
+     * --------------------------------------------------------------- */
+    function verifyStorageAvailable() {
+        const TEST_KEY = '__ELIAS_AWAY_STORAGE_TEST__';
+        const TEST_VALUE = String(Date.now());
+
+        try {
+            localStorage.setItem(TEST_KEY, TEST_VALUE);
+
+            const readBack =
+                localStorage.getItem(TEST_KEY);
+
+            localStorage.removeItem(TEST_KEY);
+
+            if (readBack !== TEST_VALUE) {
+                throw new Error(
+                    'localStorage 읽기/쓰기 검증 실패'
+                );
+            }
+
+            return true;
+        } catch (error) {
+            console.error(
+                '[SaveEngine] localStorage를 사용할 수 없습니다:',
+                error
+            );
+
+            showSaveToast(
+                '브라우저 저장 공간을 사용할 수 없습니다.'
+            );
+
+            return false;
+        }
+    }
+
+    /* ---------------------------------------------------------------
+     *  7. 초기화
+     * --------------------------------------------------------------- */
+    if (!verifyStorageAvailable()) {
+        return;
+    }
+
     setupMenuEvents();
-    window.loadGameState();
+
+    // 이전 화면에서 확정되지 못한 임시 저장본이 있으면 먼저 확정한 뒤 복원한다
+    recoverOrphanStage();
+    const best = readBestSave();
+    if (best.source === 'backup') {
+        try { lsSet(SAVE_KEY, best.raw); } catch (e) { /* ignore */ }   // 본 저장 손상 → 백업으로 복구
+    }
+    pendingSave = best.data;
+    updateLastSaveLabel(pendingSave && pendingSave.savedAtMs);
+
+    tryRestoreAll();
+    let restorePollCount = 0;
+    const restorePoll = setInterval(() => {
+        tryRestoreAll();
+        if (++restorePollCount >= 150) clearInterval(restorePoll);   // 100ms x 15초
+    }, 100);
+
+    // 1초 주기로 백그라운드 틱 실행
+    setInterval(runBackgroundServerTick, 1000);
+    runBackgroundServerTick();   // 이탈 경과 시간 즉시 통산 계산
+
+    // 실제 시간 5분마다 자동 저장 (타이머 지연/절전 복귀에도 어긋나지 않도록 시각 기준으로 판단)
+    let nextAutoSaveAt = Date.now() + AUTOSAVE_INTERVAL_MS;
+    setInterval(() => {
+        if (suppressPersist || Date.now() < nextAutoSaveAt) return;
+        nextAutoSaveAt = Date.now() + AUTOSAVE_INTERVAL_MS;
+        const ok = window.saveGameState(true);
+        if (ok && SHOW_AUTOSAVE_TOAST && !isPlacingBuilding()) showSaveToast('자동 저장되었습니다.');
+    }, 5000);
+
+    // 다른 파일로 넘어갈 때는 반드시 저장 (임시 저장 → loading.html 에서 확정/검증)
+    window.addEventListener('beforeunload', () => { flushOnLeave('beforeunload'); });
+    window.addEventListener('pagehide', () => { flushOnLeave('pagehide'); });
+
+    // 링크를 누르는 즉시에도 한 번 확정 저장 (기존 동작 유지)
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest ? e.target.closest('a') : null;
+        if (link && link.href && !link.href.startsWith('javascript:')) {
+            window.saveGameState(true);
+        }
+    }, true);
+
+    // 탭 전환/앱 백그라운드 전환 시 (모바일에서 pagehide 없이 종료되는 경우 대비)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && !leavingPage) window.saveGameState(true);
+    });
+
+    // 뒤로가기로 예전 화면(bfcache)이 복원되면 메모리 상태가 낡았으므로 저장본을 기준으로 새로 불러온다
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) {
+            suppressPersist = true;
+            window.location.reload();
+        }
+    });
 })();
 </script>
