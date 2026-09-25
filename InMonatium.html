@@ -1,3 +1,4 @@
+<!-- InMonatium.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -88,6 +89,34 @@
             z-index: 100;
             pointer-events: auto;
             transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        /* 건물 설명 툴팁 오버레이 */
+        .building-desc-tooltip {
+            position: absolute;
+            bottom: calc(100% + 12px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            pointer-events: none;
+            z-index: 120;
+            animation: tooltipFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .building-desc-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px;
+            border-style: solid;
+            border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translate(-50%, 8px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
         }
     </style>
 </head>
@@ -208,6 +237,8 @@
     let selectedBuildingForAction = null;
     let isMovingExistingBuilding = false;
     let originalPlacedBuildingData = null;
+
+    let tooltipElem = null;
 
     let mouseGridCol = -1;
     let mouseGridRow = -1;
@@ -471,6 +502,7 @@
         if (currentPlacingBuilding) return; 
         selectedBuildingForAction = building;
         delOrMovFrame.classList.remove('hidden');
+        showBuildingTooltip(building);
         updateDelOrMovPosition();
     }
 
@@ -491,8 +523,42 @@
         delOrMovFrame.style.top = `${screenY - 65}px`;  
     }
 
+    function showBuildingTooltip(building) {
+        removeBuildingTooltip();
+
+        if (!building || !building._el || !building.data) return;
+
+        const data = building.data;
+        const tooltip = document.createElement('div');
+        tooltip.className = 'building-desc-tooltip bg-slate-900/95 border border-amber-400/80 rounded-xl p-3 shadow-2xl backdrop-blur-md text-white font-sans';
+        
+        let descContent = data.desc || '건물 상세 설명이 없습니다.';
+        let nameContent = data.name || '건물 정보';
+
+        tooltip.innerHTML = `
+            <div class="font-extrabold text-xs text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                <i class="${BUILDING_ICON_MAP[data.id] || 'fa-solid fa-building'} text-amber-400"></i>
+                <span>${nameContent}</span>
+            </div>
+            <div class="text-[11px] leading-relaxed text-slate-300 font-medium">
+                ${descContent}
+            </div>
+        `;
+
+        building._el.appendChild(tooltip);
+        tooltipElem = tooltip;
+    }
+
+    function removeBuildingTooltip() {
+        if (tooltipElem && tooltipElem.parentNode) {
+            tooltipElem.parentNode.removeChild(tooltipElem);
+        }
+        tooltipElem = null;
+    }
+
     function closeDelOrMov() {
         selectedBuildingForAction = null;
+        removeBuildingTooltip();
         delOrMovFrame.classList.add('hidden');
     }
 
