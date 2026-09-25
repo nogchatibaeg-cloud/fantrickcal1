@@ -284,7 +284,7 @@
     }
 
     function collectLiveBuildings() {
-        const list = window.placedBuildings.slice();
+        const list = (window.placedBuildings || []).slice();
         try {
             if (typeof isMovingExistingBuilding !== 'undefined' && isMovingExistingBuilding &&
                 typeof originalPlacedBuildingData !== 'undefined' && originalPlacedBuildingData &&
@@ -337,6 +337,7 @@
             schemaVersion: SCHEMA_VERSION,
             saveTime: new Date().toISOString(),
             savedAtMs: Date.now(),
+            lastProcessedDay: existing.lastProcessedDay || (mapData ? mapData.currentDay : 1),
             lastTickTime: existing.lastTickTime || Date.now(),
             resources: resources,
             mapData: mapData,
@@ -590,6 +591,28 @@
         } catch (e) { /* ignore */ }
     }
 
+    function recalculatePowerCapacity(saveData) {
+        const buildings = (saveData && Array.isArray(saveData.buildings)) ? saveData.buildings : (window.placedBuildings || []);
+        let p4Count = 0;
+        buildings.forEach(b => {
+            if (b && b.data && b.data.id === 'potato4') p4Count++;
+        });
+
+        const targetResList = (ready.resources && Array.isArray(window.PLAYER_RESOURCES_DATA)) 
+            ? window.PLAYER_RESOURCES_DATA 
+            : (saveData && Array.isArray(saveData.resources) ? saveData.resources : null);
+
+        if (targetResList) {
+            const powerRes = targetResList.find(r => r.id === 'power');
+            if (powerRes) {
+                powerRes.max = p4Count * 50;
+                if ((powerRes.value || 0) > powerRes.max) {
+                    powerRes.value = powerRes.max;
+                }
+            }
+        }
+    }
+
     function tryRestoreResources() {
         if (ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) return;
         const saved = pendingSave && Array.isArray(pendingSave.resources) ? pendingSave.resources : null;
@@ -605,16 +628,7 @@
             });
         }
 
-        // 전력 보너스 용량 보정 (potato3 건물 수치 계산)
-        const buildings = (pendingSave && Array.isArray(pendingSave.buildings)) ? pendingSave.buildings : (window.placedBuildings || []);
-        let p3Count = 0;
-        buildings.forEach(b => {
-            if (b && b.data && b.data.id === 'potato3') p3Count++;
-        });
-        const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
-        if (powerRes) {
-            powerRes.max = p3Count * 50;
-        }
+        recalculatePowerCapacity(pendingSave);
 
         ready.resources = true;
         if (typeof window.renderPlayerResourcesUI === 'function') window.renderPlayerResourcesUI();
@@ -707,6 +721,83 @@
         }
     };
 
+    function processGlobalDayPass(data, currentDayNum) {
+        if (!data) return false;
+        const lastProcessed = Number.isFinite(data.lastProcessedDay) ? data.lastProcessedDay : currentDayNum;
+        const passedDays = currentDayNum - lastProcessed;
+
+        if (passedDays <= 0) return false;
+
+        data.lastProcessedDay = currentDayNum;
+
+        let resList = Array.isArray(data.resources) ? data.resources : null;
+        if (ready.resources && Array.isArray(window.PLAYER_RESOURCES_DATA)) {
+            resList = window.PLAYER_RESOURCES_DATA;
+        }
+        if (!resList) return true;
+
+        const buildingsList = (ready.buildings && Array.isArray(window.placedBuildings)) 
+            ? window.placedBuildings 
+            : (Array.isArray(data.buildings) ? data.buildings : []);
+
+        let p1Count = 0, p2Count = 0, p3Count = 0, p4Count = 0, p5Count = 0;
+        buildingsList.forEach(b => {
+            if (b && b.data && b.data.id) {
+                if (b.data.id === 'potato1') p1Count++;
+                if (b.data.id === 'potato2') p2Count++;
+                if (b.data.id === 'potato3') p3Count++;
+                if (b.data.id === 'potato4') p4Count++;
+                if (b.data.id === 'potato5') p5Count++;
+            }
+        });
+
+        const getRes = (id) => resList.find(r => r.id === id);
+        const potatoRes = getRes('potato');
+        const foodRes = getRes('food');
+        const powerRes = getRes('power');
+        const leafRes = getRes('leaf');
+
+        powerRes.max = p4Count * 50;
+
+        for (let day = 0; day < passedDays; day++) {
+            if (potatoRes) {
+                const consumed = Math.min(potatoRes.value || 0, p1Count * 10);
+                potatoRes.value -= consumed;
+                if (foodRes) foodRes.rawValue = (foodRes.rawValue || 0) + consumed;
+            }
+
+            if (foodRes && (foodRes.rawValue || 0) > 0) {
+                const processed = Math.min(foodRes.rawValue, p5Count * 5);
+                foodRes.rawValue -= processed;
+                foodRes.processedValue = (foodRes.processedValue || 0) + processed;
+            }
+
+            if (powerRes) {
+                const powerGain = (p2Count * 10) + (p3Count * 20);
+                powerRes.value = Math.min(powerRes.max, (powerRes.value || 0) + powerGain);
+            }
+
+            if (data.mapData && data.mapData.regions) {
+                const regions = data.mapData.regions;
+                Object.keys(regions).forEach(regId => {
+                    const reg = regions[regId];
+                    if (!reg) return;
+                    if (reg.isOccupied) {
+                        if (leafRes) leafRes.value = (leafRes.value || 0) + 15;
+                    } else if ((reg.friendlyPoints || 0) >= 100) {
+                        if (leafRes) leafRes.value = (leafRes.value || 0) + 10;
+                    }
+                });
+            }
+        }
+
+        if (ready.resources && typeof window.renderPlayerResourcesUI === 'function') {
+            window.renderPlayerResourcesUI();
+        }
+
+        return true;
+    }
+
     /* ---------------------------------------------------------------
      *  5. 백그라운드 엔진 ("독립 메인 서버")
      *     실시간 전력 1초당 1W 상승하는 버그성 자동 보정을 제거
@@ -716,14 +807,27 @@
 
         tryRestoreAll();
 
-        if (!ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) {
-            return;
-        }
-
         try {
+            const best = readBestSave();
+            let currentData = best.data || window.collectAllGameData();
+            
+            let currentDayNum = 1;
+            if (ready.map && typeof currentDay !== 'undefined') {
+                currentDayNum = currentDay;
+            } else if (currentData && currentData.mapData && currentData.mapData.currentDay) {
+                currentDayNum = currentData.mapData.currentDay;
+            }
+
+            const processed = processGlobalDayPass(currentData, currentDayNum);
+
             const now = Date.now();
-            const currentData = window.collectAllGameData();
             currentData.lastTickTime = now;
+
+            if (ready.resources || ready.map || ready.buildings) {
+                currentData = window.collectAllGameData();
+                currentData.lastProcessedDay = currentDayNum;
+                currentData.lastTickTime = now;
+            }
 
             commitPayload(JSON.stringify(currentData));
 
