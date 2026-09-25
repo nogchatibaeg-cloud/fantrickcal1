@@ -152,7 +152,7 @@
 
 <div id="menu-confirm-modal">
     <div class="modal-box">
-        <p class="font-bold text-sm leading-relaxed">정말로 모든 진행 데이터(건물, 적대 우호도, 자원)를 초기화하시겠습니까?</p>
+        <p class="font-bold text-sm leading-relaxed">정말로 모든 진행 데이터를 초기화하시겠습니까?</p>
         <div class="modal-btns">
             <button id="btn-confirm-yes" style="background:#dc2626; color:white;">초기화</button>
             <button id="btn-confirm-no" style="background:#4b5563; color:white;">취소</button>
@@ -166,53 +166,33 @@
 (function() {
     'use strict';
 
-    // 같은 페이지에 두 번 실행되어도 타이머/리스너가 겹치지 않도록 방어
     if (window.__eliasSaveEngineLoaded) return;
     window.__eliasSaveEngineLoaded = true;
 
-    /* =====================================================================
-     *  ELIAS AWAY 통합 세이브 엔진
-     *
-     *  [저장 흐름]
-     *   1) 플레이어가 조작하는 동안의 데이터는 각 페이지의 메모리(임시 상태)에만 존재한다.
-     *   2) 다른 파일로 넘어가는 순간(beforeunload / pagehide) 현재 메모리 상태를
-     *      '임시 저장본(STAGE)'으로 기록한다.
-     *   3) loading.html 이 이 엔진을 불러와 임시 저장본을 검사 → 본 저장(SAVE)으로 확정
-     *      → 다시 읽어 검증한다. 검증이 끝나기 전에는 로딩이 100%가 되지 않는다.
-     *   4) 확정 전에 탭이 닫히는 등 예외가 생겨도, 다음 페이지가 열릴 때
-     *      남아 있는 임시 저장본을 자동으로 확정한다(recoverOrphanStage).
-     *   5) 위와 별개로 수동 저장 / 건물 배치·철거 / 5분 주기 자동 저장은 즉시 확정 저장한다.
-     * ===================================================================== */
-
-    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';          // 본 저장 (기존 키 유지: 예전 세이브/내보내기 파일과 호환)
-    const BACKUP_KEY = 'ELIAS_AWAY_SAVE_BACKUP_V1';      // 직전 정상 저장본
-    const STAGE_KEY = 'ELIAS_AWAY_SAVE_STAGE_V1';        // 이동 직전 임시 저장본
+    const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';          
+    const BACKUP_KEY = 'ELIAS_AWAY_SAVE_BACKUP_V1';      
+    const STAGE_KEY = 'ELIAS_AWAY_SAVE_STAGE_V1';        
     const SCHEMA_VERSION = 2;
-    const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;          // 실제 시간 5분
+    const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;          
     const SHOW_AUTOSAVE_TOAST = true;
     const IS_LOADING_PAGE = window.location.pathname.includes('loading.html');
 
-    // 지역 데이터 중 '플레이어 진행에 따라 변하는' 값만 저장한다.
-    // (이름/설명/확률/이동 경로 같은 고정값은 코드가 바뀌면 코드 쪽 값을 그대로 쓰도록 저장하지 않는다.)
     const REGION_DYNAMIC_FIELDS = [
         'friendlyPoints', 'hostilePoints', 'hostileDays',
         'isWar', 'isOccupied', 'consecutiveWarSuccesses', 'selectedMissionType'
     ];
 
-    let suppressPersist = false;   // 초기화/불러오기 직후 새로고침 때 예전 메모리 상태로 덮어쓰는 것을 막는다
-    let leavingPage = false;       // 페이지를 떠나는 중
-    let pendingSave = null;        // 이 페이지가 열릴 때 읽어 둔 저장 데이터 (복원 원본)
-    const ready = { resources: false, map: false, buildings: false };  // 복원이 끝난 시스템만 저장 대상에 포함한다
+    let suppressPersist = false;   
+    let leavingPage = false;       
+    let pendingSave = null;        
+    const ready = { resources: false, map: false, buildings: false };  
 
-    /* ---------------------------------------------------------------
-     *  공통 유틸
-     * --------------------------------------------------------------- */
     function pageName() {
         const last = window.location.pathname.split('/').pop();
         return last || 'index.html';
     }
 
-    function hashString(str) {   // FNV-1a 32bit (임시 저장본 손상 여부 확인용)
+    function hashString(str) {   
         let h = 0x811c9dc5;
         for (let i = 0; i < str.length; i++) {
             h ^= str.charCodeAt(i);
@@ -228,7 +208,7 @@
     function lsGet(key) {
         try { return localStorage.getItem(key); } catch (e) { return null; }
     }
-    function lsSet(key, value) {          // 실패 시 예외를 그대로 던져 호출자가 알 수 있게 한다
+    function lsSet(key, value) {          
         localStorage.setItem(key, value);
     }
     function lsRemove(key) {
@@ -247,7 +227,7 @@
         return true;
     }
 
-    function readBestSave() {   // 본 저장이 정상이면 본 저장, 아니면 백업
+    function readBestSave() {   
         const rawMain = lsGet(SAVE_KEY);
         if (rawMain) {
             const parsed = safeParse(rawMain);
@@ -266,9 +246,6 @@
         catch (e) { return false; }
     }
 
-    /* ---------------------------------------------------------------
-     *  UI 보조 (토스트 / 마지막 저장 시각)
-     * --------------------------------------------------------------- */
     function showSaveToast(msg) {
         const toast = document.getElementById('menu-toast-msg');
         const toastText = document.getElementById('menu-toast-text');
@@ -287,15 +264,7 @@
         el.textContent = '마지막 저장: ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
     }
 
-    /* ---------------------------------------------------------------
-     *  1. 전역 통합 데이터 수집
-     *     - 아직 복원이 끝나지 않은 시스템은 '기존 저장값'을 그대로 보존한다.
-     *       (복원 전에 기본값으로 저장해서 진행 상황을 덮어쓰는 사고 방지)
-     *     - 해당 시스템이 없는 페이지(예: 지역 페이지)에서도 다른 시스템 데이터는 유지된다.
-     * --------------------------------------------------------------- */
     function getLiveMap() {
-        // Gamemap.html 의 REGIONS_DATA(const), currentDay / expeditionsLeft(let) 는
-        // window 속성이 아니라 전역 렉시컬 바인딩이므로 식별자로 직접 접근해야 한다.
         try {
             if (typeof REGIONS_DATA === 'undefined' || !REGIONS_DATA) return null;
             return {
@@ -316,7 +285,6 @@
 
     function collectLiveBuildings() {
         const list = window.placedBuildings.slice();
-        // '위치 조정' 도중에는 원래 건물이 배열에서 잠시 빠져 있다. 이때 저장돼도 건물이 사라지지 않게 포함한다.
         try {
             if (typeof isMovingExistingBuilding !== 'undefined' && isMovingExistingBuilding &&
                 typeof originalPlacedBuildingData !== 'undefined' && originalPlacedBuildingData &&
@@ -330,18 +298,17 @@
     window.collectAllGameData = function() {
         const existing = readBestSave().data || {};
 
-        // 자원
         let resources = Array.isArray(existing.resources) ? existing.resources : null;
         if (ready.resources && Array.isArray(window.PLAYER_RESOURCES_DATA)) {
             resources = window.PLAYER_RESOURCES_DATA.map(r => ({
                 id: r.id,
                 value: r.value,
                 rawValue: r.rawValue,
-                processedValue: r.processedValue
+                processedValue: r.processedValue,
+                max: r.max
             }));
         }
 
-        // 지도 / 일차 / 원정 횟수 / 지역별 우호·적대·전쟁·점령
         const mapData = isPlainObject(existing.mapData)
             ? Object.assign({}, existing.mapData)
             : { currentDay: 1, expeditionsLeft: 5, regions: null };
@@ -354,13 +321,11 @@
             mapData.regions = regions;
         }
 
-        // 모나티엄 건물
         let buildings = Array.isArray(existing.buildings) ? existing.buildings : [];
         if (ready.buildings && Array.isArray(window.placedBuildings)) {
             buildings = collectLiveBuildings();
         }
 
-        // 진행 기록 (마지막으로 머문 화면 등)
         const progress = isPlainObject(existing.progress) ? Object.assign({}, existing.progress) : {};
         progress.visited = Object.assign({}, progress.visited);
         if (!IS_LOADING_PAGE) {
@@ -380,19 +345,13 @@
         };
     };
 
-    /* ---------------------------------------------------------------
-     *  2. 저장 (확정 / 임시)
-     * --------------------------------------------------------------- */
-    // 본 저장으로 확정: 직전 정상본 백업 → 기록 → 다시 읽어 일치 확인 → 임시 저장본 제거
     function commitPayload(payload) {
-        // 저장 직전 데이터 자체를 먼저 검증한다.
         const parsedPayload = safeParse(payload);
 
         if (!isValidSave(parsedPayload)) {
             throw new Error('저장하려는 데이터가 유효하지 않습니다.');
         }
 
-        // 직전 정상 저장본을 백업한다.
         const prevRaw = lsGet(SAVE_KEY);
 
         if (prevRaw && prevRaw !== payload) {
@@ -407,36 +366,25 @@
             }
         }
 
-        // 본 저장
         lsSet(SAVE_KEY, payload);
 
-        // 문자열 자체가 정확히 기록되었는지 검증
         const savedRaw = lsGet(SAVE_KEY);
 
         if (savedRaw !== payload) {
             throw new Error('저장 후 원본 데이터 검증 실패');
         }
 
-        // JSON 구조까지 다시 검증
         const savedData = safeParse(savedRaw);
 
         if (!isValidSave(savedData)) {
             throw new Error('저장 후 JSON 구조 검증 실패');
         }
 
-        // 임시 저장본 제거
         lsRemove(STAGE_KEY);
 
-        // UI 갱신
         updateLastSaveLabel(savedData.savedAtMs);
-
-        console.log(
-            '[SaveEngine] 저장 성공:',
-            savedData.savedAtMs
-        );
     }
 
-    // 즉시 확정 저장 (수동 저장, 건물 배치/철거, 자동 저장 등)
     window.saveGameState = function(isAuto = false) {
         if (suppressPersist) return false;
         try {
@@ -451,21 +399,14 @@
         }
     };
 
-    // 다른 파일로 넘어가기 직전: 현재 메모리 상태를 임시 저장본으로 기록 (확정은 loading.html 이 담당)
     function stageForNavigation(reason) {
         if (suppressPersist) return false;
 
         try {
-            const payload =
-                JSON.stringify(
-                    window.collectAllGameData()
-                );
+            const payload = JSON.stringify(window.collectAllGameData());
 
-            // 저장할 데이터 자체를 먼저 검증
             if (!isValidSave(safeParse(payload))) {
-                throw new Error(
-                    '임시 저장할 데이터가 유효하지 않습니다.'
-                );
+                throw new Error('임시 저장할 데이터가 유효하지 않습니다.');
             }
 
             const record = {
@@ -477,50 +418,26 @@
                 payload: payload
             };
 
-            const stagePayload =
-                JSON.stringify(record);
+            const stagePayload = JSON.stringify(record);
 
-            lsSet(
-                STAGE_KEY,
-                stagePayload
-            );
+            lsSet(STAGE_KEY, stagePayload);
 
-            // 실제로 기록됐는지 즉시 검증
-            const written =
-                lsGet(STAGE_KEY);
+            const written = lsGet(STAGE_KEY);
 
             if (written !== stagePayload) {
-                throw new Error(
-                    '임시 저장 후 검증에 실패했습니다.'
-                );
+                throw new Error('임시 저장 후 검증에 실패했습니다.');
             }
 
-            const writtenRecord =
-                safeParse(written);
+            const writtenRecord = safeParse(written);
 
-            if (
-                !isPlainObject(writtenRecord) ||
-                writtenRecord.hash !==
-                    hashString(writtenRecord.payload)
-            ) {
-                throw new Error(
-                    '임시 저장 데이터 무결성 검증에 실패했습니다.'
-                );
+            if (!isPlainObject(writtenRecord) || writtenRecord.hash !== hashString(writtenRecord.payload)) {
+                throw new Error('임시 저장 데이터 무결성 검증에 실패했습니다.');
             }
-
-            console.log(
-                '[SaveEngine] 이동용 임시 저장 성공:',
-                writtenRecord.from,
-                writtenRecord.reason
-            );
 
             return true;
 
         } catch (err) {
-            console.error(
-                '[SaveEngine] 임시 저장 오류:',
-                err
-            );
+            console.error('[SaveEngine] 임시 저장 오류:', err);
             return false;
         }
     }
@@ -528,9 +445,9 @@
     function flushOnLeave(reason) {
         if (suppressPersist) return;
         leavingPage = true;
-        setTimeout(() => { leavingPage = false; }, 2000);   // 이동이 취소된 경우를 대비
+        setTimeout(() => { leavingPage = false; }, 2000);   
         if (!stageForNavigation(reason)) {
-            window.saveGameState(true);   // 임시 저장 실패 시 즉시 확정 저장으로 대체
+            window.saveGameState(true);   
         }
     }
 
@@ -546,7 +463,6 @@
         return { status: 'valid', record: record, data: data };
     }
 
-    // 확정되지 못하고 남은 임시 저장본을 복구 (탭이 갑자기 닫힌 경우 등)
     function recoverOrphanStage() {
         const stage = inspectStage();
         if (stage.status === 'none') return 'none';
@@ -559,15 +475,10 @@
             try { commitPayload(stage.record.payload); return 'committed'; }
             catch (e) { console.error('[SaveEngine] 임시 저장본 복구 실패:', e); return 'failed'; }
         }
-        lsRemove(STAGE_KEY);   // 이미 더 새로운 저장본이 있음
+        lsRemove(STAGE_KEY);   
         return 'discarded';
     }
 
-    /* ---------------------------------------------------------------
-     *  3. loading.html 연동: 이동 전 저장 확정 + 검증
-     *     report(label, pct, minMs) 는 로딩 화면의 진행바/문구를 갱신하고
-     *     연출이 끝나면 resolve 되는 Promise 를 돌려주는 콜백.
-     * --------------------------------------------------------------- */
     function summarize(data) {
         if (!isPlainObject(data)) return null;
         return {
@@ -591,7 +502,6 @@
 
         if (isValidSave(main)) return { data: main, repaired: false, corrupted: false };
 
-        // 본 저장이 없거나 손상됨 → 백업으로 복구 시도
         const rawBackup = lsGet(BACKUP_KEY);
         const backup = rawBackup ? safeParse(rawBackup) : null;
         if (isValidSave(backup)) {
@@ -599,7 +509,7 @@
             if (lsGet(SAVE_KEY) !== rawBackup) throw new Error('백업 복구 후 검증에 실패했습니다.');
             return { data: backup, repaired: true, corrupted: false };
         }
-        return { data: null, repaired: false, corrupted: !!rawMain };   // 저장 기록 없음(새 게임) 또는 복구 불가
+        return { data: null, repaired: false, corrupted: !!rawMain };   
     }
 
     async function finalizeForNavigation(report) {
@@ -607,14 +517,12 @@
         const result = { ok: true, hadPending: false, committed: false, repaired: false, from: null, summary: null, notes: [], error: null };
 
         try {
-            // 1) 저장 대기 데이터 확인
             let anim = say('이동 전 저장할 데이터를 확인하는 중...', 20, 350);
             const stage = inspectStage();
             await anim;
             result.hadPending = stage.status !== 'none';
             result.from = stage.record ? stage.record.from : null;
 
-            // 2) 무결성 검사
             anim = say('데이터 무결성을 검사하는 중...', 45, 400);
             if (stage.status === 'corrupt') {
                 lsRemove(STAGE_KEY);
@@ -622,7 +530,6 @@
             }
             await anim;
 
-            // 3) 본 저장으로 확정 (실패 시 최대 3회 재시도)
             anim = say(stage.status === 'valid' ? '진행 상황을 저장하는 중... (자원 / 지도 / 건물)' : '저장본을 확인하는 중...', 75, 500);
             if (stage.status === 'valid') {
                 let lastErr = null;
@@ -635,7 +542,6 @@
             }
             await anim;
 
-            // 4) 저장 결과 검증
             anim = say('저장 결과를 검증하는 중...', 92, 400);
             const check = verifySaveIntegrity(result.committed ? stage.record.payload : null);
             result.repaired = check.repaired;
@@ -651,7 +557,6 @@
         return result;
     }
 
-    // 다른 코드에서 명시적으로 화면을 전환할 때 쓸 수 있는 도우미 (임시 저장 후 이동)
     function navigateWithSave(url) {
         stageForNavigation('navigate');
         window.location.href = url;
@@ -668,9 +573,6 @@
         isReady: function() { return Object.assign({}, ready); }
     };
 
-    /* ---------------------------------------------------------------
-     *  loading.html 에서는 저장 API 만 제공하고 메뉴 UI/타이머/복원은 동작하지 않는다.
-     * --------------------------------------------------------------- */
     if (IS_LOADING_PAGE) {
         const drawer = document.getElementById('global-menu-drawer');
         const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
@@ -679,11 +581,6 @@
         return;
     }
 
-    /* ---------------------------------------------------------------
-     *  4. 통합 로드 (복원)
-     *     자원 모듈(PlayerResource)과 지도 화면은 페이지가 열린 뒤 비동기로 준비되므로,
-     *     준비되는 순서대로 복원하고 복원이 끝난 시스템부터 저장 대상에 포함한다.
-     * --------------------------------------------------------------- */
     function refreshCraftPanel() {
         try {
             const frame = document.getElementById('craft-iframe');
@@ -704,8 +601,21 @@
                 if (savedRes.value != null) target.value = savedRes.value;
                 if (savedRes.rawValue != null) target.rawValue = savedRes.rawValue;
                 if (savedRes.processedValue != null) target.processedValue = savedRes.processedValue;
+                if (savedRes.max != null) target.max = savedRes.max;
             });
         }
+
+        // 전력 보너스 용량 보정 (potato3 건물 수치 계산)
+        const buildings = (pendingSave && Array.isArray(pendingSave.buildings)) ? pendingSave.buildings : (window.placedBuildings || []);
+        let p3Count = 0;
+        buildings.forEach(b => {
+            if (b && b.data && b.data.id === 'potato3') p3Count++;
+        });
+        const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
+        if (powerRes) {
+            powerRes.max = p3Count * 50;
+        }
+
         ready.resources = true;
         if (typeof window.renderPlayerResourcesUI === 'function') window.renderPlayerResourcesUI();
         refreshCraftPanel();
@@ -717,7 +627,7 @@
         if (!live) return;
         let domReady = false;
         try { domReady = (typeof DOM !== 'undefined') && !!DOM && !!DOM.statusLayer; } catch (e) { domReady = false; }
-        if (!domReady) return;   // 지도 DOM 초기화(DOMContentLoaded) 전
+        if (!domReady) return;   
 
         const md = pendingSave && isPlainObject(pendingSave.mapData) ? pendingSave.mapData : null;
         if (md) {
@@ -799,115 +709,33 @@
 
     /* ---------------------------------------------------------------
      *  5. 백그라운드 엔진 ("독립 메인 서버")
-     *     복원이 끝나기 전에는 경과 시간을 소모하지 않는다(초기값 위에 더해져 버려지는 것 방지).
-     *     자원 모듈이 없는 페이지에서는 경과 시간을 그대로 보존했다가 자원 모듈이 있는 페이지에서 통산한다.
+     *     실시간 전력 1초당 1W 상승하는 버그성 자동 보정을 제거
      * --------------------------------------------------------------- */
     function runBackgroundServerTick() {
         if (suppressPersist) return;
 
         tryRestoreAll();
 
-        if (
-            !ready.resources ||
-            !Array.isArray(window.PLAYER_RESOURCES_DATA)
-        ) {
+        if (!ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) {
             return;
         }
 
         try {
-            /*
-             * 중요:
-             * localStorage의 오래된 SAVE_DATA를 현재 게임 상태로
-             * 다시 덮어쓰지 않는다.
-             *
-             * 현재 페이지의 실제 메모리 상태를 기준으로 계산한다.
-             */
             const now = Date.now();
+            const currentData = window.collectAllGameData();
+            currentData.lastTickTime = now;
 
-            const currentData =
-                window.collectAllGameData();
+            commitPayload(JSON.stringify(currentData));
 
-            const lastTick =
-                Number(currentData.lastTickTime) || now;
-
-            const elapsedSeconds =
-                Math.floor((now - lastTick) / 1000);
-
-            if (elapsedSeconds <= 0) {
-                return;
-            }
-
-            /*
-             * 설치된 발전소에 따른 전력 생산
-             */
-            let powerRate = 0;
-
-            if (Array.isArray(window.placedBuildings)) {
-                window.placedBuildings.forEach(building => {
-                    if (
-                        building &&
-                        building.data &&
-                        building.data.id === 'potato2'
-                    ) {
-                        powerRate += 1;
-                    }
-                });
-            }
-
-            if (powerRate > 0) {
-                const powerRes =
-                    window.PLAYER_RESOURCES_DATA.find(
-                        r => r.id === 'power'
-                    );
-
-                if (powerRes) {
-                    const maxVal =
-                        Number(powerRes.max) || 100;
-
-                    const currentValue =
-                        Number(powerRes.value) || 0;
-
-                    powerRes.value = Math.min(
-                        maxVal,
-                        currentValue +
-                        (powerRate * elapsedSeconds)
-                    );
-                }
-            }
-
-            /*
-             * 전력 계산 후 현재 실제 게임 상태를 다시 수집한다.
-             */
-            const latestData =
-                window.collectAllGameData();
-
-            latestData.lastTickTime = now;
-
-            /*
-             * 오래된 SAVE_DATA가 아니라 현재 게임 상태를 저장한다.
-             */
-            commitPayload(
-                JSON.stringify(latestData)
-            );
-
-            if (
-                typeof window.renderPlayerResourcesUI ===
-                'function'
-            ) {
+            if (typeof window.renderPlayerResourcesUI === 'function') {
                 window.renderPlayerResourcesUI();
             }
 
         } catch (error) {
-            console.error(
-                '[SaveEngine] 백그라운드 저장 오류:',
-                error
-            );
+            console.error('[SaveEngine] 백그라운드 저장 오류:', error);
         }
     }
 
-    /* ---------------------------------------------------------------
-     *  6. 메뉴 UI 이벤트
-     * --------------------------------------------------------------- */
     function setupMenuEvents() {
         const drawer = document.getElementById('global-menu-drawer');
         const toggleBtn = document.getElementById('menu-drawer-toggle-btn');
@@ -970,7 +798,6 @@
                             (Array.isArray(parsed.resources) || isPlainObject(parsed.mapData) || Array.isArray(parsed.buildings));
                         if (!looksLikeSave) throw new Error('invalid save');
 
-                        // 새로고침 중 pagehide 가 '현재 메모리 상태'로 불러온 데이터를 덮어쓰지 못하게 막는다
                         suppressPersist = true;
                         parsed.savedAtMs = Date.now();
                         lsRemove(STAGE_KEY);
@@ -995,7 +822,6 @@
         }
 
         if (btnYes) btnYes.addEventListener('click', () => {
-            // 새로고침 중 pagehide/틱이 현재 메모리 상태를 다시 저장하지 못하게 막은 뒤 모든 저장 데이터를 제거
             suppressPersist = true;
             lsRemove(SAVE_KEY);
             lsRemove(BACKUP_KEY);
@@ -1007,56 +833,36 @@
         });
     }
 
-    /* ---------------------------------------------------------------
-     *  저장소 자체 사용 가능 여부 확인
-     * --------------------------------------------------------------- */
     function verifyStorageAvailable() {
         const TEST_KEY = '__ELIAS_AWAY_STORAGE_TEST__';
         const TEST_VALUE = String(Date.now());
 
         try {
             localStorage.setItem(TEST_KEY, TEST_VALUE);
-
-            const readBack =
-                localStorage.getItem(TEST_KEY);
-
+            const readBack = localStorage.getItem(TEST_KEY);
             localStorage.removeItem(TEST_KEY);
 
             if (readBack !== TEST_VALUE) {
-                throw new Error(
-                    'localStorage 읽기/쓰기 검증 실패'
-                );
+                throw new Error('localStorage 읽기/쓰기 검증 실패');
             }
-
             return true;
         } catch (error) {
-            console.error(
-                '[SaveEngine] localStorage를 사용할 수 없습니다:',
-                error
-            );
-
-            showSaveToast(
-                '브라우저 저장 공간을 사용할 수 없습니다.'
-            );
-
+            console.error('[SaveEngine] localStorage를 사용할 수 없습니다:', error);
+            showSaveToast('브라우저 저장 공간을 사용할 수 없습니다.');
             return false;
         }
     }
 
-    /* ---------------------------------------------------------------
-     *  7. 초기화
-     * --------------------------------------------------------------- */
     if (!verifyStorageAvailable()) {
         return;
     }
 
     setupMenuEvents();
 
-    // 이전 화면에서 확정되지 못한 임시 저장본이 있으면 먼저 확정한 뒤 복원한다
     recoverOrphanStage();
     const best = readBestSave();
     if (best.source === 'backup') {
-        try { lsSet(SAVE_KEY, best.raw); } catch (e) { /* ignore */ }   // 본 저장 손상 → 백업으로 복구
+        try { lsSet(SAVE_KEY, best.raw); } catch (e) { /* ignore */ }   
     }
     pendingSave = best.data;
     updateLastSaveLabel(pendingSave && pendingSave.savedAtMs);
@@ -1065,14 +871,12 @@
     let restorePollCount = 0;
     const restorePoll = setInterval(() => {
         tryRestoreAll();
-        if (++restorePollCount >= 150) clearInterval(restorePoll);   // 100ms x 15초
+        if (++restorePollCount >= 150) clearInterval(restorePoll);   
     }, 100);
 
-    // 1초 주기로 백그라운드 틱 실행
     setInterval(runBackgroundServerTick, 1000);
-    runBackgroundServerTick();   // 이탈 경과 시간 즉시 통산 계산
+    runBackgroundServerTick();   
 
-    // 실제 시간 5분마다 자동 저장 (타이머 지연/절전 복귀에도 어긋나지 않도록 시각 기준으로 판단)
     let nextAutoSaveAt = Date.now() + AUTOSAVE_INTERVAL_MS;
     setInterval(() => {
         if (suppressPersist || Date.now() < nextAutoSaveAt) return;
@@ -1081,11 +885,9 @@
         if (ok && SHOW_AUTOSAVE_TOAST && !isPlacingBuilding()) showSaveToast('자동 저장되었습니다.');
     }, 5000);
 
-    // 다른 파일로 넘어갈 때는 반드시 저장 (임시 저장 → loading.html 에서 확정/검증)
     window.addEventListener('beforeunload', () => { flushOnLeave('beforeunload'); });
     window.addEventListener('pagehide', () => { flushOnLeave('pagehide'); });
 
-    // 링크를 누르는 즉시에도 한 번 확정 저장 (기존 동작 유지)
     document.addEventListener('click', (e) => {
         const link = e.target.closest ? e.target.closest('a') : null;
         if (link && link.href && !link.href.startsWith('javascript:')) {
@@ -1093,12 +895,10 @@
         }
     }, true);
 
-    // 탭 전환/앱 백그라운드 전환 시 (모바일에서 pagehide 없이 종료되는 경우 대비)
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden' && !leavingPage) window.saveGameState(true);
     });
 
-    // 뒤로가기로 예전 화면(bfcache)이 복원되면 메모리 상태가 낡았으므로 저장본을 기준으로 새로 불러온다
     window.addEventListener('pageshow', (e) => {
         if (e.persisted) {
             suppressPersist = true;

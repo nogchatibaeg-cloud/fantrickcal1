@@ -255,13 +255,13 @@
 
     <script>
         const REGIONS_DATA = {
-            elf: { id: "elf", name: "엘프", regionName: "모나티엄", targetUrl: "loading.html?target=InMonatium.html", factionBadge: "Monatium", factionBadgeColor: "bg-teal-500/20 text-teal-300 border-teal-500/30", icon: "fa-solid fa-gear", color: "#14b8a6", commander: "엘레나 (시장)", specialty: "기술력", probabilities: { hostile: 0, friendly: 100 }, notes: "<b>우리</b>.<br><br>엘피니아 수정-재수정-헌법 제1조 2항!<br>국가의 주엘은 리더이고, 모든 배신은 국민으로부터 나온다! - 엘레나", center: { x: 1000, y: 1580 }, friendlyPoints: 150, hostilePoints: 0, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            fairy: { id: "fairy", name: "요정", regionName: "에르피엔", targetUrl: "loading.html?target=InErpien.html", factionBadge: "Erpien", factionBadgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", icon: "fa-solid fa-leaf", color: "#22c55e", commander: "에르핀 (요정여왕)", specialty: "세계수", probabilities: { hostile: 30, friendly: 90 }, notes: "<b>먹을 것만 잘 챙겨주면 되는 바보 종족</b>.<br><br>시식은 식사가 아니라 맛보라고 있는거라고,<br>이 먹보들아!!! - 아이시아", center: { x: 880, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            witch: { id: "witch", name: "마녀", regionName: "벨리티엔", targetUrl: "loading.html?target=InBelitien.html", factionBadge: "Belitien", factionBadgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30", icon: "fa-solid fa-hat-wizard", color: "#a855f7", commander: "벨리타 (고위 마녀)", specialty: "마법", probabilities: { hostile: 80, friendly: 40 }, notes: "<b>까다롭고 보수적인 종족</b>.<br><br>오시는 환자분들의 98%가 저 녀석들 포션 문제에요... - 힐데", center: { x: 1120, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            spirit: { id: "spirit", name: "정령", regionName: "정령산", targetUrl: "loading.html?target=InEleMoun.html", factionBadge: "Elemental Mountain", factionBadgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30", icon: "fa-solid fa-mountain", color: "#06b6d4", commander: "실라 (바람의 고위 정령)", specialty: "에너지", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>적당히 잘 구슬려서 에너지로 쓸만한 종족</b>.<br><br>이 설정은 어딜 가나 있네. - 리스티", center: { x: 640, y: 1080 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            dragon: { id: "dragon", name: "용족", regionName: "불길과 물길의 터", targetUrl: "loading.html?target=InWFaWM.html", factionBadge: "Where Fire and Water Meet", factionBadgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30", icon: "fa-solid fa-fire", color: "#f59e0b", commander: "다야 (다이아몬드의 용족)", specialty: "광물", probabilities: { hostile: 70, friendly: 50 }, notes: "<b>일단 싸움부터 걸고 보는 종족</b>.<br><br>덕분에 시장님께 드릴 다이아몬드 반지를 만들었습니다!<br>이제 시장님만 있으면 됩니다! - 아멜리아", center: { x: 700, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            beast: { id: "beast", name: "수인", regionName: "수인 부락", targetUrl: "loading.html?target=InWereTribe.html", factionBadge: "Werebeast Tribe", factionBadgeColor: "bg-orange-500/20 text-orange-300 border-orange-500/30", icon: "fa-solid fa-paw", color: "#ea580c", commander: "디아나 (사슴? 수인)", specialty: "식량", probabilities: { hostile: 40, friendly: 80 }, notes: "<b>원시 모습 그대로인 종족</b>.<br><br>자판기를 털거면 털기만 하라고!<br>왜 다 털고 나서 부수는데?! - 칸나", center: { x: 1000, y: 1300 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
-            ghost: { id: "ghost", name: "유령", regionName: "유령 늪", targetUrl: "loading.html?target=InPhanMarsh.html", factionBadge: "Phantom Marsh", factionBadgeColor: "bg-rose-500/20 text-rose-300 border-rose-500/30", icon: "fa-solid fa-ghost", color: "#f43f5e", commander: "셰이디 (혼돈의 유령)", specialty: "차원문", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>맨날 사고치고 튀는 종족</b>.<br><br>이거 수인쪽에다 적어야 하지 않아요? - 로네", center: { x: 1300, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" }
+            elf: { id: "elf", name: "엘프", regionName: "모나티엄", targetUrl: "loading.html?target=InMonatium.html", factionBadge: "Monatium", factionBadgeColor: "bg-teal-500/20 text-teal-300 border-teal-500/30", icon: "fa-solid fa-gear", color: "#14b8a6", commander: "<span style=color: #ffffff;>엘레나 (시장)</span>", specialty: "기술력", probabilities: { hostile: 0, friendly: 100 }, notes: "<b>우리</b>.<br><br>엘피니아 수정-재수정-헌법 제1조 2항!<br>국가의 주엘은 리더이고, 모든 배신은 국민으로부터 나온다! - 엘레나", center: { x: 1000, y: 1580 }, friendlyPoints: 150, hostilePoints: 0, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            fairy: { id: "fairy", name: "요정", regionName: "에르피엔", targetUrl: "loading.html?target=InErpien.html", factionBadge: "Erpien", factionBadgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", icon: "fa-solid fa-leaf", color: "#22c55e", commander: "<span style=color: #ffffff;>에르핀 (요정여왕)</span>", specialty: "세계수", probabilities: { hostile: 30, friendly: 90 }, notes: "<b>먹을 것만 잘 챙겨주면 되는 바보 종족</b>.<br><br>시식은 식사가 아니라 맛보라고 있는거라고,<br>이 먹보들아!!! - 아이시아", center: { x: 880, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            witch: { id: "witch", name: "마녀", regionName: "벨리티엔", targetUrl: "loading.html?target=InBelitien.html", factionBadge: "Belitien", factionBadgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30", icon: "fa-solid fa-hat-wizard", color: "#a855f7", commander: "<span style=color: #ffffff;>벨리타 (마녀여왕)</span>", specialty: "마법", probabilities: { hostile: 80, friendly: 40 }, notes: "<b>까다롭고 보수적인 종족</b>.<br><br>오시는 환자분들의 98%가 저 녀석들 포션 문제에요... - 힐데", center: { x: 1120, y: 925 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            spirit: { id: "spirit", name: "정령", regionName: "정령산", targetUrl: "loading.html?target=InEleMoun.html", factionBadge: "Elemental Mountain", factionBadgeColor: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30", icon: "fa-solid fa-mountain", color: "#06b6d4", commander: "<span style=color: #ffffff;>실라 (바람의 고위 정령)</span>", specialty: "에너지", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>적당히 잘 구슬려서 에너지로 쓸만한 종족</b>.<br><br>이 설정은 어딜 가나 있네. - 리스티", center: { x: 640, y: 1080 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            dragon: { id: "dragon", name: "용족", regionName: "불길과 물길의 터", targetUrl: "loading.html?target=InWFaWM.html", factionBadge: "Where Fire and Water Meet", factionBadgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30", icon: "fa-solid fa-fire", color: "#f59e0b", commander: "<span style=color: #ffffff;>다야 (다이아몬드의 용족)</span>", specialty: "광물", probabilities: { hostile: 70, friendly: 50 }, notes: "<b>일단 싸움부터 걸고 보는 종족</b>.<br><br>덕분에 시장님께 드릴 다이아몬드 반지를 만들었습니다!<br>이제 시장님만 있으면 됩니다! - 아멜리아", center: { x: 700, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            beast: { id: "beast", name: "수인", regionName: "수인 부락", targetUrl: "loading.html?target=InWereTribe.html", factionBadge: "Werebeast Tribe", factionBadgeColor: "bg-orange-500/20 text-orange-300 border-orange-500/30", icon: "fa-solid fa-paw", color: "#ea580c", commander: "<span style=color: #ffffff;>디아나 (사슴? 수인)</span>", specialty: "식량", probabilities: { hostile: 40, friendly: 80 }, notes: "<b>원시 모습 그대로인 종족</b>.<br><br>자판기를 털거면 털기만 하라고!<br>왜 다 털고 나서 부수는데?! - 칸나", center: { x: 1000, y: 1300 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" },
+            ghost: { id: "ghost", name: "유령", regionName: "유령 늪", targetUrl: "loading.html?target=InPhanMarsh.html", factionBadge: "Phantom Marsh", factionBadgeColor: "bg-rose-500/20 text-rose-300 border-rose-500/30", icon: "fa-solid fa-ghost", color: "#f43f5e", commander: "<span style=color: #ffffff;>셰이디 (혼돈의 유령)</span>", specialty: "차원문", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>맨날 사고치고 튀는 종족</b>.<br><br>이거 수인쪽에다 적어야 하지 않아요? - 로네", center: { x: 1300, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" }
         };
 
         window.highlightRegionsByResource = function(goodRegions = [], badRegions = []) {
@@ -856,10 +856,18 @@
 
             if (!buildings || buildings.length === 0) return;
 
-            // 자원 객체 참조
             const resMap = {};
             if (window.PLAYER_RESOURCES_DATA) {
                 window.PLAYER_RESOURCES_DATA.forEach(r => { resMap[r.id] = r; });
+            }
+
+            // potato3 건물의 전력 최대 저장량 보정
+            let p3Count = 0;
+            buildings.forEach(b => {
+                if (b && b.data && b.data.id === 'potato3') p3Count++;
+            });
+            if (resMap.power) {
+                resMap.power.max = p3Count * 50;
             }
 
             // 각 건물별 일일 일수행 (potato1 ~ potato5)
@@ -875,9 +883,9 @@
                         if (window.notifyResourceGain) window.notifyResourceGain('mineral', 1);
                     }
                 } else if (bId === 'potato2') {
-                    // 전력 생산 (배터리 용량 최대치 범위 내)
+                    // 전력 10W 생산 (최대 용량 제한 적용)
                     if (resMap.power) {
-                        const maxVal = resMap.power.max || 100;
+                        const maxVal = resMap.power.max || 0;
                         const currentVal = resMap.power.value || 0;
                         if (currentVal < maxVal) {
                             const addVal = Math.min(10, maxVal - currentVal);
@@ -885,15 +893,10 @@
                             if (window.notifyResourceGain) window.notifyResourceGain('power', addVal);
                         }
                     }
-                } else if (bId === 'potato3') {
-                    // 전력 최대 저장량 증가
-                    if (resMap.power) {
-                        resMap.power.max = (resMap.power.max || 0) + 50;
-                    }
                 } else if (bId === 'potato4') {
-                    // 에너지 1을 소모하여 전력 20 충전
+                    // 에너지 1을 소모하여 전력 20W 충전
                     if (resMap.energy && resMap.energy.value >= 1 && resMap.power) {
-                        const maxVal = resMap.power.max || 100;
+                        const maxVal = resMap.power.max || 0;
                         const currentVal = resMap.power.value || 0;
                         if (currentVal < maxVal) {
                             resMap.energy.value -= 1;
@@ -923,7 +926,6 @@
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
             DOM.headerExpeditionCount.innerText = `5/5`;
 
-            // 플레이어가 모나티엄 내부에 존재하지 않더라도 일하는 모든 건물이 자원 가공 및 일을 진행하도록 일제히 실행
             processBuildingDailyProduction();
 
             Object.values(REGIONS_DATA).forEach(region => {
@@ -1086,7 +1088,7 @@
                 }
             }
 
-            DOM.panelCommander.innerText = region.commander;
+            DOM.panelCommander.innerHTML = region.commander;
             DOM.panelSpecialty.innerText = region.specialty;
 
             DOM.barHostile.style.height = `${region.probabilities.hostile}%`;
