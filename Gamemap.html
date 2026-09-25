@@ -838,11 +838,93 @@
             selectRegion(currentRegionId);
         }
 
+        // 건설된 자원 생산/가공/소모 건물들이 하루마다 일하도록 처리하는 함수
+        function processBuildingDailyProduction() {
+            let buildings = [];
+            if (window.EliasSave && window.EliasSave.collect) {
+                const currentData = window.EliasSave.collect();
+                buildings = currentData.buildings || [];
+            } else {
+                try {
+                    const rawData = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
+                    if (rawData) {
+                        const parsed = JSON.parse(rawData);
+                        buildings = parsed.buildings || [];
+                    }
+                } catch(e) {}
+            }
+
+            if (!buildings || buildings.length === 0) return;
+
+            // 자원 객체 참조
+            const resMap = {};
+            if (window.PLAYER_RESOURCES_DATA) {
+                window.PLAYER_RESOURCES_DATA.forEach(r => { resMap[r.id] = r; });
+            }
+
+            // 각 건물별 일일 일수행 (potato1 ~ potato5)
+            buildings.forEach(b => {
+                if (!b || !b.data || !b.data.id) return;
+                const bId = b.data.id;
+
+                if (bId === 'potato1') {
+                    // 미가공 자재 1개를 가공 자재 1개로 변환
+                    if (resMap.mineral && resMap.mineral.rawValue >= 1) {
+                        resMap.mineral.rawValue -= 1;
+                        resMap.mineral.processedValue = (resMap.mineral.processedValue || 0) + 1;
+                        if (window.notifyResourceGain) window.notifyResourceGain('mineral', 1);
+                    }
+                } else if (bId === 'potato2') {
+                    // 전력 생산 (배터리 용량 최대치 범위 내)
+                    if (resMap.power) {
+                        const maxVal = resMap.power.max || 100;
+                        const currentVal = resMap.power.value || 0;
+                        if (currentVal < maxVal) {
+                            const addVal = Math.min(10, maxVal - currentVal);
+                            resMap.power.value += addVal;
+                            if (window.notifyResourceGain) window.notifyResourceGain('power', addVal);
+                        }
+                    }
+                } else if (bId === 'potato3') {
+                    // 전력 최대 저장량 증가
+                    if (resMap.power) {
+                        resMap.power.max = (resMap.power.max || 0) + 50;
+                    }
+                } else if (bId === 'potato4') {
+                    // 에너지 1을 소모하여 전력 20 충전
+                    if (resMap.energy && resMap.energy.value >= 1 && resMap.power) {
+                        const maxVal = resMap.power.max || 100;
+                        const currentVal = resMap.power.value || 0;
+                        if (currentVal < maxVal) {
+                            resMap.energy.value -= 1;
+                            const addVal = Math.min(20, maxVal - currentVal);
+                            resMap.power.value += addVal;
+                            if (window.notifyResourceGain) window.notifyResourceGain('power', addVal);
+                        }
+                    }
+                } else if (bId === 'potato5') {
+                    // 미가공 식량 1개를 가공 식량 1개로 변환
+                    if (resMap.food && resMap.food.rawValue >= 1) {
+                        resMap.food.rawValue -= 1;
+                        resMap.food.processedValue = (resMap.food.processedValue || 0) + 1;
+                        if (window.notifyResourceGain) window.notifyResourceGain('food', 1);
+                    }
+                }
+            });
+
+            if (window.renderPlayerResourcesUI) {
+                window.renderPlayerResourcesUI();
+            }
+        }
+
         function advanceDay() {
             currentDay++;
             expeditionsLeft = 5;
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
             DOM.headerExpeditionCount.innerText = `5/5`;
+
+            // 플레이어가 모나티엄 내부에 존재하지 않더라도 일하는 모든 건물이 자원 가공 및 일을 진행하도록 일제히 실행
+            processBuildingDailyProduction();
 
             Object.values(REGIONS_DATA).forEach(region => {
                 if (region.id === 'elf') return;
@@ -874,6 +956,10 @@
 
             updateAllRegionsState();
             if (currentRegionId) selectRegion(currentRegionId);
+
+            if (window.saveGameState) {
+                window.saveGameState(true);
+            }
         }
 
         function updateAllRegionsState() {
