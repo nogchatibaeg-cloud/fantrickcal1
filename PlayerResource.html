@@ -150,15 +150,15 @@
         listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
             let displayVal = '';
 
-            // 식량 및 자재의 미가공/가공 표기를 안전하게 계산
+            // 식량 및 자재 미가공 표기 줄바꿈 적용
             if (res.id === 'food' || res.id === 'mineral') {
                 const proc = (res.processedValue || 0).toLocaleString();
                 const raw = (res.rawValue || 0).toLocaleString();
-                displayVal = `${proc} (미가공 ${raw})`;
+                displayVal = `<div class="text-right">${proc}${res.unit || ''}<br><span class="text-[9px] text-slate-400 font-normal">(미가공 ${raw})</span></div>`;
             } else if (typeof res.value === 'number') {
-                displayVal = res.value.toLocaleString();
+                displayVal = `<span>${res.value.toLocaleString()}${res.unit || ''}</span>`;
             } else {
-                displayVal = res.value || '0';
+                displayVal = `<span>${res.value || '0'}${res.unit || ''}</span>`;
             }
 
             return `
@@ -167,7 +167,7 @@
                     <i class="${res.icon} ${res.color} text-[10px] w-3.5 text-center"></i>
                     <span class="text-slate-300 font-bold truncate text-[10px]">${res.name}</span>
                 </div>
-                <span class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}${res.unit || ''}</span>
+                <div class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}</div>
                 
                 <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
                     <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
@@ -192,7 +192,6 @@
             });
         });
 
-        // 자원 목록이 다시 렌더링되어도 현재 표시 중인 모든 획득 알림을 복원합니다.
         Object.keys(gainAmounts).forEach(resourceId => {
             if (gainAmounts[resourceId] > 0) {
                 updateGainBadgeUI(resourceId);
