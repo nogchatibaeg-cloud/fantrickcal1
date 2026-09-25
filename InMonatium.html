@@ -91,31 +91,32 @@
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
-        /* 건물 설명 툴팁 오버레이 */
+        /* 건물 설명 툴팁 오버레이 (건물 하단 배치 & 4배 확장) */
         .building-desc-tooltip {
             position: absolute;
-            bottom: calc(100% + 12px);
+            top: calc(100% + 16px);
             left: 50%;
             transform: translateX(-50%);
-            width: 280px;
+            width: 1120px; /* 기존 280px의 4배 */
             pointer-events: none;
             z-index: 120;
             animation: tooltipFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
+        /* 말풍선 화살표 (상단 방향 지칭) */
         .building-desc-tooltip::after {
             content: '';
             position: absolute;
-            top: 100%;
+            bottom: 100%;
             left: 50%;
             transform: translateX(-50%);
-            border-width: 8px;
+            border-width: 16px;
             border-style: solid;
-            border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+            border-color: transparent transparent rgba(15, 23, 42, 0.95) transparent;
         }
 
         @keyframes tooltipFadeIn {
-            from { opacity: 0; transform: translate(-50%, 8px); }
+            from { opacity: 0; transform: translate(-50%, -8px); }
             to { opacity: 1; transform: translate(-50%, 0); }
         }
     </style>
@@ -523,6 +524,7 @@
         delOrMovFrame.style.top = `${screenY - 65}px`;  
     }
 
+    /* 4배 크기 및 하단 위치가 적용된 건물 설명 툴팁 함수 */
     function showBuildingTooltip(building) {
         removeBuildingTooltip();
 
@@ -530,17 +532,17 @@
 
         const data = building.data;
         const tooltip = document.createElement('div');
-        tooltip.className = 'building-desc-tooltip bg-slate-900/95 border border-amber-400/80 rounded-xl p-3 shadow-2xl backdrop-blur-md text-white font-sans';
+        tooltip.className = 'building-desc-tooltip bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-8 shadow-2xl backdrop-blur-md text-white font-sans';
         
         let descContent = data.desc || '건물 상세 설명이 없습니다.';
         let nameContent = data.name || '건물 정보';
 
         tooltip.innerHTML = `
-            <div class="font-extrabold text-xs text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+            <div class="font-black text-3xl text-amber-400 mb-4 border-b-2 border-slate-800 pb-3 flex items-center gap-4">
                 <i class="${BUILDING_ICON_MAP[data.id] || 'fa-solid fa-building'} text-amber-400"></i>
                 <span>${nameContent}</span>
             </div>
-            <div class="text-[11px] leading-relaxed text-slate-300 font-medium">
+            <div class="text-xl leading-relaxed text-slate-200 font-medium">
                 ${descContent}
             </div>
         `;
