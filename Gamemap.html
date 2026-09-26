@@ -838,123 +838,24 @@
             selectRegion(currentRegionId);
         }
 
-        // 건설된 모든 지역의 자원 생산/가공/소모 연동 처리 함수
-        function processBuildingDailyProduction() {
-            let buildings = [];
-            if (window.EliasSave && window.EliasSave.collect) {
-                const currentData = window.EliasSave.collect();
-                buildings = currentData.buildings || [];
-            } else {
-                try {
-                    const rawData = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
-                    if (rawData) {
-                        const parsed = JSON.parse(rawData);
-                        buildings = parsed.buildings || [];
-                    }
-                } catch(e) {}
-            }
-
-            if (!buildings || buildings.length === 0) return;
-
-            const resMap = {};
-            if (window.PLAYER_RESOURCES_DATA) {
-                window.PLAYER_RESOURCES_DATA.forEach(r => { resMap[r.id] = r; });
-            }
-
-            // 배터리(potato3) 건물의 전력 최대 저장용량 계산
-            let p3Count = 0;
-            buildings.forEach(b => {
-                if (b && b.data && b.data.id === 'potato3') p3Count++;
-            });
-            if (resMap.power) {
-                resMap.power.max = p3Count * 50;
-            }
-
-            // 모든 건물 일일 작동 연동
-            buildings.forEach(b => {
-                if (!b || !b.data || !b.data.id) return;
-                const bId = b.data.id;
-
-                if (bId === 'potato1') {
-                    // 미가공 자재 1 -> 가공 자재 1
-                    if (resMap.mineral && resMap.mineral.rawValue >= 1) {
-                        resMap.mineral.rawValue -= 1;
-                        resMap.mineral.processedValue = (resMap.mineral.processedValue || 0) + 1;
-                        if (window.notifyResourceGain) window.notifyResourceGain('mineral', 1);
-                    }
-                } else if (bId === 'potato2') {
-                    // 전력 10W 생산 (최대 저장 용량 제한)
-                    if (resMap.power) {
-                        const maxVal = resMap.power.max || 0;
-                        const currentVal = resMap.power.value || 0;
-                        if (currentVal < maxVal) {
-                            const addVal = Math.min(10, maxVal - currentVal);
-                            resMap.power.value += addVal;
-                            if (window.notifyResourceGain) window.notifyResourceGain('power', addVal);
-                        }
-                    }
-                } else if (bId === 'potato4') {
-                    // 에너지 1 -> 전력 20W 충전
-                    if (resMap.energy && resMap.energy.value >= 1 && resMap.power) {
-                        const maxVal = resMap.power.max || 0;
-                        const currentVal = resMap.power.value || 0;
-                        if (currentVal < maxVal) {
-                            resMap.energy.value -= 1;
-                            const addVal = Math.min(20, maxVal - currentVal);
-                            resMap.power.value += addVal;
-                            if (window.notifyResourceGain) window.notifyResourceGain('power', addVal);
-                        }
-                    }
-                } else if (bId === 'potato5') {
-                    // 미가공 식량 1 -> 가공 식량 1
-                    if (resMap.food && resMap.food.rawValue >= 1) {
-                        resMap.food.rawValue -= 1;
-                        resMap.food.processedValue = (resMap.food.processedValue || 0) + 1;
-                        if (window.notifyResourceGain) window.notifyResourceGain('food', 1);
-                    }
-                }
-            });
-
-            if (window.renderPlayerResourcesUI) {
-                window.renderPlayerResourcesUI();
-            }
-        }
-
+        // 건물 일일 생산(potato1~5)과 지역 공물/전쟁 상태 갱신은 더 이상 이 페이지에서 직접 계산하지 않는다.
+        // 대신 모든 화면에 공통으로 로드되는 menu.html 의 하루 처리 엔진(window.EliasSave.runDayTick)에 위임한다.
+        // 이렇게 하면 플레이어가 Gamemap.html/InMonatium.html 어디에도 있지 않은 동안에도,
+        // 다음에 접속했을 때 저장된 currentDay 를 기준으로 건물 생산과 공물이 소급 적용된다.
+        // (과거에 있었던 "매일 전력 +10W" 임시 로직은 이 위임 구조로 완전히 대체되어 삭제되었다.)
         function advanceDay() {
             currentDay++;
             expeditionsLeft = 5;
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
             DOM.headerExpeditionCount.innerText = `5/5`;
 
-            processBuildingDailyProduction();
-
-            Object.values(REGIONS_DATA).forEach(region => {
-                if (region.id === 'elf') return;
-
-                if (currentDay % 2 === 0) {
-                    if (region.friendlyPoints >= 200) {
-                        processTradeRewards(region, 'friendly', false);
-                        processTradeRewards(region, 'friendly', false);
-                    } else if (region.isOccupied) {
-                        processTradeRewards(region, 'hostile', true);
-                    }
-                }
-
-                if (region.isOccupied) return;
-
-                const diff = region.friendlyPoints - region.hostilePoints;
-                if (diff <= -100) {
-                    region.hostileDays++;
-                    if (region.hostileDays >= 7 && !region.isWar) {
-                        region.isWar = true;
-                        region.consecutiveWarSuccesses = 0;
-                    }
-                } else {
-                    region.hostileDays = 0;
-                    region.isWar = false;
-                    region.consecutiveWarSuccesses = 0;
-                }
-            });
+            // 새 currentDay 를 먼저 저장소에 커밋한 뒤, 공용 하루 처리 엔진을 실행해
+            // 건물 생산 + 지역 공물 + 전쟁 상태를 저장 데이터 기준으로 계산하고,
+            // 그 결과를 이 화면의 REGIONS_DATA / PLAYER_RESOURCES_DATA 에도 즉시 반영한다.
+            if (window.saveGameState) window.saveGameState(true);
+            if (window.EliasSave && window.EliasSave.runDayTick) {
+                window.EliasSave.runDayTick();
+            }
 
             updateAllRegionsState();
             if (currentRegionId) selectRegion(currentRegionId);

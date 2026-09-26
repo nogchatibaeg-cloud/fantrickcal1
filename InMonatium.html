@@ -580,6 +580,7 @@
             }
             closeDelOrMov();
             if (window.saveGameState) window.saveGameState(true);
+            if (window.EliasSave && window.EliasSave.runDayTick) window.EliasSave.runDayTick();
         } else if (action === 'move') {
             const buildingToMove = selectedBuildingForAction;
             closeDelOrMov();
@@ -739,6 +740,8 @@
 
         restoreCraftingUI();
         if (window.saveGameState) window.saveGameState(true);
+        // 새 건물(특히 감자 배터리/변환기)이 바로 반영되도록 공용 하루 처리 엔진을 즉시 한 번 실행
+        if (window.EliasSave && window.EliasSave.runDayTick) window.EliasSave.runDayTick();
     }
 
     function restoreCraftingUI() {
