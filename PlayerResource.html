@@ -195,15 +195,15 @@
                 if (tooltip) {
                     const rect = item.getBoundingClientRect();
                     let left = rect.right + 12;
-                    let top = rect.top + (rect.height / 2) - 30;
 
                     tooltip.style.left = `${left}px`;
-                    tooltip.style.top = `${top}px`;
+                    tooltip.style.top = `${rect.top}px`;
 
                     const tooltipRect = tooltip.getBoundingClientRect();
                     const padding = 12;
+                    let top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
 
-                    if (tooltipRect.bottom > window.innerHeight - padding) {
+                    if (top + tooltipRect.height > window.innerHeight - padding) {
                         top = window.innerHeight - tooltipRect.height - padding;
                     }
                     if (top < padding) {
