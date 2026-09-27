@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>엘리아스 어웨이 - 메인</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -191,6 +191,18 @@
             /* 위치 및 각도 조절 */
             transform: rotate(15deg) translate(30px, 60px);
         }
+
+        /* 오른쪽 아래 2차 창작 표기 스타일 */
+        .disclaimer-text {
+            position: fixed;
+            bottom: 12px;
+            right: 16px;
+            color: rgba(255, 255, 255, 0.7); /* 70% 투명도 하얀 글씨 */
+            font-size: 0.75rem; /* 12px 크기 (모바일 및 PC 고려) */
+            pointer-events: none;
+            z-index: 50;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 어두운 배경 대비 가독성 확보 */
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-center relative">
@@ -229,7 +241,14 @@
             게임 시작
         </a>
     </div>
-<div id="save-module-container"></div>
+
+    <div id="save-module-container"></div>
+
+    <!-- 오른쪽 아래 2차 창작 고지 문구 -->
+    <div class="disclaimer-text">
+        ※본 작품은 (주)에피드게임즈 作 트릭컬:리바이브의 2차 창작입니다. 영리적 목적을 취하지 않으며, 공식과는 무관합니다.※
+    </div>
+
     <script>
         fetch('menu.html')
             .then(response => response.text())
