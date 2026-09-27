@@ -194,6 +194,8 @@
                 const tooltip = item.querySelector('.tooltip-content');
                 if (tooltip) {
                     const rect = item.getBoundingClientRect();
+                    const iconEl = item.querySelector('i');
+                    const iconRect = iconEl ? iconEl.getBoundingClientRect() : rect;
                     let left = rect.right + 12;
 
                     tooltip.style.left = `${left}px`;
@@ -201,7 +203,7 @@
 
                     const tooltipRect = tooltip.getBoundingClientRect();
                     const padding = 12;
-                    let top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+                    let top = (iconRect.top + iconRect.height / 2) - (tooltipRect.height / 2);
 
                     if (top + tooltipRect.height > window.innerHeight - padding) {
                         top = window.innerHeight - tooltipRect.height - padding;
@@ -255,3 +257,4 @@
     window.renderPlayerResourcesUI();
 })();
 </script>
+```[cite: 2]
