@@ -80,7 +80,7 @@
         },
         {
             id: "gold", name: "골드", icon: "fa-solid fa-coins", color: "text-yellow-400", value: 0, unit: "G",
-            desc: "<b>이곳에선 금본위제를 쓰는 줄 알았는데... 어느날 장식용 금고에 넣어 놓은 애착 게임기를 꺼내려다 골드가 쏟아져 나와 큰일날 뻔 했다. 자연 발생인 듯 하다.</b><br><br>\"제 다음으로 반짝거리며 카메라 렌즈 다음으로 반짝거리네요!\" - 하이디",
+            desc: "<b>이곳에선 금본위제를 쓰는 줄 알았는데... 어느날 장식용 금고에 넣어 놓은 애착 게임기를 꺼내려다 골드가 쏟아져 나와 큰일날 뻔 했다. 자연 발생인 듯 하다.</b><br><br>\"제 다음으로 반짝거리는 카메라 렌즈 다음으로 반짝거리네요!\" - 하이디",
             goodRegions: [], badRegions: []
         }
     ];
@@ -126,7 +126,7 @@
 
         if (!badgeEl) {
             badgeEl = document.createElement('div');
-            badgeEl.className = 'resource-gain-badge absolute left-full top-1/2 -translate-y-1/2 ml-2.5 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/95 border border-emerald-500/80 rounded-lg shadow-2xl backdrop-blur-md pointer-events-none z-50 whitespace-nowrap';
+            badgeEl.className = 'resource-gain-badge fixed flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/95 border border-emerald-500/80 rounded-lg shadow-2xl backdrop-blur-md pointer-events-none z-50 whitespace-nowrap';
             itemEl.appendChild(badgeEl);
         }
 
@@ -150,7 +150,6 @@
         listContainer.innerHTML = window.PLAYER_RESOURCES_DATA.map(res => {
             let displayVal = '';
 
-            // 식량 및 자재 미가공 표기 줄바꿈 적용
             if (res.id === 'food' || res.id === 'mineral') {
                 const proc = (res.processedValue || 0).toLocaleString();
                 const raw = (res.rawValue || 0).toLocaleString();
@@ -173,7 +172,7 @@
                 </div>
                 <div class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}</div>
                 
-                <div class="tooltip-content absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
+                <div class="tooltip-content fixed w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
                     <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
                         <i class="${res.icon} ${res.color}"></i> ${res.name}
                     </div>
@@ -190,7 +189,35 @@
                 if (resData && window.highlightRegionsByResource) {
                     window.highlightRegionsByResource(resData.goodRegions, resData.badRegions);
                 }
+
+                // Tooltip 경계 조율 로직 (화면을 벗어나지 않도록 방어)
+                const tooltip = item.querySelector('.tooltip-content');
+                if (tooltip) {
+                    const rect = item.getBoundingClientRect();
+                    let left = rect.right + 12;
+                    let top = rect.top + (rect.height / 2) - 30;
+
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
+
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const padding = 12;
+
+                    if (tooltipRect.bottom > window.innerHeight - padding) {
+                        top = window.innerHeight - tooltipRect.height - padding;
+                    }
+                    if (top < padding) {
+                        top = padding;
+                    }
+                    if (tooltipRect.right > window.innerWidth - padding) {
+                        left = rect.left - tooltipRect.width - 12;
+                    }
+
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
+                }
             });
+
             item.addEventListener('mouseleave', () => {
                 if (window.resetRegionHighlights) window.resetRegionHighlights();
             });
