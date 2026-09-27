@@ -172,7 +172,7 @@
                 </div>
                 <div class="text-[10px] font-extrabold text-slate-200 font-mono">${displayVal}</div>
                 
-                <div class="tooltip-content fixed w-64 bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
+                <div class="tooltip-content absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 w-64 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-700 text-slate-200 text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none backdrop-blur-md hidden group-hover:block">
                     <div class="font-extrabold text-amber-400 mb-1 border-b border-slate-800 pb-1 flex items-center gap-1.5">
                         <i class="${res.icon} ${res.color}"></i> ${res.name}
                     </div>
@@ -190,49 +190,23 @@
                     window.highlightRegionsByResource(resData.goodRegions, resData.badRegions);
                 }
 
-                // Tooltip 경계 조율 로직 (화면을 벗어나지 않도록 방어)
+                // Tooltip은 각 스탯 항목을 기준으로 유동 배치
                 const tooltip = item.querySelector('.tooltip-content');
                 if (tooltip) {
+                    tooltip.style.left = '';
+                    tooltip.style.right = '';
+
                     const rect = item.getBoundingClientRect();
-                    const listIcon = item.querySelector('i');
-                    const tooltipIcon = tooltip.querySelector('i');
-
-                    let left = rect.right + 12;
-
-                    // 먼저 기본 렌더링 위치 설정
-                    tooltip.style.left = `${left}px`;
-                    tooltip.style.top = `${rect.top}px`;
-
                     const tooltipRect = tooltip.getBoundingClientRect();
                     const padding = 12;
 
-                    // 좌측 리스트 아이콘과 툴팁 상단 아이콘의 Y축 Center를 수평으로 일치
-                    let top = rect.top;
-                    if (listIcon && tooltipIcon) {
-                        const listIconRect = listIcon.getBoundingClientRect();
-                        const tooltipIconRect = tooltipIcon.getBoundingClientRect();
-                        const listIconCenterY = listIconRect.top + listIconRect.height / 2;
-                        const tooltipIconCenterY = tooltipIconRect.top + tooltipIconRect.height / 2;
-                        
-                        // 두 아이콘의 Y축 차이만큼 offset을 구해 top 위치 조정
-                        top = rect.top + (listIconCenterY - tooltipIconCenterY);
+                    if (rect.right + tooltipRect.width + 12 > window.innerWidth - padding) {
+                        tooltip.style.left = 'auto';
+                        tooltip.style.right = 'calc(100% + 12px)';
                     } else {
-                        top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+                        tooltip.style.left = 'calc(100% + 12px)';
+                        tooltip.style.right = 'auto';
                     }
-
-                    // 화면 경계 방어 코드
-                    if (top + tooltipRect.height > window.innerHeight - padding) {
-                        top = window.innerHeight - tooltipRect.height - padding;
-                    }
-                    if (top < padding) {
-                        top = padding;
-                    }
-                    if (tooltipRect.right > window.innerWidth - padding) {
-                        left = rect.left - tooltipRect.width - 12;
-                    }
-
-                    tooltip.style.left = `${left}px`;
-                    tooltip.style.top = `${top}px`;
                 }
             });
 
@@ -273,4 +247,3 @@
     window.renderPlayerResourcesUI();
 })();
 </script>
-```[cite: 4]
