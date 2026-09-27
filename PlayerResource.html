@@ -155,6 +155,10 @@
                 const proc = (res.processedValue || 0).toLocaleString();
                 const raw = (res.rawValue || 0).toLocaleString();
                 displayVal = `<div class="text-right">${proc}${res.unit || ''}<br><span class="text-[9px] text-slate-400 font-normal">(미가공 ${raw})</span></div>`;
+            } else if (res.id === 'power') {
+                const valStr = (res.value || 0).toLocaleString();
+                const maxStr = (res.max || 0).toLocaleString();
+                displayVal = `<span>${valStr}${res.unit || ''} <span class="text-[9px] text-slate-400 font-normal">(max:${maxStr}${res.unit || ''})</span></span>`;
             } else if (typeof res.value === 'number') {
                 displayVal = `<span>${res.value.toLocaleString()}${res.unit || ''}</span>`;
             } else {

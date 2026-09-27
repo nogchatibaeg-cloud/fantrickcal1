@@ -1,11 +1,10 @@
 <!-- menu.html -->
 <style>
-    /* 상단 중앙 서랍 토글 버튼 */
+    /* 상단 우거진 서랍 토글 버튼 (메뉴 UI 상단 중앙으로 이동) */
     #menu-drawer-toggle-btn {
         position: fixed;
         top: 0;
-        left: 50%;
-        transform: translateX(-50%);
+        right: 40px;
         z-index: 100000;
         background: #1e1e24;
         color: #60a5fa;
@@ -26,10 +25,10 @@
         box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
     }
 
-    /* 오른쪽 상단 서랍 메뉴 패널 */
+    /* 오른쪽 상단 서랍 메뉴 패널 (상단 여백 확장 및 이마 부분 상단 연장) */
     #global-menu-drawer {
         position: fixed;
-        top: -420px;
+        top: -460px;
         right: 20px;
         width: 300px;
         background-color: #1e1e24;
@@ -41,7 +40,7 @@
         z-index: 99999;
         display: flex;
         flex-direction: column;
-        padding: 20px;
+        padding: 40px 20px 20px 20px;
         box-sizing: border-box;
         border: 2px solid #3b82f6;
         border-top: none;
@@ -322,7 +321,6 @@
     }
 
     // 식량/자재는 "미가공" 자원이므로 rawValue 로, 그 외는 value 로 적립한다.
-    // (Gamemap.html 의 addResource() 와 동일한 규칙)
     function tickAddResource(resources, id, amount) {
         if (!amount) return;
         const r = findOrCreateResource(resources, id);
@@ -337,8 +335,6 @@
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    // Gamemap.html 의 processTradeRewards() 를 저장 데이터 기준으로 이식한 버전.
-    // (일일 자동 공물 계산에는 항상 isMax=true 로 호출된다)
     function tickRegionTradeRewards(resources, regionId, dayNumber, missionType, isMax) {
         const dayMult = Math.pow(2, Math.floor((dayNumber - 1) / 50));
         let actionMult = 1.0;
@@ -400,7 +396,6 @@
         tickAddResource(resources, 'gold', Math.floor(goldAmount * totalMult));
     }
 
-    // 정복/동맹 지역의 하루치 자동 공물 + 전쟁 상태 갱신 (Gamemap.html advanceDay() 이식)
     function tickRegionsForOneDay(regions, dayNumber, resources) {
         if (!isPlainObject(regions)) return;
         TRIBUTE_REGION_IDS.forEach(id => {
@@ -434,15 +429,13 @@
         });
     }
 
-    // 감자 시설(potato1~5) 하루치 가동 (Craftwiththis.html 명세에 맞춘 정식 구현)
-    // - 임시로 붙여두었던 "매일 전력 +10W" 땜빵 로직은 이 함수로 완전히 대체되어 제거된다.
     function tickBuildingsForOneDay(buildings, resources, dayNumber) {
         if (!Array.isArray(buildings) || buildings.length === 0) return;
 
         const potatoRes = findOrCreateResource(resources, 'potato');
         const powerRes = findOrCreateResource(resources, 'power');
 
-        // potato4 = 감자 배터리: 건물당 전력 최대 저장 용량 +50 (일일 감자 소모 없음, 수동적 효과)
+        // potato4 = 감자 배터리: 건물당 전력 최대 저장 용량 +50
         powerRes.max = countBuildingsById(buildings, 'potato4') * 50;
 
         buildings.forEach(b => {
@@ -450,13 +443,11 @@
             const bId = b.data.id;
 
             if (bId === 'potato1') {
-                // 감자 가공소: 감자 10만 개 → 가공된 자재 10개
                 if ((potatoRes.value || 0) >= 100000) {
                     potatoRes.value -= 100000;
                     const mineralRes = findOrCreateResource(resources, 'mineral');
                     mineralRes.processedValue = (mineralRes.processedValue || 0) + 10;
                 } else {
-                    // 감자 부족 시: 미가공 자재 1개를 가공 자재로 전환
                     const mineralRes = findOrCreateResource(resources, 'mineral');
                     if ((mineralRes.rawValue || 0) >= 1) {
                         mineralRes.rawValue -= 1;
@@ -464,18 +455,15 @@
                     }
                 }
             } else if (bId === 'potato2') {
-                // 감자 발전기: 감자 10만 개 → 에너지 10
                 if ((potatoRes.value || 0) >= 100000) {
                     potatoRes.value -= 100000;
                     const energyRes = findOrCreateResource(resources, 'energy');
                     energyRes.value = (energyRes.value || 0) + 10;
                 } else if (dayNumber % 7 === 0) {
-                    // 감자 부족 시: 7일마다 에너지 1 자동 생산
                     const energyRes = findOrCreateResource(resources, 'energy');
                     energyRes.value = (energyRes.value || 0) + 1;
                 }
             } else if (bId === 'potato3') {
-                // 감자 에너지-전력 변환기: 감자 10만 개 → 에너지 1을 전력 1로 변환 (전력 최대치 한도 내)
                 const energyRes = findOrCreateResource(resources, 'energy');
                 const maxVal = powerRes.max || 0;
                 const curVal = powerRes.value || 0;
@@ -485,13 +473,11 @@
                     powerRes.value = curVal + 1;
                 }
             } else if (bId === 'potato5') {
-                // 감자 조리시설: 감자 5만 개 → 가공된 식량 5개
                 if ((potatoRes.value || 0) >= 50000) {
                     potatoRes.value -= 50000;
                     const foodRes = findOrCreateResource(resources, 'food');
                     foodRes.processedValue = (foodRes.processedValue || 0) + 5;
                 } else {
-                    // 감자 부족 시: 미가공 식량 1개를 가공 식량으로 전환
                     const foodRes = findOrCreateResource(resources, 'food');
                     if ((foodRes.rawValue || 0) >= 1) {
                         foodRes.rawValue -= 1;
@@ -499,12 +485,9 @@
                     }
                 }
             }
-            // potato4 는 위에서 이미 수동적으로 처리됨 (일일 개별 동작 없음)
         });
     }
 
-    // 저장 데이터의 currentDay 와 lastProcessedDay 사이의 차이만큼 하루씩 재생(replay)한다.
-    // 어떤 페이지에서 currentDay 가 올라갔는지와 무관하게, 저장된 데이터만 보고 동작한다.
     function runDayTickOnSaveData(saveData) {
         if (!isPlainObject(saveData) || !isPlainObject(saveData.mapData)) return saveData;
 
@@ -524,7 +507,6 @@
                 tickRegionsForOneDay(regions, d, resources);
             }
         } else {
-            // 날짜가 늘지 않았어도 배터리(potato4) 증설/철거는 즉시 반영되어야 하므로 용량만 갱신
             const powerRes = findOrCreateResource(resources, 'power');
             powerRes.max = countBuildingsById(buildings, 'potato4') * 50;
         }
@@ -533,7 +515,6 @@
         return saveData;
     }
 
-    // 저장 데이터에서 계산된 최신 자원/지역 상태를, 현재 페이지에 살아있는 객체(있다면)에도 즉시 반영한다.
     function applyResourcesToLiveState(savedResources) {
         if (!Array.isArray(savedResources) || !Array.isArray(window.PLAYER_RESOURCES_DATA)) return;
         savedResources.forEach(savedRes => {
@@ -571,8 +552,6 @@
         if (typeof window.updateAllRegionsState === 'function') window.updateAllRegionsState();
     }
 
-    // 외부(Gamemap.html 등)에서 "오늘 날짜가 올라갔다"는 사실을 저장한 직후 호출하는 공개 API.
-    // 저장 데이터를 기준으로 하루 처리 엔진을 실행하고, 결과를 다시 커밋 + 현재 페이지 화면에 반영한다.
     function runDayTickPublic() {
         if (suppressPersist) return null;
         try {
@@ -901,7 +880,6 @@
             });
         }
 
-        // 전력 최대 저장 용량 보정 (potato4 = 감자 배터리 건물 수 기준, 건물당 +50)
         const buildings = (pendingSave && Array.isArray(pendingSave.buildings)) ? pendingSave.buildings : (window.placedBuildings || []);
         const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
         if (powerRes) {
@@ -1004,10 +982,6 @@
         }
     };
 
-    /* ---------------------------------------------------------------
-     *  5. 백그라운드 엔진 ("독립 메인 서버")
-     *     실시간 전력 1초당 1W 상승하는 버그성 자동 보정을 제거
-     * --------------------------------------------------------------- */
     function runBackgroundServerTick() {
         if (suppressPersist) return;
 
@@ -1163,10 +1137,6 @@
     }
     pendingSave = best.data;
 
-    // 페이지 종류와 무관하게: 저장된 currentDay 가 마지막으로 처리한 날짜보다 앞서 있다면
-    // (다른 화면에서, 혹은 접속하지 않은 사이 Day 가 진행되었다면) 그 차이만큼 건물 생산과
-    // 지역 공물을 여기서 소급 적용한다. 이렇게 하면 InMonatium 등 특정 화면에 있지 않아도
-    // 건물들이 계속 일하고, 정복/동맹 지역의 공물도 계속 들어온다.
     if (pendingSave) {
         try {
             pendingSave = runDayTickOnSaveData(pendingSave);
