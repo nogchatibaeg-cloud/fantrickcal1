@@ -45,7 +45,7 @@
         .stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
         @keyframes stampIn { to { transform: rotate(-12deg) scale(1); } }
 
-        /* 서류가 오른쪽에서 빠르게 파바박 날아오는 애니메이션 */
+        /* 서류 날아오는 애니메이션 */
         @keyframes paperFlyIn {
             0% { transform: translate(100vw, -200px) rotate(25deg); opacity: 0; }
             100% { opacity: 1; }
@@ -54,39 +54,55 @@
             animation: paperFlyIn 0.15s ease-out forwards;
         }
 
-        /* [수정 2] 해와 달 시계 방향 대형 원호(Arc) 회전 애니메이션 */
-        .sun-day-pos {
-            transform: translate(0, 0);
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        /* ================= [수정 2] 레이어 분리 및 가상 호 애니메이션 ================= */
         
-        .sun-set-anim {
-            animation: sunArcDown 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        /* 창 안 레이어 (야간 시 조도 20% 필터 감소: brightness 0.8) */
+        #office-room {
+            transition: filter 1.2s ease, transform 0.7s ease-out;
+            filter: brightness(1);
+        }
+        #office-room.night-mode {
+            filter: brightness(0.8);
         }
 
-        @keyframes sunArcDown {
-            0% {
-                transform: translate(0, 0) rotate(0deg);
-            }
-            100% {
-                transform: translate(350px, 450px) rotate(60deg);
-                opacity: 0;
-            }
+        /* 해와 달 레이어: 화면 가로(100vw)의 80% 지름(반지름 40vw)을 갖는 원형 오프셋 회전 */
+        #sun-moon-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 2;
         }
 
-        .moon-rising-anim {
-            animation: moonArcUp 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        .celestial-obj {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            width: 4rem; height: 4rem;
+            margin-left: -2rem; margin-top: -2rem;
+            border-radius: 50%;
+            /* 지름 80vw = 반지름 40vw를 회전 중심 축으로 설정 */
+            transform-origin: center calc(40vw); 
+            transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.5s ease;
         }
 
-        @keyframes moonArcUp {
-            0% {
-                transform: translate(-350px, 450px) rotate(-60deg);
-                opacity: 0;
-            }
-            100% {
-                transform: translate(0, 0) rotate(0deg);
-                opacity: 1;
-            }
+        /* 주간 위치 */
+        .sun-pos {
+            transform: rotate(-35deg);
+            opacity: 1;
+        }
+        .moon-pos {
+            transform: rotate(-180deg);
+            opacity: 0;
+        }
+
+        /* 야간 전환 시 (시계 방향 회전) */
+        .sun-pos.night {
+            transform: rotate(100deg);
+            opacity: 0;
+        }
+        .moon-pos.night {
+            transform: rotate(-35deg);
+            opacity: 1;
         }
     </style>
 </head>
@@ -199,11 +215,9 @@
 
         <!-- PHASE 2: 엘레나 집무실 3D 패스펙티브 캔버스 -->
         <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
-            <!-- 하늘 & 창밖 배경 -->
-            <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000">
-                <!-- [수정 2] 해와 달 오브젝트 (크기는 변경되지 않고 궤동 회전) -->
-                <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] sun-day-pos"></div>
-                <!-- 창밖 나무 꼭대기 -->
+            
+            <!-- [수정 2] LAYER 1: 창 밖 레이어 (하늘 및 실외 배경) -->
+            <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000 z-0">
                 <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
                     <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
                     <div class="w-24 h-20 bg-emerald-800 rounded-full -mb-8"></div>
@@ -211,24 +225,40 @@
                 </div>
             </div>
 
-            <!-- 격자 창문 & 커튼 & 깃발 -->
-            <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative">
-                <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 pointer-events-none">
-                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+            <!-- [수정 2] LAYER 2: 해와 달 레이어 (지름 80vw 원호 궤적) -->
+            <div id="sun-moon-layer">
+                <!-- 태양 -->
+                <div id="sun-obj" class="celestial-obj sun-pos bg-yellow-300 shadow-[0_0_35px_#fef08a]"></div>
+                <!-- 달 -->
+                <div id="moon-obj" class="celestial-obj moon-pos bg-amber-100 shadow-[0_0_25px_#fef08a] border-r-8 border-slate-950"></div>
+            </div>
+
+            <!-- [수정 2] LAYER 3: 창문 구조체 (창문 유리 영역 투명 bg-transparent 설정) -->
+            <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative z-10 pointer-events-none">
+                <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 bg-transparent">
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
+                    <div class="border border-amber-900/40 bg-transparent"></div>
                 </div>
-                <!-- 빨간 망토 커튼 -->
+                <!-- 빨간 커튼 -->
                 <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
                 <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
-                <!-- 연노랑 베이지 깃발 -->
+                <!-- 깃발 -->
                 <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
             </div>
 
-            <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
-            <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
-                <!-- 시계 방향으로 10도 틀어져 있는 정사각형 회색 큐브 -->
+            <!-- [수정 2] LAYER 4: 창 안 (실내 오피스 객체들) -->
+            <div id="office-room" class="absolute inset-0 transition-all duration-700 ease-out origin-center z-20">
+                <!-- 회색 큐브 PC -->
                 <div class="absolute left-12 bottom-28 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded">
                     <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
                 </div>
@@ -238,19 +268,19 @@
                     <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
                 </div>
 
-                <!-- 완전히 눕혀져 있는 A4용지 더미 -->
+                <!-- A4용지 더미 -->
                 <div class="absolute right-16 bottom-16 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right">
                     <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
                     <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
                     <div class="absolute inset-0 bg-stone-300/80 border border-stone-400 shadow-sm transform -rotate-3 rounded-sm -z-20 translate-y-2"></div>
                 </div>
 
-                <!-- 나무 재질 승인 도장 -->
+                <!-- 승인 도장 -->
                 <div id="desk-stamp" class="absolute left-[38%] bottom-20 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1">
                     <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
                 </div>
 
-                <!-- 유저가 들어야하는 커피 -->
+                <!-- 커피 드래그 객체 -->
                 <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center">
                     <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
                 </div>
@@ -259,12 +289,10 @@
 
         <!-- PHASE 3: 1인칭 서류 결재 무대 -->
         <div id="paper-view" class="w-full h-full relative hidden bg-amber-900/90 flex flex-col items-center justify-center overflow-hidden cursor-none">
-            <!-- 서류가 출력되는 책상 정면 -->
             <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center">
                 <!-- JS Dynamic Document Render -->
             </div>
 
-            <!-- [수정 1] elfstamp 손 중심점 오프셋 및 커서 정밀 보정 -->
             <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 rotate-20">
                 <img src="elfstamp.png" alt="Stamp Hand" class="w-32 h-32 object-contain drop-shadow-2xl" onerror="this.src='https://via.placeholder.com/128/transparent/ff0000?text=Stamp'">
             </div>
@@ -337,29 +365,31 @@
             renderProbabilityTable();
         }
 
+        /* [수정 1] 백수 30% -> 20%, 시민 10% -> 20%로 확률 통일 및 표 업데이트 */
         function renderProbabilityTable() {
             const tableEl = document.getElementById('probability-table');
             if (currentTab === 'normal') {
                 tableEl.innerHTML = `
-                    <div class="flex justify-between"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between"><span>시민</span><span>20%</span></div>
                     <div class="flex justify-between"><span>직업 군인</span><span>20%</span></div>
                     <div class="flex justify-between"><span>박사</span><span>20%</span></div>
                     <div class="flex justify-between"><span>스파이</span><span>20%</span></div>
-                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>`;
+                    <div class="flex justify-between"><span>백수</span><span>20%</span></div>`;
             } else {
                 tableEl.innerHTML = `
-                    <div class="flex justify-between"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between"><span>시민</span><span>20%</span></div>
                     <div class="flex justify-between"><span>직업 군인 10% <b class="text-emerald-300 ml-2">칸나 10%</b></span><span>20%</span></div>
                     <div class="flex justify-between"><span>박사</span><span>20%</span></div>
                     <div class="flex justify-between"><span>스파이</span><span>20%</span></div>
-                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>`;
+                    <div class="flex justify-between"><span>백수</span><span>20%</span></div>`;
             }
         }
 
+        /* [수정 1] 실제 뽑기 가중치 테이블 확률 반영 */
         function drawOne() {
             const table = currentTab === 'pickup'
-                ? [['citizen', 30], ['canna', 10], ['army', 10], ['doctor', 20], ['spy', 20], ['backsu', 10]]
-                : [['citizen', 30], ['army', 20], ['doctor', 20], ['spy', 20], ['backsu', 10]];
+                ? [['citizen', 20], ['canna', 10], ['army', 10], ['doctor', 20], ['spy', 20], ['backsu', 20]]
+                : [['citizen', 20], ['army', 20], ['doctor', 20], ['spy', 20], ['backsu', 20]];
             let roll = Math.random() * 100;
             let key = table[table.length - 1][0];
             for (const [k, weight] of table) {
@@ -445,17 +475,18 @@
             };
         }
 
-        // Phase 2: Office
+        // Phase 2: Office (초기 주간 상태 세팅)
         function runPhase2Office() {
             document.getElementById('terminal-view').classList.add('hidden');
             document.getElementById('office-view').classList.remove('hidden');
 
             document.getElementById('elena-img').src = 'elenatemp.png';
-            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000";
+            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000 z-0";
             
-            const sunMoon = document.getElementById('sun-moon');
-            sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] sun-day-pos";
-            
+            document.getElementById('office-room').classList.remove('night-mode');
+            document.getElementById('sun-obj').className = "celestial-obj sun-pos bg-yellow-300 shadow-[0_0_35px_#fef08a]";
+            document.getElementById('moon-obj').className = "celestial-obj moon-pos bg-amber-100 shadow-[0_0_25px_#fef08a] border-r-8 border-slate-950";
+
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
             coffee.style.bottom = '12px';
@@ -509,25 +540,22 @@
                         const hasPickup = drawnResults.some(r => r.key === 'canna');
 
                         if (hasHigh) {
-                            // [수정 2] 해는 오른쪽 아래 화면 밖으로 시계 방향 호를 그리며 내려가고, 초승달이 왼쪽 아래 화면 밖에서 시계 방향 호를 그리며 올라옴
-                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000";
-                            const sunMoon = document.getElementById('sun-moon');
+                            /* [수정 2] 밤으로 전환될 경우:
+                             * 1) 창 밖 배경 밤하늘로 변경
+                             * 2) 창 안 조도 20% 감소 (brightness(0.8))
+                             * 3) 해와 달 레이어: 가로의 80% 지름을 갖는 가상 원호 회전 애니메이션
+                             */
+                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000 z-0";
+                            document.getElementById('office-room').classList.add('night-mode');
                             
-                            // 해 내려가는 애니메이션 적용
-                            sunMoon.classList.remove('sun-day-pos');
-                            sunMoon.classList.add('sun-set-anim');
-
-                            setTimeout(() => {
-                                // 초승달 상태로 변경 후 왼쪽 아래에서 올라오는 애니메이션 적용
-                                sunMoon.classList.remove('sun-set-anim');
-                                sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 moon-rising-anim";
-                            }, 600);
+                            document.getElementById('sun-obj').classList.add('night');
+                            document.getElementById('moon-obj').classList.add('night');
                         }
                         if (hasPickup) {
                             elena.src = 'elenawowtemp.png';
                         }
 
-                        setTimeout(() => runPhase3Paper(), 1500);
+                        setTimeout(() => runPhase3Paper(), 1600);
                     }, 800);
                 }
             };
@@ -593,7 +621,6 @@
             const paperView = document.getElementById('paper-view');
             const hand = document.getElementById('chibi-hand-stamp');
 
-            // [수정 1] 마우스 커서 중심 위치와 도장 인쇄 기준점 정확히 보정
             paperView.onmousemove = (e) => {
                 hand.style.left = `${e.clientX + 10}px`;
                 hand.style.top = `${e.clientY + 35}px`;
