@@ -267,14 +267,15 @@
     let isDefaultImgLoaded = false;
     defaultCitizenImg.onload = () => { isDefaultImgLoaded = true; };
 
-    class Citizen {
+class Citizen {
         constructor(id, imgSrc = 'citizen.png') {
             this.id = id;
-            this.x = Math.random() * MAP_WIDTH;
-            this.y = Math.random() * MAP_HEIGHT;
+            this.size = 140; // 캔버스 최적화를 위해 크기 유효범위 조정
+            // MAP 경계 내부에서 위치하도록 초기 좌표 조정
+            this.x = 100 + Math.random() * (MAP_WIDTH - 200);
+            this.y = 100 + Math.random() * (MAP_HEIGHT - 200);
             this.vx = (Math.random() - 0.5) * 1.5;
             this.vy = (Math.random() - 0.5) * 1.5;
-            this.size = 300;
             this.changeDirTimer = 0;
             
             this.img = new Image();
@@ -293,10 +294,12 @@
                 this.changeDirTimer = Math.floor(Math.random() * 120) + 60;
             }
 
-            if (this.x < 10) { this.x = 10; this.vx *= -1; }
-            if (this.x > MAP_WIDTH - 10) { this.x = MAP_WIDTH - 10; this.vx *= -1; }
-            if (this.y < 10) { this.y = 10; this.vy *= -1; }
-            if (this.y > MAP_HEIGHT - 10) { this.y = MAP_HEIGHT - 10; this.vy *= -1; }
+            // 엘프 캐릭터가 맵 밖으로 잘려 나가지 않도록 경계 조건 수정
+            const margin = this.size / 2 + 10;
+            if (this.x < margin) { this.x = margin; this.vx *= -1; }
+            if (this.x > MAP_WIDTH - margin) { this.x = MAP_WIDTH - margin; this.vx *= -1; }
+            if (this.y < margin) { this.y = margin; this.vy *= -1; }
+            if (this.y > MAP_HEIGHT - margin) { this.y = MAP_HEIGHT - margin; this.vy *= -1; }
         }
 
         draw(ctx) {
