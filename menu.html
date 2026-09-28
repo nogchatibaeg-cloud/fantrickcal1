@@ -629,6 +629,18 @@
             progress.visited[pageName()] = true;
         }
 
+        if (typeof window.monatiumCitizens !== 'undefined' && Array.isArray(window.monatiumCitizens)) {
+            progress.monatiumCitizens = window.monatiumCitizens;
+        }
+
+        if (typeof window.monatiumStats !== 'undefined' && isPlainObject(window.monatiumStats)) {
+            progress.monatiumStats = window.monatiumStats;
+        }
+
+        if (typeof window.specialElves !== 'undefined' && isPlainObject(window.specialElves)) {
+            progress.specialElves = window.specialElves;
+        }
+
         return {
             schemaVersion: SCHEMA_VERSION,
             saveTime: new Date().toISOString(),
