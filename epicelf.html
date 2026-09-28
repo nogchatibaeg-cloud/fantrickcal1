@@ -79,6 +79,7 @@
     </style>
 </head>
 <body class="cyber-grid relative flex flex-col w-full h-full">
+    <div id="menu-container"></div>
 
     <!-- 상단 공통 헤더 (InMonatium으로 돌아가기 버튼) -->
     <div class="w-full h-14 sm:h-16 border-b border-sky-500/30 bg-slate-950/60 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between gap-2 z-30 flex-shrink-0">
@@ -155,7 +156,25 @@
     </div>
 
     <script>
+        function loadMenuEngine() {
+            fetch('menu.html').then(res => res.text()).then(html => {
+                const container = document.getElementById('menu-container');
+                if (!container) return;
+
+                container.innerHTML = html;
+
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            }).catch(e => {});
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            loadMenuEngine();
             try {
                 const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
                 const saveObj = JSON.parse(raw);

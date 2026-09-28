@@ -268,7 +268,18 @@
 
         function loadMenuEngine() {
             fetch('menu.html').then(res => res.text()).then(html => {
-                document.getElementById('menu-container').innerHTML = html;
+                const container = document.getElementById('menu-container');
+                if (!container) return;
+
+                container.innerHTML = html;
+
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
             }).catch(e => {});
         }
 
@@ -354,6 +365,7 @@
                 if (leafRes) leafRes.value -= cost;
             }
             localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+            if (window.EliasSave && window.EliasSave.save) window.EliasSave.save(true);
             updateLeafDisplay();
         }
 
@@ -608,6 +620,7 @@
                 });
 
                 localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+                if (window.EliasSave && window.EliasSave.save) window.EliasSave.save(true);
             } catch(e) {
                 console.error("적성 데이터 저장 실패:", e);
             }
