@@ -29,23 +29,18 @@
         .crt-btn { background-color: #092e13; border: 2px solid #22c55e; color: #4ade80; transition: all 0.15s ease; }
         .crt-btn:hover { background-color: #22c55e; color: #000000; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
 
-        /* 가챠 애니메이션 씬 오버레이 레이어 */
         #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; }
         
-        /* 깜빡이는 커서 */
         .blinking-cursor { display: inline-block; width: 10px; height: 1.2em; background-color: #22c55e; vertical-align: bottom; animation: blink 0.8s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        /* 황금 서류 반짝임 연출 */
         .gold-paper { border: 3px solid #fbbf24 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.8), inset 0 0 15px rgba(251, 191, 36, 0.5) !important; }
         .gold-sparkle { position: absolute; width: 8px; height: 8px; background: #fef08a; border-radius: 50%; animation: sparkle 1s infinite alternate; }
         @keyframes sparkle { 0% { transform: scale(0.2); opacity: 0.3; } 100% { transform: scale(1.4); opacity: 1; } }
 
-        /* 도장 스탬프 스타일 */
         .stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
         @keyframes stampIn { to { transform: rotate(-12deg) scale(1); } }
 
-        /* 서류 날아오는 애니메이션 */
         @keyframes paperFlyIn {
             0% { transform: translate(100vw, -200px) rotate(25deg); opacity: 0; }
             100% { opacity: 1; }
@@ -54,7 +49,6 @@
             animation: paperFlyIn 0.15s ease-out forwards;
         }
 
-        /* 창 안 레이어 (야간 시 조도 20% 필터 감소: brightness 0.8) */
         #office-room {
             transition: filter 1.2s ease, transform 0.7s ease-out;
             filter: brightness(1);
@@ -63,7 +57,6 @@
             filter: brightness(0.8);
         }
 
-        /* 해와 달 레이어: 화면 가로(100vw)의 80% 지름(반지름 40vw)을 갖는 원형 오프셋 회전 */
         #sun-moon-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -78,12 +71,10 @@
             width: 4rem; height: 4rem;
             margin-left: -2rem; margin-top: -2rem;
             border-radius: 50%;
-            /* 지름 80vw = 반지름 40vw를 회전 중심 축으로 설정 */
             transform-origin: center calc(40vw); 
             transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.5s ease;
         }
 
-        /* 주간 위치 */
         .sun-pos {
             transform: rotate(-35deg);
             opacity: 1;
@@ -93,7 +84,6 @@
             opacity: 0;
         }
 
-        /* 야간 전환 시 (시계 방향 회전) */
         .sun-pos.night {
             transform: rotate(100deg);
             opacity: 0;
@@ -106,14 +96,11 @@
 </head>
 <body>
 
-    <!-- 브라운관 TV / 컴퓨터형 바깥 프레임 -->
     <div class="crt-tv w-[95vw] h-[92vh] max-w-[1400px] max-h-[850px] p-6 flex flex-col items-center justify-between relative">
         
-        <!-- 화면 영역 -->
         <div class="crt-screen w-full h-[82%] p-4 flex flex-col relative" id="screen-container">
             <div class="scanline"></div>
 
-            <!-- 모니터 상단 헤더 -->
             <div class="flex justify-between items-center border-b-2 border-emerald-800/80 pb-2 mb-3 text-xs tracking-wider z-10 font-mono">
                 <div class="flex items-center gap-2 crt-text">
                     <span class="inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -125,7 +112,6 @@
                 </div>
             </div>
 
-            <!-- 메인 검사기 뷰 -->
             <div id="gacha-main-view" class="w-full h-[calc(100%-40px)] flex relative z-10">
                 <div class="w-44 flex flex-col gap-3 pt-4 pr-0 z-10">
                     <button id="tab-pickup" onclick="switchTab('pickup')" class="bookmark-tab active py-3 px-3 text-left rounded-l-lg text-xs font-bold flex items-center gap-2 cursor-pointer">
@@ -167,7 +153,6 @@
                 </div>
             </div>
 
-            <!-- 결과 최종 팝업 화면 -->
             <div id="gacha-result-view" class="hidden w-full h-[calc(100%-40px)] bg-slate-900/95 border-2 border-emerald-500 rounded-xl flex flex-col items-center justify-between p-6 relative z-50 text-white">
                 <div class="text-sm font-bold text-emerald-400 mb-2 crt-text">// MONATIUM_APTITUDE_TEST_FINAL_REPORT</div>
                 <div id="result-content-list" class="flex flex-wrap items-center justify-center gap-4 max-w-4xl max-h-[70%] overflow-y-auto p-2"></div>
@@ -178,7 +163,6 @@
 
         </div>
 
-        <!-- 하단 컨트롤 / 뽑기 버튼 영역 -->
         <div class="w-full h-[15%] flex items-center justify-between px-6 bg-zinc-900/90 border-2 border-zinc-700 rounded-xl">
             <a href="loading.html?target=InMonatium.html" class="crt-btn px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer text-decoration-none">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -200,9 +184,8 @@
         </div>
     </div>
 
-    <!-- ================= 가챠 애니메이션 전용 전체화면 스테이지 ================= -->
+    <!-- 가챠 애니메이션 스테이지 -->
     <div id="anim-stage" class="flex flex-col justify-center items-center relative overflow-hidden">
-        <!-- PHASE 1: 터미널 Y/N 타이핑 화면 -->
         <div id="terminal-view" class="w-full h-full p-8 font-mono text-emerald-400 text-lg flex flex-col justify-start items-start bg-black z-30">
             <div id="term-text" class="leading-relaxed whitespace-pre-line crt-text"></div>
             <div class="mt-2 flex items-center">
@@ -211,10 +194,7 @@
             </div>
         </div>
 
-        <!-- PHASE 2: 엘레나 집무실 3D 패스펙티브 캔버스 -->
         <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
-            
-            <!-- LAYER 1: 창 밖 레이어 (하늘 및 실외 배경) -->
             <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000 z-0">
                 <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
                     <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
@@ -223,15 +203,11 @@
                 </div>
             </div>
 
-            <!-- LAYER 2: 해와 달 레이어 (지름 80vw 원호 궤적) -->
             <div id="sun-moon-layer">
-                <!-- 태양 -->
                 <div id="sun-obj" class="celestial-obj sun-pos bg-yellow-300 shadow-[0_0_35px_#fef08a]"></div>
-                <!-- 달 -->
                 <div id="moon-obj" class="celestial-obj moon-pos bg-amber-100 shadow-[0_0_25px_#fef08a] border-r-8 border-slate-950"></div>
             </div>
 
-            <!-- LAYER 3: 창문 구조체 (창문 유리 영역 투명 bg-transparent 설정) -->
             <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative z-10 pointer-events-none">
                 <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 bg-transparent">
                     <div class="border border-amber-900/40 bg-transparent"></div>
@@ -247,59 +223,53 @@
                     <div class="border border-amber-900/40 bg-transparent"></div>
                     <div class="border border-amber-900/40 bg-transparent"></div>
                 </div>
-                <!-- 빨간 커튼 -->
                 <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
                 <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
-                <!-- 깃발 -->
                 <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
             </div>
 
-            <!-- LAYER 4: 창 안 (실내 오피스 객체들 및 실내 배경) -->
+            <!-- 실내 오피스 객체 레이어 분리 -->
             <div id="office-room" class="absolute inset-0 transition-all duration-700 ease-out origin-center z-20 pointer-events-none">
                 
-                <!-- 실내 벽지 배경 (창문 아래 베이지색 벽지) -->
-                <div class="absolute bottom-0 left-0 w-full h-[70%] bg-[#f5e6d3] border-t-8 border-amber-950/40 -z-10 shadow-inner"></div>
+                <!-- 실내 벽지 배경 (높이 절반 조정: h-[35%]) -->
+                <div class="absolute bottom-0 left-0 w-full h-[35%] bg-[#f5e6d3] border-t-8 border-amber-950/40 -z-10 shadow-inner"></div>
 
-                <!-- 갈색 책상 (하단 사각형 탁자) -->
-                <div class="absolute bottom-0 left-0 w-full h-[30%] bg-[#5c3a21] border-t-8 border-[#3d2413] shadow-2xl flex items-start justify-center">
-                    <div class="w-full h-3 bg-[#6e4629] border-b border-[#3d2413]/50"></div>
-                </div>
-
-                <!-- 회색 큐브 PC -->
-                <div class="absolute left-12 bottom-28 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded pointer-events-auto">
-                    <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
-                </div>
-
-                <!-- 중앙 엘레나 -->
-                <div class="absolute left-1/2 -translate-x-1/2 bottom-24 w-72 h-80 flex items-end justify-center pointer-events-auto">
+                <!-- 엘레나 캐릭터 (책상 레이어 뒤쪽 배치: z-10) -->
+                <div class="absolute left-1/2 -translate-x-1/2 bottom-20 w-72 h-80 flex items-end justify-center z-10 pointer-events-auto">
                     <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
                 </div>
 
-                <!-- A4용지 더미 -->
-                <div class="absolute right-16 bottom-16 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right pointer-events-auto">
-                    <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
-                    <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
-                    <div class="absolute inset-0 bg-stone-300/80 border border-stone-400 shadow-sm transform -rotate-3 rounded-sm -z-20 translate-y-2"></div>
-                </div>
+                <!-- 책상 레이어 및 하위 집기류 (독립 레이어: z-20) -->
+                <div class="absolute bottom-0 left-0 w-full h-[30%] bg-[#5c3a21] border-t-8 border-[#3d2413] shadow-2xl flex items-start justify-center z-20">
+                    <div class="w-full h-3 bg-[#6e4629] border-b border-[#3d2413]/50"></div>
 
-                <!-- 승인 도장 -->
-                <div id="desk-stamp" class="absolute left-[38%] bottom-20 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1 pointer-events-auto">
-                    <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
-                </div>
+                    <!-- 회색 큐브 PC -->
+                    <div class="absolute left-12 bottom-8 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded pointer-events-auto">
+                        <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
+                    </div>
 
-                <!-- 커피 드래그 객체 -->
-                <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center pointer-events-auto">
-                    <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
+                    <!-- A4용지 더미 -->
+                    <div class="absolute right-16 bottom-4 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right pointer-events-auto">
+                        <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
+                        <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
+                        <div class="absolute inset-0 bg-stone-300/80 border border-stone-400 shadow-sm transform -rotate-3 rounded-sm -z-20 translate-y-2"></div>
+                    </div>
+
+                    <!-- 승인 도장 -->
+                    <div id="desk-stamp" class="absolute left-[38%] bottom-8 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1 pointer-events-auto">
+                        <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
+                    </div>
+
+                    <!-- 커피 드래그 객체 -->
+                    <div id="draggable-coffee" class="absolute left-[45%] bottom-4 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center pointer-events-auto">
+                        <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- PHASE 3: 1인칭 서류 결재 무대 -->
         <div id="paper-view" class="w-full h-full relative hidden bg-amber-900/90 flex flex-col items-center justify-center overflow-hidden cursor-none">
-            <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center">
-                <!-- JS Dynamic Document Render -->
-            </div>
-
+            <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center"></div>
             <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 rotate-20">
                 <img src="elfstamp.png" alt="Stamp Hand" class="w-32 h-32 object-contain drop-shadow-2xl" onerror="this.src='https://via.placeholder.com/128/transparent/ff0000?text=Stamp'">
             </div>
@@ -335,9 +305,7 @@
             fetch('menu.html').then(res => res.text()).then(html => {
                 const container = document.getElementById('menu-container');
                 if (!container) return;
-
                 container.innerHTML = html;
-
                 const scripts = container.querySelectorAll('script');
                 scripts.forEach(oldScript => {
                     const newScript = document.createElement('script');
@@ -491,7 +459,7 @@
 
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
-            coffee.style.bottom = '12px';
+            coffee.style.bottom = '16px';
             coffee.style.top = 'auto';
         }
 
