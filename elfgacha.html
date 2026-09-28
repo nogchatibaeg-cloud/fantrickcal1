@@ -53,6 +53,41 @@
         .paper-fly-anim {
             animation: paperFlyIn 0.15s ease-out forwards;
         }
+
+        /* [수정 2] 해와 달 시계 방향 대형 원호(Arc) 회전 애니메이션 */
+        .sun-day-pos {
+            transform: translate(0, 0);
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .sun-set-anim {
+            animation: sunArcDown 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes sunArcDown {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            100% {
+                transform: translate(350px, 450px) rotate(60deg);
+                opacity: 0;
+            }
+        }
+
+        .moon-rising-anim {
+            animation: moonArcUp 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes moonArcUp {
+            0% {
+                transform: translate(-350px, 450px) rotate(-60deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -166,7 +201,8 @@
         <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
             <!-- 하늘 & 창밖 배경 -->
             <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000">
-                <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000"></div>
+                <!-- [수정 2] 해와 달 오브젝트 (크기는 변경되지 않고 궤동 회전) -->
+                <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] sun-day-pos"></div>
                 <!-- 창밖 나무 꼭대기 -->
                 <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
                     <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
@@ -192,7 +228,7 @@
 
             <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
             <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
-                <!-- [수정 2] 시계 방향으로 10도 틀어져 있는 정사각형 회색 큐브 -->
+                <!-- 시계 방향으로 10도 틀어져 있는 정사각형 회색 큐브 -->
                 <div class="absolute left-12 bottom-28 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded">
                     <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
                 </div>
@@ -202,7 +238,7 @@
                     <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
                 </div>
 
-                <!-- [수정 3] 완전히 눕혀져 있는 A4용지 더미 (정면 바라보지 않음) -->
+                <!-- 완전히 눕혀져 있는 A4용지 더미 -->
                 <div class="absolute right-16 bottom-16 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right">
                     <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
                     <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
@@ -214,7 +250,7 @@
                     <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
                 </div>
 
-                <!-- [수정 1] 유저가 들어야하는 커피를 hoticecafe.png로 수정 -->
+                <!-- 유저가 들어야하는 커피 -->
                 <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center">
                     <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
                 </div>
@@ -228,8 +264,8 @@
                 <!-- JS Dynamic Document Render -->
             </div>
 
-            <!-- [수정 4] 엘레나가 도장을 찍어줄 때 손과 도장은 elfstamp가 20도 오른쪽으로 누운 모습 -->
-            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full transition-transform duration-75 rotate-20">
+            <!-- [수정 1] elfstamp 손 중심점 오프셋 및 커서 정밀 보정 -->
+            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 rotate-20">
                 <img src="elfstamp.png" alt="Stamp Hand" class="w-32 h-32 object-contain drop-shadow-2xl" onerror="this.src='https://via.placeholder.com/128/transparent/ff0000?text=Stamp'">
             </div>
         </div>
@@ -418,7 +454,7 @@
             document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000";
             
             const sunMoon = document.getElementById('sun-moon');
-            sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000";
+            sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] sun-day-pos";
             
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
@@ -473,9 +509,19 @@
                         const hasPickup = drawnResults.some(r => r.key === 'canna');
 
                         if (hasHigh) {
+                            // [수정 2] 해는 오른쪽 아래 화면 밖으로 시계 방향 호를 그리며 내려가고, 초승달이 왼쪽 아래 화면 밖에서 시계 방향 호를 그리며 올라옴
                             document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000";
                             const sunMoon = document.getElementById('sun-moon');
-                            sunMoon.className = "absolute top-36 right-24 w-12 h-12 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 transition-all duration-1000";
+                            
+                            // 해 내려가는 애니메이션 적용
+                            sunMoon.classList.remove('sun-day-pos');
+                            sunMoon.classList.add('sun-set-anim');
+
+                            setTimeout(() => {
+                                // 초승달 상태로 변경 후 왼쪽 아래에서 올라오는 애니메이션 적용
+                                sunMoon.classList.remove('sun-set-anim');
+                                sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 moon-rising-anim";
+                            }, 600);
                         }
                         if (hasPickup) {
                             elena.src = 'elenawowtemp.png';
@@ -496,7 +542,6 @@
             animatePaperStackIn();
         }
 
-        // [수정 5, 6] 1인칭 시점이 되자마자 오른쪽에서 0.05초(50ms) 간격으로 파바박 날아와 정갈하게 쌓임 (오차 2deg 이내)
         function animatePaperStackIn() {
             const stackEl = document.getElementById('paper-stack');
             stackEl.innerHTML = '';
@@ -511,7 +556,6 @@
                 }
 
                 const res = drawnResults[idx];
-                // [수정 6] 중앙 위치 고정, 오차범위 2deg 이내 무작위
                 const rot = (Math.random() * 4 - 2); 
 
                 const paper = document.createElement('div');
@@ -542,16 +586,17 @@
 
                 stackEl.appendChild(paper);
                 idx--;
-            }, 50); // 0.05초 간격으로 날아옴
+            }, 50);
         }
 
         function setupStampCursor() {
             const paperView = document.getElementById('paper-view');
             const hand = document.getElementById('chibi-hand-stamp');
 
+            // [수정 1] 마우스 커서 중심 위치와 도장 인쇄 기준점 정확히 보정
             paperView.onmousemove = (e) => {
-                hand.style.left = `${e.clientX}px`;
-                hand.style.top = `${e.clientY}px`;
+                hand.style.left = `${e.clientX + 10}px`;
+                hand.style.top = `${e.clientY + 35}px`;
             };
         }
 
@@ -565,13 +610,11 @@
             target.parentElement.appendChild(stamp);
 
             const hand = document.getElementById('chibi-hand-stamp');
-            // 도장 찍는 연출 (rotate-20을 유지하면서 클릭 감)
-            hand.style.transform = 'translate(-50%, -100%) rotate(20deg) scale(0.85)';
+            hand.style.transform = 'translate(-50%, -50%) rotate(20deg) scale(0.85)';
 
             setTimeout(() => {
-                hand.style.transform = 'translate(-50%, -100%) rotate(20deg) scale(1)';
+                hand.style.transform = 'translate(-50%, -50%) rotate(20deg) scale(1)';
                 
-                // 현재 서류 치우기
                 const curPaper = document.getElementById(`paper-item-${currentPaperIndex}`);
                 if (curPaper) {
                     curPaper.style.transform += ' translateY(-100vh) rotate(15deg)';
@@ -583,7 +626,6 @@
                 if (currentPaperIndex >= drawnResults.length) {
                     setTimeout(() => finishGachaSequence(), 300);
                 } else {
-                    // 다음 서류의 도장버튼 활성화
                     const nextPaper = document.getElementById(`paper-item-${currentPaperIndex}`);
                     if (nextPaper) {
                         const slotBtn = nextPaper.querySelector('.stamp-slot-btn');
