@@ -19,233 +19,634 @@
         .crt-screen { background-color: #031006; border: 4px solid #18181b; border-radius: 12px; box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.2); position: relative; overflow: hidden; }
         .crt-screen::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 20; background-size: 100% 4px, 6px 100%; pointer-events: none; }
         
-        .scanline { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 51%); background-size: 100% 4px; pointer-events: none; z-index: 21; }
-        .glow-text { text-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
+        .scanline { width: 100%; height: 100px; z-index: 21; background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(34, 197, 94, 0.1) 50%, rgba(0, 0, 0, 0) 100%); opacity: 0.15; position: absolute; bottom: 100%; animation: scanline 8s linear infinite; pointer-events: none; }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100px; } }
 
-        .scan-line-anim { position: absolute; top: 0; left: 0; width: 100%; height: 8px; background: rgba(34, 197, 94, 0.5); box-shadow: 0 0 15px #22c55e; animation: scan 2s linear infinite; opacity: 0; z-index: 15; }
-        @keyframes scan { 0% { top: 0; opacity: 0.8; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0.8; } }
+        .bookmark-tab { background-color: #092e13; border: 2px solid #15803d; border-right: none; color: #4ade80; transition: all 0.2s ease; position: relative; }
+        .bookmark-tab.active { background-color: #15803d; color: #ffffff; font-weight: 900; box-shadow: -4px 0 12px rgba(34, 197, 94, 0.3); width: calc(100% + 8px); z-index: 10; }
+        
+        .crt-text { text-shadow: 0 0 6px rgba(34, 197, 94, 0.7); }
+        .crt-btn { background-color: #092e13; border: 2px solid #22c55e; color: #4ade80; transition: all 0.15s ease; }
+        .crt-btn:hover { background-color: #22c55e; color: #000000; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
 
-        .btn-retro { background-color: #18181b; border: 2px solid #27272a; border-bottom: 5px solid #09090b; transition: all 0.1s ease; }
-        .btn-retro:active { transform: translateY(3px); border-bottom-width: 2px; }
-        .btn-retro:hover:not(:disabled) { border-color: #22c55e; color: #22c55e; }
+        /* 가챠 애니메이션 씬 오버레이 레이어 (전체 화면으로 변경) */
+        #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; }
+        
+        /* 깜빡이는 커서 */
+        .blinking-cursor { display: inline-block; width: 10px; height: 1.2em; background-color: #22c55e; vertical-align: bottom; animation: blink 0.8s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 황금 서류 반짝임 연출 */
+        .gold-paper { border: 3px solid #fbbf24 !important; box-shadow: 0 0 25px rgba(251, 191, 36, 0.8), inset 0 0 15px rgba(251, 191, 36, 0.5) !important; }
+        .gold-sparkle { position: absolute; width: 8px; height: 8px; background: #fef08a; border-radius: 50%; animation: sparkle 1s infinite alternate; }
+        @keyframes sparkle { 0% { transform: scale(0.2); opacity: 0.3; } 100% { transform: scale(1.4); opacity: 1; } }
+
+        /* 도장 스탬프 스타일 */
+        .stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
+        @keyframes stampIn { to { transform: rotate(-12deg) scale(1); } }
     </style>
 </head>
-<body class="bg-black flex flex-col justify-center items-center relative">
-    <div id="save-module-container"></div>
+<body>
 
-    <a href="InMonatium.html" class="absolute top-4 left-4 z-50 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-green-500 rounded-xl text-zinc-300 text-xs font-bold flex items-center gap-2 transition-all">
-        <i class="fa-solid fa-arrow-left"></i>
-        <span>모나티엄으로 돌아가기</span>
-    </a>
-
-    <div class="crt-tv w-[95vw] max-w-[500px] h-[85vh] max-h-[700px] flex flex-col p-4 sm:p-6 relative">
-        <div class="crt-screen flex-1 flex flex-col p-4 relative justify-between">
+    <!-- 브라운관 TV / 컴퓨터형 바깥 프레임 -->
+    <div class="crt-tv w-[95vw] h-[92vh] max-w-[1400px] max-h-[850px] p-6 flex flex-col items-center justify-between relative">
+        
+        <!-- 화면 영역 -->
+        <div class="crt-screen w-full h-[82%] p-4 flex flex-col relative" id="screen-container">
             <div class="scanline"></div>
-            <div id="scan-bar" class="scan-line-anim"></div>
 
-            <div class="flex justify-between items-center border-b border-green-900/60 pb-2 z-10">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-microchip text-green-500 animate-pulse"></i>
-                    <span class="pixel-font text-lg text-green-400 font-bold tracking-widest glow-text">MONA-TESTER v2.0</span>
+            <!-- 모니터 상단 헤더 -->
+            <div class="flex justify-between items-center border-b-2 border-emerald-800/80 pb-2 mb-3 text-xs tracking-wider z-10 font-mono">
+                <div class="flex items-center gap-2 crt-text">
+                    <span class="inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>MONATIUM_APTITUDE_TEST_SYSTEM_v1.09</span>
                 </div>
-                <div class="text-[10px] font-mono text-green-600 bg-green-950/40 px-2 py-0.5 rounded border border-green-900">
-                    STATUS: READY
-                </div>
-            </div>
-
-            <div class="flex-1 flex flex-col justify-center items-center my-4 relative z-10 w-full overflow-hidden">
-                <div id="screen-idle" class="flex flex-col items-center justify-center text-center">
-                    <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-2 border-green-500/30 flex items-center justify-center bg-green-950/10 mb-4 relative">
-                        <i class="fa-solid fa-user-astronaut text-5xl sm:text-6xl text-green-500/40 animate-bounce"></i>
-                    </div>
-                    <p class="text-xs sm:text-sm text-green-400/80 font-mono leading-relaxed">
-                        모나티엄 시민 적성 검사 시스템<br>
-                        버튼을 눌러 적성 검사를 시작하세요.
-                    </p>
-                </div>
-
-                <div id="screen-testing" class="hidden flex-col items-center justify-center text-center w-full">
-                    <div class="w-32 h-32 sm:w-40 sm:h-40 relative flex items-center justify-center mb-4">
-                        <i id="test-icon" class="fa-solid fa-gear text-6xl text-green-400 animate-spin"></i>
-                    </div>
-                    <div class="w-full bg-zinc-950 border border-green-900 h-4 rounded-full overflow-hidden p-0.5 mb-2">
-                        <div id="test-progress" class="bg-green-500 h-full w-0 transition-all duration-100 rounded-full"></div>
-                    </div>
-                    <p id="test-status-text" class="pixel-font text-xl text-green-400 tracking-wider">적성 분석 중...</p>
-                </div>
-
-                <div id="screen-result" class="hidden flex-col items-center justify-center text-center w-full">
-                    <div id="result-img-box" class="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-green-400 bg-green-950/30 p-2 mb-3 relative flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-                        <img id="result-img" src="" alt="결과" class="max-h-full max-w-full object-contain">
-                        <span id="result-high-badge" class="hidden absolute top-2 right-2 bg-amber-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow">상급</span>
-                    </div>
-                    <h2 id="result-title" class="text-xl sm:text-2xl font-black text-white glow-text mb-1">군인 적성 판정</h2>
-                    <p id="result-desc" class="text-xs text-green-300 font-mono max-w-[280px]">뛰어난 체력과 정신력으로 모나티엄을 지키는 데 적합합니다.</p>
+                <div id="leaf-resource-display" class="text-emerald-300 font-bold crt-text flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-leaf text-emerald-400"></i>
+                    <span>세계수 잎: <span id="leaf-count-val">0</span>개</span>
                 </div>
             </div>
 
-            <div class="border-t border-green-900/60 pt-2 z-10 flex justify-between items-center text-[11px] font-mono text-green-600">
-                <span>소모 골드: <span class="text-amber-400 font-bold">1,000 G</span></span>
-                <span>보유 골드: <span id="user-gold" class="text-green-400 font-bold">0 G</span></span>
+            <!-- 메인 검사기 뷰 -->
+            <div id="gacha-main-view" class="w-full h-[calc(100%-40px)] flex relative z-10">
+                <div class="w-44 flex flex-col gap-3 pt-4 pr-0 z-10">
+                    <button id="tab-pickup" onclick="switchTab('pickup')" class="bookmark-tab active py-3 px-3 text-left rounded-l-lg text-xs font-bold flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-bullseye"></i>
+                        <span>집중 적성 검사</span>
+                    </button>
+                    <button id="tab-normal" onclick="switchTab('normal')" class="bookmark-tab py-3 px-3 text-left rounded-l-lg text-xs font-bold flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>일반 적성 검사</span>
+                    </button>
+                </div>
+
+                <div class="flex-1 bg-[#011407]/90 border-2 border-emerald-800 rounded-r-xl rounded-bl-xl p-4 flex gap-4 relative overflow-hidden">
+                    <div class="w-1/2 flex flex-col justify-between border-r border-emerald-900/60 pr-4">
+                        <div>
+                            <div class="text-xs font-mono text-emerald-600 mb-2">// MONATIUM_APTITUDE_PROBABILITY_TABLE</div>
+                            <h2 id="view-title" class="text-base font-extrabold text-emerald-300 crt-text mb-4">집중 적성 검사 (픽업: 칸나)</h2>
+                            <div id="probability-table" class="space-y-2 text-xs font-mono text-emerald-400 bg-emerald-950/40 p-3 rounded-lg border border-emerald-900/80"></div>
+                            <div class="mt-3 text-[11px] text-yellow-400 font-bold bg-yellow-950/30 border border-yellow-800/50 p-2 rounded flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>20% 확률로 상급 시민 가능성 존재</span>
+                            </div>
+                        </div>
+                        <div class="font-mono text-[10px] text-emerald-700/80 leading-relaxed bg-black/40 p-2 rounded border border-emerald-950">
+                            > INITIALIZING ELVEN_ROSTER...<br>
+                            > STATUS: BLANK_STATE_SUBJECTS_READY.<br>
+                            > TARGET_LOCATION: Monatium_Citizen_Registry.<br>
+                            > READY_TO_ASSIGN_ROLES...
+                        </div>
+                    </div>
+
+                    <div id="pickup-right-panel" class="w-1/2 flex flex-col items-center justify-center relative overflow-hidden bg-emerald-950/20 rounded-lg border border-emerald-900/40">
+                        <div class="absolute top-2 left-2 text-[10px] font-mono text-emerald-500">// TARGET_SUBJECT: CANNA</div>
+                        <img id="pickup-img" src="cannatemp.png" alt="칸나" class="max-h-[85%] object-contain drop-shadow-[0_0_12px_rgba(34,197,94,0.4)]" onerror="this.src='https://via.placeholder.com/300x400/092e13/4ade80?text=cannatemp.png'">
+                        <div class="absolute bottom-2 text-center text-xs font-bold text-emerald-300 crt-text bg-emerald-950/80 px-3 py-1 rounded border border-emerald-700">
+                            ★ 픽업 대상: 칸나 (10%) ★
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- 결과 최종 팝업 화면 -->
+            <div id="gacha-result-view" class="hidden w-full h-[calc(100%-40px)] bg-slate-900/95 border-2 border-emerald-500 rounded-xl flex flex-col items-center justify-between p-6 relative z-50 text-white">
+                <div class="text-sm font-bold text-emerald-400 mb-2 crt-text">// MONATIUM_APTITUDE_TEST_FINAL_REPORT</div>
+                <div id="result-content-list" class="flex flex-wrap items-center justify-center gap-4 max-w-4xl max-h-[70%] overflow-y-auto p-2"></div>
+                <button onclick="closeResultView()" class="crt-btn px-8 py-3 font-bold text-xs rounded-lg cursor-pointer">
+                    결재 완료 및 확인
+                </button>
+            </div>
+
         </div>
 
-        <div class="mt-4 flex gap-3 z-30">
-            <button id="btn-start-test" onclick="runGacha()" class="btn-retro flex-1 py-3 px-4 rounded-xl text-zinc-300 font-extrabold text-sm flex items-center justify-center gap-2">
-                <i class="fa-solid fa-play text-green-400"></i>
-                <span>적성 검사 개시</span>
-            </button>
+        <!-- 하단 컨트롤 / 뽑기 버튼 영역 -->
+        <div class="w-full h-[15%] flex items-center justify-between px-6 bg-zinc-900/90 border-2 border-zinc-700 rounded-xl">
+            <a href="loading.html?target=InMonatium.html" class="crt-btn px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer text-decoration-none">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>모나티엄으로 돌아가기</span>
+            </a>
+
+            <div class="flex items-center gap-4">
+                <button onclick="startAnimationGacha(1)" class="crt-btn px-5 py-3 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 cursor-pointer">
+                    <span>적성 검사 1회</span>
+                    <span class="text-[10px] font-mono opacity-80">(세계수 잎 30개)</span>
+                </button>
+                <button onclick="startAnimationGacha(10)" class="crt-btn px-6 py-3 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 cursor-pointer border-emerald-400">
+                    <span class="text-emerald-300">집중 적성 검사 10회</span>
+                    <span class="text-[10px] font-mono text-emerald-400">
+                        (세계수 잎 <span class="line-through text-red-400 decoration-red-500">300</span> 270개)
+                    </span>
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- ================= 가챠 애니메이션 전용 전체화면 스테이지 ================= -->
+    <div id="anim-stage" class="flex flex-col justify-center items-center relative overflow-hidden">
+        <!-- PHASE 1: 터미널 Y/N 타이핑 화면 -->
+        <div id="terminal-view" class="w-full h-full p-8 font-mono text-emerald-400 text-lg flex flex-col justify-start items-start bg-black z-30">
+            <div id="term-text" class="leading-relaxed whitespace-pre-line crt-text"></div>
+            <div class="mt-2 flex items-center">
+                <span id="typed-input" class="text-white font-bold text-xl"></span>
+                <span class="blinking-cursor"></span>
+            </div>
+        </div>
+
+        <!-- PHASE 2: 엘레나 집무실 3D 패스펙티브 캔버스 -->
+        <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
+            <!-- 하늘 & 창밖 배경 -->
+            <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000">
+                <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000"></div>
+                <!-- 창밖 나무 꼭대기 -->
+                <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
+                    <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
+                    <div class="w-24 h-20 bg-emerald-800 rounded-full -mb-8"></div>
+                    <div class="w-20 h-16 bg-emerald-600 rounded-full -mb-6"></div>
+                </div>
+            </div>
+
+            <!-- 격자 창문 & 커튼 & 깃발 -->
+            <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative">
+                <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 pointer-events-none">
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                </div>
+                <!-- 빨간 망토 커튼 -->
+                <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
+                <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
+                <!-- 연노랑 베이지 깃발 -->
+                <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
+            </div>
+
+            <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
+            <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
+                <!-- 회색 브라운관 CD 컴퓨터 (좌측 80도 각도) -->
+                <div class="absolute left-8 bottom-28 w-44 h-40 bg-zinc-400 border-4 border-zinc-600 rounded-lg shadow-2xl transform rotate-6 flex flex-col p-2">
+                    <div class="w-full h-24 bg-black border-2 border-zinc-700 rounded p-1 text-[8px] font-mono text-green-400 overflow-hidden">
+                        APTITUDE_TEST<br>READY_
+                    </div>
+                    <div class="mt-2 w-full h-3 bg-zinc-700 rounded-full flex items-center justify-end px-2">
+                        <div id="pc-slot" class="w-16 h-1 bg-black"></div>
+                    </div>
+                </div>
+
+                <!-- 중앙 엘레나 -->
+                <div class="absolute left-1/2 -translate-x-1/2 bottom-24 w-72 h-80 flex items-end justify-center">
+                    <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
+                </div>
+
+                <!-- 오른쪽 쌓인 서류들 -->
+                <div class="absolute right-12 bottom-24 w-36 h-48 bg-amber-100 border-2 border-amber-300 shadow-2xl flex flex-col justify-end p-1 transform -rotate-2">
+                    <div class="w-full h-full bg-amber-50 border border-amber-200 shadow-sm transform rotate-3"></div>
+                </div>
+
+                <!-- 나무 재질 승인 도장 -->
+                <div id="desk-stamp" class="absolute left-[38%] bottom-20 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1">
+                    <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
+                </div>
+
+                <!-- 뜨거운 아이스 아메리카노 (드래그 대상) -->
+                <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-12 h-16 bg-amber-900/80 border-2 border-cyan-200 rounded-b-xl shadow-2xl cursor-grab flex flex-col items-center justify-between p-1 z-40 active:cursor-grabbing">
+                    <div class="w-10 h-2 bg-white/80 rounded-full"></div>
+                    <span class="text-[9px] font-bold text-white tracking-tighter">HOT ICE</span>
+                    <div class="w-1 h-6 bg-red-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3: 1인칭 서류 결재 무대 -->
+        <div id="paper-view" class="w-full h-full relative hidden bg-amber-900/90 flex flex-col items-center justify-center overflow-hidden cursor-none">
+            <!-- 서류가 출력되는 책상 정면 -->
+            <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center">
+                <!-- JS Dynamic Document Render -->
+            </div>
+
+            <!-- 치비 4손가락 도장 손 (마우스 커서 위치 수정) -->
+            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full transition-transform duration-75">
+                <div class="relative w-20 h-24 flex flex-col items-center justify-end">
+                    <!-- 치비 손가락 4개 -->
+                    <div class="flex gap-1 -mb-2">
+                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                    </div>
+                    <!-- 도장 손잡이 -->
+                    <div class="w-8 h-12 bg-amber-800 border-2 border-amber-950 rounded-t-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="menu-container"></div>
+
     <script>
-        const ROLES = [
-            { id: 'army', name: '군인', img: 'army.png', desc: '뛰어난 체력과 정신력으로 모나티엄을 지키는 데 적합합니다.' },
-            { id: 'backsu', name: '백수', img: 'backsu.png', desc: '특출난 능력은 없지만 모나티엄의 자유로운 분위기에 순응합니다.' },
-            { id: 'doctor', name: '의사', img: 'doctor.png', desc: '지적인 능력과 치료 기술로 시민들의 건강을 책임집니다.' },
-            { id: 'spy', name: '스파이', img: 'spy.png', desc: '은밀한 정보 수집과 침투에 특화된 재능을 가지고 있습니다.' },
-            { id: 'citizen', name: '시민', img: 'citizen.png', desc: '성실함과 평범함으로 모나티엄의 기반을 이루는 주민입니다.' }
-        ];
+        let currentTab = 'pickup';
+        let pendingDrawCount = 1;
+        let drawnResults = [];
+        let currentPaperIndex = 0;
 
-        let isTesting = false;
+        const ROLE_DATA = {
+            citizen: { name: '시민', img: 'citizen.png', desc: '총 효율성 +15' },
+            army: { name: '직업 군인', img: 'army.png', desc: '전투력 +10%' },
+            doctor: { name: '박사', img: 'doctor.png', desc: '효율성 +10%' },
+            spy: { name: '스파이', img: 'spy.png', desc: '원정 성공률 +1%' },
+            backsu: { name: '백수', img: 'backsu.png', desc: '획득 모든 최종 기술력 +1' },
+            canna: { name: '칸나', img: 'cannatemp.png', desc: '특수능력: 세계수 오라 & 전원 가공' }
+        };
 
-        function updateGoldUI() {
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMenuEngine();
+            updateLeafDisplay();
+            renderProbabilityTable();
+            setupCoffeeDrag();
+            setupStampCursor();
+        });
+
+        function loadMenuEngine() {
+            fetch('menu.html').then(res => res.text()).then(html => {
+                const container = document.getElementById('menu-container');
+                if (!container) return;
+
+                container.innerHTML = html;
+
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            }).catch(e => {});
+        }
+
+        function updateLeafDisplay() {
+            let leafCount = 0;
             try {
                 const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
                 if (raw) {
                     const parsed = JSON.parse(raw);
-                    if (Array.isArray(parsed.resources)) {
-                        const goldRes = parsed.resources.find(r => r.id === 'gold');
-                        if (goldRes) {
-                            document.getElementById('user-gold').innerText = `${(goldRes.value || 0).toLocaleString()} G`;
-                        }
+                    if (parsed.resources) {
+                        const leafRes = parsed.resources.find(r => r.id === 'leaf');
+                        if (leafRes) leafCount = leafRes.value || 0;
                     }
                 }
-            } catch (e) { console.error(e); }
+            } catch(e) {}
+            document.getElementById('leaf-count-val').innerText = leafCount.toLocaleString();
         }
 
-        function runGacha() {
-            if (isTesting) return;
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-pickup').classList.toggle('active', tab === 'pickup');
+            document.getElementById('tab-normal').classList.toggle('active', tab === 'normal');
+            document.getElementById('pickup-right-panel').classList.toggle('hidden', tab !== 'pickup');
+            document.getElementById('view-title').innerText = tab === 'pickup' ? "집중 적성 검사 (픽업: 칸나)" : "일반 적성 검사";
+            renderProbabilityTable();
+        }
 
-            let saveData = null;
-            try {
-                const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
-                if (raw) saveData = JSON.parse(raw);
-            } catch (e) {}
+        function renderProbabilityTable() {
+            const tableEl = document.getElementById('probability-table');
+            if (currentTab === 'normal') {
+                tableEl.innerHTML = `
+                    <div class="flex justify-between"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between"><span>직업 군인</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>박사</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>스파이</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>`;
+            } else {
+                tableEl.innerHTML = `
+                    <div class="flex justify-between"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between"><span>직업 군인 10% <b class="text-emerald-300 ml-2">칸나 10%</b></span><span>20%</span></div>
+                    <div class="flex justify-between"><span>박사</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>스파이</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>`;
+            }
+        }
 
-            if (!saveData || !Array.isArray(saveData.resources)) {
-                alert("게임 데이터를 불러올 수 없습니다.");
+        function drawOne() {
+            const table = currentTab === 'pickup'
+                ? [['citizen', 30], ['canna', 10], ['army', 10], ['doctor', 20], ['spy', 20], ['backsu', 10]]
+                : [['citizen', 30], ['army', 20], ['doctor', 20], ['spy', 20], ['backsu', 10]];
+            let roll = Math.random() * 100;
+            let key = table[table.length - 1][0];
+            for (const [k, weight] of table) {
+                if (roll < weight) { key = k; break; }
+                roll -= weight;
+            }
+            return { key: key, name: ROLE_DATA[key].name, img: ROLE_DATA[key].img, desc: ROLE_DATA[key].desc, isHighGrade: Math.random() < 0.2 };
+        }
+
+        // 재화 확인
+        function checkLeafBalance(count) {
+            const cost = count === 1 ? 30 : 270;
+            let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+            let saveObj = {};
+            try { saveObj = JSON.parse(raw); } catch(e) {}
+            
+            let leafVal = 0;
+            if (saveObj.resources) {
+                const leafRes = saveObj.resources.find(r => r.id === 'leaf');
+                if (leafRes) leafVal = leafRes.value || 0;
+            }
+            return { hasEnough: leafVal >= cost, cost: cost, current: leafVal };
+        }
+
+        // y 입력 시 실제 재화 차감
+        function deductLeaves(cost) {
+            let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+            let saveObj = {};
+            try { saveObj = JSON.parse(raw); } catch(e) {}
+
+            if (saveObj.resources) {
+                const leafRes = saveObj.resources.find(r => r.id === 'leaf');
+                if (leafRes) leafRes.value -= cost;
+            }
+            localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+            if (window.EliasSave && window.EliasSave.save) window.EliasSave.save(true);
+            updateLeafDisplay();
+        }
+
+        // ================= 애니메이션 및 흐름 컨트롤 =================
+        function startAnimationGacha(count) {
+            const check = checkLeafBalance(count);
+            if (!check.hasEnough) {
+                alert(`세계수 잎이 부족합니다! (현재: ${check.current}개 / 필요: ${check.cost}개)`);
                 return;
             }
 
-            const goldRes = saveData.resources.find(r => r.id === 'gold');
-            if (!goldRes || (goldRes.value || 0) < 1000) {
-                alert("골드가 부족합니다! (필요: 1,000 G)");
-                return;
-            }
+            pendingDrawCount = count;
+            drawnResults = [];
+            for(let i = 0; i < count; i++) drawnResults.push(drawOne());
 
-            // 골드 차감
-            goldRes.value -= 1000;
+            // 가챠 스테이지 노출 및 Phase 1 시작 (아직 차감 안함)
+            document.getElementById('anim-stage').style.display = 'flex';
+            runPhase1Terminal();
+        }
 
-            isTesting = true;
-            document.getElementById('btn-start-test').disabled = true;
-            document.getElementById('screen-idle').classList.add('hidden');
-            document.getElementById('screen-result').classList.add('hidden');
-            document.getElementById('screen-testing').classList.remove('hidden');
-            document.getElementById('screen-testing').classList.add('flex');
-            document.getElementById('scan-bar').style.opacity = '1';
+        // Phase 1: Terminal
+        function runPhase1Terminal() {
+            document.getElementById('terminal-view').classList.remove('hidden');
+            document.getElementById('office-view').classList.add('hidden');
+            document.getElementById('paper-view').classList.add('hidden');
+            
+            const termText = document.getElementById('term-text');
+            const typedInput = document.getElementById('typed-input');
+            typedInput.innerText = '';
+            termText.innerText = "MONATIUM_SYSTEM_v1.09\n적성 검사를 시작하시겠습니까? [y / n]\n";
 
-            let progress = 0;
-            const progressBar = document.getElementById('test-progress');
-            const statusText = document.getElementById('test-status-text');
+            window.onkeydown = (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'y') {
+                    typedInput.innerText = 'y';
+                    window.onkeydown = null;
 
-            const interval = setInterval(() => {
-                progress += 5;
-                progressBar.style.width = `${progress}%`;
+                    // y를 눌렀을 때만 세계수 잎 차감
+                    const cost = pendingDrawCount === 1 ? 30 : 270;
+                    deductLeaves(cost);
 
-                if (progress === 30) statusText.innerText = "뇌파 패턴 분석 중...";
-                if (progress === 60) statusText.innerText = "적성 데이터 대조 중...";
-                if (progress === 90) statusText.innerText = "최종 판정 기록 중...";
+                    setTimeout(() => runPhase2Office(), 500);
+                } else if (key === 'n') {
+                    typedInput.innerText = 'n';
+                    termText.innerText += "\n검사가 취소되었습니다.";
+                    window.onkeydown = null;
+                    setTimeout(() => {
+                        document.getElementById('anim-stage').style.display = 'none';
+                    }, 1000);
+                }
+            };
+        }
 
-                if (progress >= 100) {
-                    clearInterval(interval);
+        // Phase 2: Office (엘레나 집무실)
+        function runPhase2Office() {
+            document.getElementById('terminal-view').classList.add('hidden');
+            document.getElementById('office-view').classList.remove('hidden');
 
-                    // 10% 확률 상급
-                    const isHigh = Math.random() < 0.1;
-                    const pickedRole = ROLES[Math.floor(Math.random() * ROLES.length)];
+            // 기본 상태 복원
+            document.getElementById('elena-img').src = 'elenatemp.png';
+            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000";
+            
+            const sunMoon = document.getElementById('sun-moon');
+            sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000";
+            
+            const coffee = document.getElementById('draggable-coffee');
+            coffee.style.left = '45%';
+            coffee.style.bottom = '12px';
+        }
 
-                    if (!saveData.progress) saveData.progress = {};
-                    if (!Array.isArray(saveData.progress.monatiumCitizens)) {
-                        saveData.progress.monatiumCitizens = [];
-                    }
+        // 커피 드래그 & 드롭 기능
+        function setupCoffeeDrag() {
+            const coffee = document.getElementById('draggable-coffee');
+            const elena = document.getElementById('elena-img');
+            const room = document.getElementById('office-room');
+            let isDragging = false;
+            let offsetX, offsetY;
 
-                    const currentList = saveData.progress.monatiumCitizens;
-                    const sameRoleCount = currentList.filter(c => c.role === pickedRole.id).length;
+            coffee.onmousedown = (e) => {
+                isDragging = true;
+                offsetX = e.clientX - coffee.offsetLeft;
+                offsetY = e.clientY - coffee.offsetTop;
+            };
 
-                    let convertedToTicket = false;
+            window.onmousemove = (e) => {
+                if (!isDragging) return;
+                coffee.style.left = `${e.clientX - offsetX}px`;
+                coffee.style.top = `${e.clientY - offsetY}px`;
 
-                    // 적성당 최대 5명 제한 점검
-                    if (sameRoleCount >= 5) {
-                        // 5명 초과 시 엘프 교육권으로 변경
-                        saveData.progress.elfEducationTickets = (saveData.progress.elfEducationTickets || 0) + 1;
-                        convertedToTicket = true;
-                    } else {
-                        // 5명 미만인 경우 신규 등록
-                        currentList.push({
-                            role: pickedRole.id,
-                            img: pickedRole.img,
-                            isHighGrade: isHigh
-                        });
-                    }
+                // 엘레나 충돌 감지
+                const cRect = coffee.getBoundingClientRect();
+                const eRect = elena.getBoundingClientRect();
 
-                    // 저장 커밋
-                    localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveData));
+                if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
+                    elena.style.filter = "drop-shadow(0 0 15px rgba(255,255,255,0.9))";
+                } else {
+                    elena.style.filter = "drop-shadow(0 0 0px transparent)";
+                }
+            };
+
+            window.onmouseup = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                const cRect = coffee.getBoundingClientRect();
+                const eRect = elena.getBoundingClientRect();
+
+                if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
+                    // 전달 완료 연출
+                    elena.src = 'elenanicetemp.png';
+                    room.style.transform = 'scale(1.15)';
 
                     setTimeout(() => {
-                        document.getElementById('screen-testing').classList.add('hidden');
-                        document.getElementById('screen-testing').classList.remove('flex');
-                        document.getElementById('screen-result').classList.remove('hidden');
-                        document.getElementById('screen-result').classList.add('flex');
-                        document.getElementById('scan-bar').style.opacity = '0';
+                        elena.src = 'elenawakeuptemp.png';
+                        room.style.transform = 'scale(1)';
 
-                        document.getElementById('result-img').src = pickedRole.img;
-                        
-                        if (convertedToTicket) {
-                            document.getElementById('result-title').innerText = `${pickedRole.name} 적성 (교육권 전환)`;
-                            document.getElementById('result-desc').innerText = `동일 적성 엘프 수용 한도(5명) 초과로 [엘프 교육권]으로 변환되었습니다!`;
-                        } else {
-                            document.getElementById('result-title').innerText = `${pickedRole.name} 적성 판정`;
-                            document.getElementById('result-desc').innerText = pickedRole.desc;
+                        // 상급/픽업 연출 체크
+                        const hasHigh = drawnResults.some(r => r.isHighGrade);
+                        const hasPickup = drawnResults.some(r => r.key === 'canna');
+
+                        if (hasHigh) {
+                            // 회전 없이 해가 지고 밤하늘로 변경
+                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000";
+                            const sunMoon = document.getElementById('sun-moon');
+                            sunMoon.className = "absolute top-36 right-24 w-12 h-12 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 transition-all duration-1000";
+                        }
+                        if (hasPickup) {
+                            elena.src = 'elenawowtemp.png';
                         }
 
-                        const highBadge = document.getElementById('result-high-badge');
-                        if (isHigh) highBadge.classList.remove('hidden');
-                        else highBadge.classList.add('hidden');
-
-                        isTesting = false;
-                        document.getElementById('btn-start-test').disabled = false;
-                        updateGoldUI();
-                    }, 400);
+                        setTimeout(() => runPhase3Paper(), 1500);
+                    }, 800);
                 }
-            }, 50);
+            };
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('menu.html').then(res => res.text()).then(html => {
-                const container = document.getElementById('save-module-container');
-                if (container) {
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
+        // Phase 3: Paper (1인칭 서류 결재)
+        function runPhase3Paper() {
+            document.getElementById('office-view').classList.add('hidden');
+            document.getElementById('paper-view').classList.remove('hidden');
+
+            currentPaperIndex = 0;
+            renderPaperStack();
+        }
+
+        function setupStampCursor() {
+            const paperView = document.getElementById('paper-view');
+            const hand = document.getElementById('chibi-hand-stamp');
+
+            paperView.onmousemove = (e) => {
+                hand.style.left = `${e.clientX}px`;
+                hand.style.top = `${e.clientY}px`;
+            };
+        }
+
+        function renderPaperStack() {
+            const stackEl = document.getElementById('paper-stack');
+            stackEl.innerHTML = '';
+
+            if (currentPaperIndex >= drawnResults.length) {
+                finishGachaSequence();
+                return;
+            }
+
+            // 남은 서류들 쌓인 형태로 출력
+            for (let i = drawnResults.length - 1; i >= currentPaperIndex; i--) {
+                const res = drawnResults[i];
+                const isCurrent = (i === currentPaperIndex);
+                const rot = (i * 3 - 5) % 8;
+
+                const paper = document.createElement('div');
+                paper.className = `absolute w-full h-full bg-amber-50 border-2 border-amber-300 rounded-lg p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 ${res.isHighGrade ? 'gold-paper' : ''}`;
+                paper.style.transform = `rotate(${rot}deg) translate(${i * 2}px, ${i * 2}px)`;
+
+                if (res.isHighGrade) {
+                    paper.innerHTML += `<div class="gold-sparkle" style="top:10%;left:10%"></div><div class="gold-sparkle" style="top:80%;left:70%"></div>`;
                 }
-            });
-            updateGoldUI();
-        });
+
+                paper.innerHTML += `
+                    <div class="border-b-2 border-amber-800/40 pb-2 text-center font-bold text-amber-950 text-xl">- 적성 검사 결과 -</div>
+                    <div class="flex items-center gap-4 my-4">
+                        <img src="${res.img}" class="w-20 h-20 object-contain border border-amber-200 rounded bg-white/50" onerror="this.src='https://via.placeholder.com/80?text=Elf'">
+                        <div class="flex flex-col text-amber-900 font-bold text-sm space-y-1">
+                            <div>적성: <span class="text-amber-700 text-base">${res.name}</span> ${res.isHighGrade ? '<span class="text-yellow-600 font-black">(상급)</span>' : ''}</div>
+                            <div class="text-xs text-amber-800">능력: ${res.desc}</div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-amber-800/80 leading-relaxed font-mono">상기 엘프는 모나티엄 공식 적성 검사를 이수하였음을 승인함.</div>
+                    <div class="flex justify-end items-center mt-4 pt-2 border-t border-amber-800/20 relative">
+                        <span class="font-bold text-amber-950 mr-4 text-sm">(인)</span>
+                        ${isCurrent ? `<div class="w-16 h-16 border-2 border-dashed border-red-400/60 rounded-full flex items-center justify-center text-[10px] text-red-400 font-bold cursor-pointer hover:bg-red-500/10" onclick="stampCurrentPaper(event)">도장 클릭</div>` : ''}
+                    </div>
+                `;
+                stackEl.appendChild(paper);
+            }
+        }
+
+        function stampCurrentPaper(e) {
+            e.stopPropagation();
+            const target = e.currentTarget;
+            
+            // 도장 자국 생성 (클릭 위치 정밀 배치)
+            const stamp = document.createElement('div');
+            stamp.className = 'stamp-mark';
+            stamp.innerText = '승인';
+            target.parentElement.appendChild(stamp);
+
+            // 손 누르는 애니메이션 연출
+            const hand = document.getElementById('chibi-hand-stamp');
+            hand.style.transform = 'translate(-50%, -100%) scale(0.85)';
+
+            setTimeout(() => {
+                hand.style.transform = 'translate(-50%, -100%) scale(1)';
+                currentPaperIndex++;
+                setTimeout(() => renderPaperStack(), 200);
+            }, 150);
+        }
+
+        // ================= 에픽 엘프 및 중복 재료 데이터 처리 =================
+        function finishGachaSequence() {
+            document.getElementById('paper-view').classList.add('hidden');
+            document.getElementById('anim-stage').style.display = 'none';
+
+            try {
+                const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+                const saveObj = JSON.parse(raw);
+                if (!saveObj.progress) saveObj.progress = {};
+                if (!saveObj.progress.monatiumCitizens) saveObj.progress.monatiumCitizens = [];
+                if (!saveObj.progress.epicElfTrainingTickets) saveObj.progress.epicElfTrainingTickets = {};
+
+                // 적성별 카운트 세기
+                const roleCounts = {};
+                saveObj.progress.monatiumCitizens.forEach(c => {
+                    roleCounts[c.role] = (roleCounts[c.role] || 0) + 1;
+                });
+
+                drawnResults.forEach(res => {
+                    const currentRoleCount = roleCounts[res.key] || 0;
+
+                    // 5명 초과 시 적성 교육권 재료로 변환
+                    if (currentRoleCount >= 5 && res.key !== 'canna') {
+                        saveObj.progress.epicElfTrainingTickets[res.key] = (saveObj.progress.epicElfTrainingTickets[res.key] || 0) + 1;
+                        res.isConvertedToTicket = true;
+                    } else {
+                        roleCounts[res.key] = currentRoleCount + 1;
+                        saveObj.progress.monatiumCitizens.push({
+                            role: res.key,
+                            name: res.name,
+                            img: res.img,
+                            isHighGrade: res.isHighGrade
+                        });
+                    }
+                });
+
+                localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+                if (window.EliasSave && window.EliasSave.save) window.EliasSave.save(true);
+            } catch(e) {
+                console.error("적성 데이터 저장 실패:", e);
+            }
+
+            showFinalResultPopup();
+        }
+
+        function showFinalResultPopup() {
+            const resultView = document.getElementById('gacha-result-view');
+            const listEl = document.getElementById('result-content-list');
+
+            listEl.innerHTML = drawnResults.map(r => `
+                <div class="px-5 py-4 bg-slate-800 rounded-xl border-2 ${r.isHighGrade ? 'border-yellow-400 bg-amber-950/30' : 'border-slate-600'} text-center flex flex-col items-center justify-center min-w-[140px]">
+                    <span class="text-xs font-bold ${r.isHighGrade ? 'text-yellow-400' : 'text-slate-400'} mb-1">${r.isHighGrade ? '(상급)' : '일반'}</span>
+                    <span class="text-base font-black text-white mb-1">${r.name}</span>
+                    ${r.isConvertedToTicket ? `<span class="text-[10px] font-bold text-red-400 bg-red-950/80 px-2 py-0.5 rounded border border-red-800">5명 초과: [${r.name}] 교육권 변환</span>` : ''}
+                </div>
+            `).join('');
+
+            resultView.classList.remove('hidden');
+        }
+
+        function closeResultView() {
+            document.getElementById('gacha-result-view').classList.add('hidden');
+            document.getElementById('gacha-main-view').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
