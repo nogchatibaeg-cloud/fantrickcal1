@@ -1,0 +1,121 @@
+<!-- epicelf.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>특별 엘프 - 칸나</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
+        body {
+            background-color: #030a16;
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* 연파랑 네온 사이버틱 격자 배경 */
+        .cyber-grid {
+            background-color: #030d1e;
+            background-image: 
+                linear-gradient(rgba(56, 189, 248, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.15) 1px, transparent 1px);
+            background-size: 40px 40px;
+            box-shadow: inset 0 0 100px rgba(14, 165, 233, 0.2);
+        }
+
+        /* 하얀 네온 헤일로 단상 */
+        .platform-halo {
+            width: 320px;
+            height: 70px;
+            background: #000000;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 20px #ffffff, 0 0 40px rgba(56, 189, 248, 0.8), inset 0 0 15px #ffffff;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="cyber-grid relative flex w-full h-full">
+
+    <!-- 좌측 70%: 단상 및 엘프 일러스트 -->
+    <div class="w-[70%] h-full flex flex-col items-center justify-center relative border-r border-sky-500/30">
+        <a href="InMonatium.html" class="absolute top-6 left-6 px-4 py-2 bg-sky-900/40 hover:bg-sky-800/60 border border-sky-400/50 rounded-xl text-sky-200 text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all shadow-lg">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>돌아가기</span>
+        </a>
+
+        <!-- 엘프 일러스트 & 단상 -->
+        <div class="relative flex flex-col items-center justify-end h-[75%]">
+            <img id="elf-img" src="cannatemp.png" alt="칸나" class="max-h-[80%] object-contain z-10 drop-shadow-[0_10px_25px_rgba(56,189,248,0.5)] mb-[-25px]">
+            <!-- 검은색 + 하얀 네온 헤일로 단상 -->
+            <div class="platform-halo"></div>
+        </div>
+    </div>
+
+    <!-- 우측 30%: 상태창 전용 영역 -->
+    <div class="w-[30%] h-full bg-slate-950/80 backdrop-blur-md p-6 flex flex-col justify-between border-l border-sky-400/20 shadow-2xl">
+        <div>
+            <div class="text-[10px] font-mono text-sky-400 tracking-widest uppercase mb-1">// SPECIAL_ELF_PROFILE</div>
+            <h1 id="elf-name-title" class="text-2xl font-black text-white mb-2 flex items-center gap-2">
+                <span>칸나</span>
+                <span id="grade-badge" class="hidden text-xs bg-amber-400 text-black px-2 py-0.5 rounded-full font-bold">(상급)</span>
+            </h1>
+            
+            <!-- 중복 카운트 표시 -->
+            <div class="bg-sky-950/60 border border-sky-500/40 rounded-xl p-4 mb-6 shadow-inner">
+                <div class="text-xs text-sky-300 font-bold mb-1">한계 돌파 / 중복 획득</div>
+                <div id="duplicate-status" class="text-xl font-extrabold text-sky-400 tracking-wide">
+                    &lt;특별 엘프&gt;(+0)
+                </div>
+            </div>
+
+            <!-- 스탯창 영역 (추후 확장 가능) -->
+            <div class="space-y-3">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">// STATS (추후 개선 예정)</div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 flex justify-between">
+                    <span>기본 전투력</span>
+                    <span class="font-bold text-sky-400">1,250</span>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 flex justify-between">
+                    <span>행정 지원력</span>
+                    <span class="font-bold text-sky-400">980</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-[10px] font-mono text-slate-500 text-center">
+            MONATIUM_SPECIAL_REGISTRY_v1.0
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+                const saveObj = JSON.parse(raw);
+                const count = (saveObj.progress && saveObj.progress.specialElves && saveObj.progress.specialElves.canna) || 0;
+                
+                // 중복 획득 수 반영
+                const bonusCount = Math.max(0, count - 1);
+                document.getElementById('duplicate-status').innerText = `<특별 엘프>(+${bonusCount})`;
+
+                // 상급 여부 반영
+                const citizens = (saveObj.progress && saveObj.progress.monatiumCitizens) || [];
+                const cannaData = citizens.find(c => c.role === 'canna');
+                if (cannaData && cannaData.isHighGrade) {
+                    document.getElementById('grade-badge').classList.remove('hidden');
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -357,87 +357,88 @@
         }
 
         // 가챠 실행 로직
-        function executeGacha(count) {
-            const cost = count === 1 ? 30 : 270;
-            let leafRes = null;
+function executeGacha(count) {
+    const cost = count === 1 ? 30 : 270;
+    
+    // 플레이어 저장 데이터 직접 조회하여 자원 확인
+    let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+    let saveObj = {};
+    try { saveObj = JSON.parse(raw); } catch(e) {}
+    
+    let leafVal = 0;
+    if (saveObj.resources) {
+        const leafRes = saveObj.resources.find(r => r.id === 'leaf');
+        if (leafRes) leafVal = leafRes.value || 0;
+    } else if (window.PLAYER_RESOURCES_DATA) {
+        const leafRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'leaf');
+        if (leafRes) leafVal = leafRes.value || 0;
+    }
 
-            if (window.PLAYER_RESOURCES_DATA) {
-                leafRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'leaf');
-            }
+    if (leafVal < cost) {
+        alert(`세계수 잎이 부족합니다! (현재: ${leafVal}개 / 필요: ${cost}개)`);
+        return;
+    }
 
-            if (!leafRes || (leafRes.value || 0) < cost) {
-                alert(`세계수 잎이 부족합니다! (필요: ${cost}개)`);
-                return;
-            }
+    // 자원 차감 처리
+    if (saveObj.resources) {
+        const leafRes = saveObj.resources.find(r => r.id === 'leaf');
+        if (leafRes) leafRes.value -= cost;
+    }
+    if (window.PLAYER_RESOURCES_DATA) {
+        const leafRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'leaf');
+        if (leafRes) leafRes.value -= cost;
+    }
 
-            // 자원 차감
-            leafRes.value -= cost;
-            if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
-            updateLeafDisplay();
+    localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+    if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+    updateLeafDisplay();
 
-            // 저장
-            if (window.saveGameState) window.saveGameState(true);
+    // 뽑기 계산
+    const results = [];
+    for (let i = 0; i < count; i++) {
+        results.push(drawOne());
+    }
 
-            // 뽑기 당첨 결과 계산
-            const results = [];
-            for (let i = 0; i < count; i++) {
-                results.push(drawOne());
-            }
+    processGachaResults(results);
+}
 
-            // 결과 모나티엄 적성 추가 처리 및 결과 화면 출력
-            processGachaResults(results);
-        }
-
-        // 1회 뽑기 산출
-        function drawOne() {
-            const rand = Math.random() * 100;
-            let roleKey = 'citizen';
-
-            if (currentTab === 'normal') {
-                // 시민 30%, 직업 군인 20%, 연구원 20%, 스파이 20%, 백수 10%
-                if (rand < 30) roleKey = 'citizen';
-                else if (rand < 50) roleKey = 'army';
-                else if (rand < 70) roleKey = 'doctor';
-                else if (rand < 90) roleKey = 'spy';
-                else roleKey = 'backsu';
-            } else {
-                // 집중: 시민 30%, 직업 군인 10%, 칸나 10%, 연구원 20%, 스파이 20%, 백수 10%
-                if (rand < 30) roleKey = 'citizen';
-                else if (rand < 40) roleKey = 'army';
-                else if (rand < 50) roleKey = 'canna';
-                else if (rand < 70) roleKey = 'doctor';
-                else if (rand < 90) roleKey = 'spy';
-                else roleKey = 'backsu';
-            }
-
-            // 20% 확률로 (상급) 판정
-            const isHighGrade = Math.random() < 0.20;
-
-            return {
-                key: roleKey,
-                name: ROLE_DATA[roleKey].name,
-                img: ROLE_DATA[roleKey].img,
-                isHighGrade: isHighGrade
-            };
-        }
-
-        // 결과 반영 및 모나티엄 적성 진짜 추가
+// 가챠 결과 저장 및 중복 특별 엘프 처리
 function processGachaResults(results) {
     try {
         const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
         const saveObj = JSON.parse(raw);
         if (!saveObj.progress) saveObj.progress = {};
         if (!saveObj.progress.monatiumCitizens) saveObj.progress.monatiumCitizens = [];
+        if (!saveObj.progress.specialElves) saveObj.progress.specialElves = {};
 
         results.forEach(res => {
-            // InMonatium에 뽑힌 적성은 모나티엄에 적성 명칭과 파일명 그대로 추가됩니다.
-            // 각각 (citizen/army/doctor/spy/backsu).png
-            saveObj.progress.monatiumCitizens.push({
-                role: res.key,
-                name: res.name,
-                img: res.img,
-                isHighGrade: res.isHighGrade
-            });
+            if (res.key === 'canna') {
+                // 특별 엘프 칸나 카운트 증가
+                saveObj.progress.specialElves.canna = (saveObj.progress.specialElves.canna || 0) + 1;
+
+                // 기존 필드에 칸나가 존재하는지 확인
+                const existingCanna = saveObj.progress.monatiumCitizens.find(c => c.role === 'canna');
+                if (!existingCanna) {
+                    // 최초 획득 시에만 1명 생성
+                    saveObj.progress.monatiumCitizens.push({
+                        role: res.key,
+                        name: res.name,
+                        img: res.img,
+                        isHighGrade: res.isHighGrade
+                    });
+                } else if (res.isHighGrade) {
+                    // 추후 상급 칸나가 나오면 텍스처 및 판정을 상급으로 승급 유지
+                    existingCanna.isHighGrade = true;
+                }
+            } else {
+                // 일반 적성은 기존처럼 필드 시민으로 추가
+                saveObj.progress.monatiumCitizens.push({
+                    role: res.key,
+                    name: res.name,
+                    img: res.img,
+                    isHighGrade: res.isHighGrade
+                });
+            }
         });
 
         localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
