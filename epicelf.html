@@ -93,9 +93,9 @@
                 <span>목록으로</span>
             </button>
 
-            <!-- 엘프 일러스트 & 단상 (이미지 높이를 단상 크기에 맞춰 조정) -->
-            <div class="relative flex flex-col items-center justify-end h-auto">
-                <img id="elf-img" src="cannatemp.png" alt="칸나" class="h-44 object-contain z-10 drop-shadow-[0_10px_25px_rgba(56,189,248,0.5)] mb-[-16px]">
+            <!-- 엘프 일러스트 & 단상 (부모 높이 h-[65%] 유지, img 클래스만 w-36 h-auto로 고정 조절) -->
+            <div class="relative flex flex-col items-center justify-end h-[65%]">
+                <img id="elf-img" src="cannatemp.png" alt="칸나" class="w-36 h-auto object-contain z-10 drop-shadow-[0_10px_25px_rgba(56,189,248,0.5)] mb-[-12px]">
                 <!-- 검은색 + 하얀 네온 헤일로 단상 -->
                 <div class="platform-halo"></div>
             </div>
@@ -113,25 +113,14 @@
                     </h1>
                 </div>
                 
-                <!-- 스탯 전용 박스 패널 -->
+                <!-- 스탯 전용 박스 패널 (지정해주신 텍스트로 수정) -->
                 <div class="bg-slate-900/80 border border-sky-500/40 rounded-xl p-4 space-y-3 shadow-lg">
                     <div class="text-xs font-bold text-sky-400 tracking-wider border-b border-sky-900/60 pb-2 flex items-center gap-2">
                         <i class="fa-solid fa-chart-line"></i>
                         <span>능력치 정보</span>
                     </div>
-                    <div class="space-y-2 text-sm text-slate-200 font-semibold">
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">공격력</span>
-                            <span class="text-sky-300 font-mono">1,250</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">체력</span>
-                            <span class="text-sky-300 font-mono">5,800</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">방어력</span>
-                            <span class="text-sky-300 font-mono">320</span>
-                        </div>
+                    <div class="text-slate-200 text-sm font-bold leading-relaxed pt-1">
+                        뭔가 엄청난 능력을 가지고 있...나?.
                     </div>
                 </div>
             </div>
