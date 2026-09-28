@@ -213,25 +213,28 @@
 
             // 1. 칸나 카드 추가
             const cannaCount = specialElves.canna || 0;
-            const cannaPlus = Math.max(0, cannaCount - 1);
-            const cannaData = monatiumCitizens.find(c => c.role === 'canna');
-            const cannaHigh = cannaData && cannaData.isHighGrade;
+const cannaPlus = Math.max(0, cannaCount - 1);
+const cannaData = monatiumCitizens.find(c => c.role === 'canna');
+const cannaHigh = cannaData && cannaData.isHighGrade;
+const isCannaUnlocked = cannaCount > 0;
 
-            const cannaCard = document.createElement('div');
-            cannaCard.className = 'elf-card bg-slate-900/80 border border-sky-500/40 hover:border-sky-400 rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between cursor-pointer backdrop-blur-md shadow-xl group';
-            cannaCard.onclick = () => selectElf('canna', '칸나', 'cannatemp.png', '특수능력: 세계수 오라 & 전원 가공', cannaPlus, cannaHigh);
-            cannaCard.innerHTML = `
-                <div class="w-full h-36 sm:h-44 flex items-center justify-center relative overflow-hidden rounded-xl bg-slate-950/50 border border-sky-900/50 mb-3">
-                    <img src="cannatemp.png" alt="칸나" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.4)]">
-                </div>
-                <div class="w-full text-center">
-                    <div class="text-white font-black text-sm sm:text-base flex items-center justify-center gap-1">
-                        <span>칸나(+${cannaPlus})</span>
-                        ${cannaHigh ? `<span class="text-[10px] bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-bold">(상급)</span>` : ''}
-                    </div>
-                </div>
-            `;
-            gridContainer.appendChild(cannaCard);
+const cannaCard = document.createElement('div');
+cannaCard.className = `elf-card bg-slate-900/80 border ${isCannaUnlocked ? 'border-sky-500/40 hover:border-sky-400 cursor-pointer' : 'border-slate-800 opacity-40'} rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between backdrop-blur-md shadow-xl group`;
+if (isCannaUnlocked) {
+    cannaCard.onclick = () => selectElf('canna', '칸나', 'cannatemp.png', '전투력 +25%', cannaPlus, cannaHigh);
+}
+cannaCard.innerHTML = `
+    <div class="w-full h-36 sm:h-44 flex items-center justify-center relative overflow-hidden rounded-xl bg-slate-950/50 border border-sky-900/50 mb-3">
+        <img src="cannatemp.png" alt="칸나" class="max-h-full max-w-full object-contain ${isCannaUnlocked ? 'group-hover:scale-105' : 'grayscale'} transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.4)]">
+    </div>
+    <div class="w-full text-center">
+        <div class="text-white font-black text-sm sm:text-base flex items-center justify-center gap-1">
+            <span>칸나(+${cannaPlus})</span>
+            ${cannaHigh ? `<span class="text-[10px] bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-bold">(상급)</span>` : ''}
+        </div>
+    </div>
+`;
+gridContainer.appendChild(cannaCard);
 
             // 2. 적성 엘프 25명 카드 추가 (5종류 × 5명)
             const roles = ['army', 'backsu', 'doctor', 'spy', 'citizen'];

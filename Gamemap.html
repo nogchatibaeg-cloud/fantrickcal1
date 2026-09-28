@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>엘리아스 어웨이 - 지도</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +14,7 @@
         body { background-color: #0b0f19; color: #f3f4f6; overflow: hidden; height: 100vh; width: 100vw; margin: 0; }
         
         #map-svg { transform-origin: 0 0 !important; }
+        #map-viewport { touch-action: none; }
 
         .map-region {
             transition: all 0.3s ease-out;
@@ -143,7 +144,7 @@
             </div>
         </div>
 
-        <div id="side-panel" class="w-96 bg-slate-900 border-l border-slate-800 flex flex-col justify-between h-full z-20 flex-shrink-0 shadow-2xl absolute right-0 top-0 transition-transform duration-300 ease-in-out translate-x-full" onclick="event.stopPropagation()">
+        <div id="side-panel" class="w-96 max-w-[calc(100vw-3rem)] bg-slate-900 border-l border-slate-800 flex flex-col justify-between h-full z-20 flex-shrink-0 shadow-2xl absolute right-0 top-0 transition-transform duration-300 ease-in-out translate-x-full" onclick="event.stopPropagation()">
             <button id="btn-toggle-panel" class="absolute -left-7 top-1/2 -translate-y-1/2 w-7 h-14 bg-slate-900 border-l border-t border-b border-slate-700 text-slate-300 hover:text-white rounded-l-xl flex items-center justify-center shadow-lg transition-colors cursor-pointer z-30">
                 <i id="toggle-icon" class="fa-solid fa-chevron-left text-xs"></i>
             </button>
@@ -519,6 +520,73 @@
                 scale = newScale;
                 updateTransform();
             }, { passive: false });
+
+            let pinchStartDist = null;
+            let pinchStartScale = 1;
+
+            function getTouchDist(touches) {
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                return Math.hypot(dx, dy);
+            }
+
+            function getTouchMid(touches) {
+                const rect = DOM.viewport.getBoundingClientRect();
+                return {
+                    x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+                    y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top
+                };
+            }
+
+            DOM.viewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    pinchStartDist = null;
+                    isPanning = true;
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
+                } else if (e.touches.length === 2) {
+                    isPanning = false;
+                    pinchStartDist = getTouchDist(e.touches);
+                    pinchStartScale = scale;
+                }
+            }, { passive: true });
+
+            DOM.viewport.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && pinchStartDist) {
+                    e.preventDefault();
+                    const mid = getTouchMid(e.touches);
+                    const newDist = getTouchDist(e.touches);
+                    const zoomFactor = newDist / pinchStartDist;
+                    const newScale = Math.min(Math.max(0.1, pinchStartScale * zoomFactor), 4.0);
+
+                    pointX = mid.x - (mid.x - pointX) * (newScale / scale);
+                    pointY = mid.y - (mid.y - pointY) * (newScale / scale);
+                    scale = newScale;
+                    updateTransform();
+                } else if (e.touches.length === 1 && isPanning) {
+                    e.preventDefault();
+                    pointX = e.touches[0].clientX - startX;
+                    pointY = e.touches[0].clientY - startY;
+                    updateTransform();
+                }
+            }, { passive: false });
+
+            DOM.viewport.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    isPanning = false;
+                    pinchStartDist = null;
+                } else if (e.touches.length === 1) {
+                    pinchStartDist = null;
+                    isPanning = true;
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
+                }
+            });
+
+            DOM.viewport.addEventListener('touchcancel', () => {
+                isPanning = false;
+                pinchStartDist = null;
+            });
         }
 
         function resetView() {
@@ -838,23 +906,35 @@
             selectRegion(currentRegionId);
         }
 
-        // 건물 일일 생산(potato1~5)과 지역 공물/전쟁 상태 갱신은 더 이상 이 페이지에서 직접 계산하지 않는다.
-        // 대신 모든 화면에 공통으로 로드되는 menu.html 의 하루 처리 엔진(window.EliasSave.runDayTick)에 위임한다.
-        // 이렇게 하면 플레이어가 Gamemap.html/InMonatium.html 어디에도 있지 않은 동안에도,
-        // 다음에 접속했을 때 저장된 currentDay 를 기준으로 건물 생산과 공물이 소급 적용된다.
-        // (과거에 있었던 "매일 전력 +10W" 임시 로직은 이 위임 구조로 완전히 대체되어 삭제되었다.)
         function advanceDay() {
             currentDay++;
             expeditionsLeft = 5;
             DOM.headerDayCount.innerText = `Day ${currentDay}`;
             DOM.headerExpeditionCount.innerText = `5/5`;
 
-            // 새 currentDay 를 먼저 저장소에 커밋한 뒤, 공용 하루 처리 엔진을 실행해
-            // 건물 생산 + 지역 공물 + 전쟁 상태를 저장 데이터 기준으로 계산하고,
-            // 그 결과를 이 화면의 REGIONS_DATA / PLAYER_RESOURCES_DATA 에도 즉시 반영한다.
+            // 자원 변경 감지를 위한 이전 자원량 스냅샷 기록
+            const prevResourceValues = {};
+            if (window.PLAYER_RESOURCES_DATA) {
+                window.PLAYER_RESOURCES_DATA.forEach(r => {
+                    prevResourceValues[r.id] = (r.id === 'food' || r.id === 'mineral') ? (r.rawValue || 0) : (r.value || 0);
+                });
+            }
+
             if (window.saveGameState) window.saveGameState(true);
             if (window.EliasSave && window.EliasSave.runDayTick) {
                 window.EliasSave.runDayTick();
+            }
+
+            // 완전 동맹/식민지 공물 정산 후 증가분 UI 플로팅 표시
+            if (window.PLAYER_RESOURCES_DATA) {
+                window.PLAYER_RESOURCES_DATA.forEach(r => {
+                    const currentVal = (r.id === 'food' || r.id === 'mineral') ? (r.rawValue || 0) : (r.value || 0);
+                    const prevVal = prevResourceValues[r.id] || 0;
+                    const diff = currentVal - prevVal;
+                    if (diff > 0 && window.notifyResourceGain) {
+                        window.notifyResourceGain(r.id, diff);
+                    }
+                });
             }
 
             updateAllRegionsState();
@@ -989,7 +1069,6 @@
                 }
             }
 
-            // 우호도 175% 이상(또는 본거지/점령) 조건에서 지휘관 이름을 밝은 초록색으로 표시
             if (region.friendlyPoints >= 175 || region.id === 'elf' || region.isOccupied) {
                 DOM.panelCommander.innerHTML = `<span class="text-emerald-400 font-bold">${region.commanderName}</span>`;
             } else {
