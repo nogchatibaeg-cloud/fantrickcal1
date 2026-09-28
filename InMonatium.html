@@ -256,15 +256,14 @@
     }
 
     const citizens = [];
-    const CITIZEN_COUNT = 5;
 
     const defaultCitizenImg = new Image();
-    defaultCitizenImg.src = 'Citizen.png';
+    defaultCitizenImg.src = 'citizen.png';
     let isDefaultImgLoaded = false;
     defaultCitizenImg.onload = () => { isDefaultImgLoaded = true; };
 
     class Citizen {
-        constructor(id, imgSrc = 'Citizen.png') {
+        constructor(id, imgSrc = 'citizen.png') {
             this.id = id;
             this.x = Math.random() * MAP_WIDTH;
             this.y = Math.random() * MAP_HEIGHT;
@@ -311,8 +310,24 @@
         }
     }
 
-    for (let i = 0; i < CITIZEN_COUNT; i++) {
-        citizens.push(new Citizen(i, 'Citizen.png'));
+    // 적성 검사기에서 뽑힌 실제 적성 목록 불러오기 (초기 0명 시작)
+    function loadMonatiumCitizens() {
+        citizens.length = 0;
+        try {
+            const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.progress && Array.isArray(parsed.progress.monatiumCitizens)) {
+                    parsed.progress.monatiumCitizens.forEach((c, idx) => {
+                        // 각각 (citizen/army/doctor/spy/backsu).png 및 적성별 이미지 지정
+                        const imgSrc = c.img || `${c.role || 'citizen'}.png`;
+                        citizens.push(new Citizen(idx, imgSrc));
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("주민 정보 로드 오류:", e);
+        }
     }
 
     function resizeCanvas() {
@@ -710,10 +725,6 @@
         updateHUDZoom();
     }, { passive: false });
 
-    /* ------------------------------------------------------------------
-     * 터치(모바일/태블릿) 대응: 데스크탑의 마우스 드래그(이동)/휠(확대-축소)/
-     * 클릭(건물 배치) 로직과 동일하게 동작하도록 손가락 입력을 매핑한다.
-     * ------------------------------------------------------------------ */
     function updateGridHoverFromPoint(clientX, clientY) {
         const mouseX = clientX - viewportRect.left;
         const mouseY = clientY - viewportRect.top;
@@ -883,7 +894,6 @@
 
         restoreCraftingUI();
         if (window.saveGameState) window.saveGameState(true);
-        // 새 건물(특히 감자 배터리/변환기)이 바로 반영되도록 공용 하루 처리 엔진을 즉시 한 번 실행
         if (window.EliasSave && window.EliasSave.runDayTick) window.EliasSave.runDayTick();
     }
 
@@ -922,7 +932,6 @@
         const craftRect = craftPanelFrame.getBoundingClientRect();
         const resWidth = resourceContainer.offsetWidth || 144;
         const margin = 12;
-        // 화면 폭이 좁은 기기(모바일/태블릿)에서 자원 패널이 화면 밖으로 밀려나지 않도록 위치를 clamp 처리
         const maxLeft = Math.max(margin, window.innerWidth - resWidth - margin);
 
         resourceContainer.style.top = 'auto';
@@ -1030,6 +1039,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+        loadMonatiumCitizens();
         loadPlayerResourceModule();
         resizeCanvas();
         resetCamera();

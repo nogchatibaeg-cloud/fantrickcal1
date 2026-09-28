@@ -1,1 +1,474 @@
-1
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>적성 검사기 - 엘리아스 어웨이</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            user-select: none;
+            font-family: 'Gothic A1', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #050505;
+            color: #22c55e;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pixel-font {
+            font-family: 'VT323', monospace, 'Gothic A1';
+        }
+
+        /* 90년대 CRT TV/컴퓨터 프레임 스타일 */
+        .crt-tv {
+            background: linear-gradient(145deg, #2a2a2e, #151518);
+            border: 12px solid #3f3f46;
+            border-radius: 28px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        /* CRT 화면 효과 */
+        .crt-screen {
+            background-color: #031006;
+            border: 4px solid #18181b;
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .crt-screen::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 20;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* 스캔라인 */
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 21;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(34, 197, 94, 0.1) 50%, rgba(0, 0, 0, 0) 100%);
+            opacity: 0.15;
+            position: absolute;
+            bottom: 100%;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100px; }
+        }
+
+        /* 사각 책갈피 UI 탭 */
+        .bookmark-tab {
+            background-color: #092e13;
+            border: 2px solid #15803d;
+            border-right: none;
+            color: #4ade80;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .bookmark-tab.active {
+            background-color: #15803d;
+            color: #ffffff;
+            font-weight: 900;
+            box-shadow: -4px 0 12px rgba(34, 197, 94, 0.3);
+            width: calc(100% + 8px);
+            z-index: 10;
+        }
+
+        /* 노란색 반투명 셀로판지 필터 (상급) */
+        .high-grade-filter {
+            position: relative;
+        }
+        .high-grade-filter::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(250, 204, 21, 0.45);
+            mix-blend-mode: color-burn;
+            pointer-events: none;
+            border-radius: 8px;
+        }
+
+        /* CRT 텍스트 글로우 */
+        .crt-text {
+            text-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+        }
+
+        /* 버튼 호버 연출 */
+        .crt-btn {
+            background-color: #092e13;
+            border: 2px solid #22c55e;
+            color: #4ade80;
+            transition: all 0.15s ease;
+        }
+        .crt-btn:hover {
+            background-color: #22c55e;
+            color: #000000;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 브라운관 TV / 컴퓨터형 바깥 프레임 -->
+    <div class="crt-tv w-[95vw] h-[92vh] max-w-[1400px] max-h-[850px] p-6 flex flex-col items-center justify-between relative">
+        
+        <!-- 화면 영역 (전체 UI의 약 75% 차지) -->
+        <div class="crt-screen w-full h-[82%] p-4 flex flex-col relative">
+            <div class="scanline"></div>
+
+            <!-- 모니터 상단 헤더 -->
+            <div class="flex justify-between items-center border-b-2 border-emerald-800/80 pb-2 mb-3 text-xs tracking-wider z-10 font-mono">
+                <div class="flex items-center gap-2 crt-text">
+                    <span class="inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>MONATIUM_APTITUDE_TEST_SYSTEM_v1.09</span>
+                </div>
+                <div id="leaf-resource-display" class="text-emerald-300 font-bold crt-text flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-leaf text-emerald-400"></i>
+                    <span>세계수 잎: <span id="leaf-count-val">0</span>개</span>
+                </div>
+            </div>
+
+            <!-- 검사기 메인 콘텐츠 (좌측 책갈피 탭 + 우측 메인 코딩 UI) -->
+            <div id="gacha-main-view" class="w-full h-[calc(100%-40px)] flex relative z-10">
+                
+                <!-- 왼쪽 사각 책갈피 UI -->
+                <div class="w-44 flex flex-col gap-3 pt-4 pr-0 z-10">
+                    <button id="tab-pickup" onclick="switchTab('pickup')" class="bookmark-tab active py-3 px-3 text-left rounded-l-lg text-xs font-bold flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-bullseye"></i>
+                        <span>집중 적성 검사</span>
+                    </button>
+                    <button id="tab-normal" onclick="switchTab('normal')" class="bookmark-tab py-3 px-3 text-left rounded-l-lg text-xs font-bold flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>일반 적성 검사</span>
+                    </button>
+                </div>
+
+                <!-- 화면 우측 정보 & 픽업 가챠 컨텐츠 -->
+                <div class="flex-1 bg-[#011407]/90 border-2 border-emerald-800 rounded-r-xl rounded-bl-xl p-4 flex gap-4 relative overflow-hidden">
+                    
+                    <!-- 왼쪽 절반: 확률표 및 모니터 코드 텍스트 -->
+                    <div class="w-1/2 flex flex-col justify-between border-r border-emerald-900/60 pr-4">
+                        <div>
+                            <div class="text-xs font-mono text-emerald-600 mb-2">// MONATIUM_APTITUDE_PROBABILITY_TABLE</div>
+                            <h2 id="view-title" class="text-base font-extrabold text-emerald-300 crt-text mb-4">집중 적성 검사 (픽업: 칸나)</h2>
+                            
+                            <!-- 적성 분포도 (확률표) -->
+                            <div id="probability-table" class="space-y-2 text-xs font-mono text-emerald-400 bg-emerald-950/40 p-3 rounded-lg border border-emerald-900/80">
+                                <!-- JS 동적 생성 -->
+                            </div>
+
+                            <div class="mt-3 text-[11px] text-yellow-400 font-bold bg-yellow-950/30 border border-yellow-800/50 p-2 rounded flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>20% 확률로 상급 시민 가능성 존재</span>
+                            </div>
+                        </div>
+
+                        <!-- 하단 시스템 코딩 화면 연출 -->
+                        <div class="font-mono text-[10px] text-emerald-700/80 leading-relaxed bg-black/40 p-2 rounded border border-emerald-950">
+                            > INITIALIZING ELVEN_ROSTER...<br>
+                            > STATUS: BLANK_STATE_SUBJECTS_READY.<br>
+                            > TARGET_LOCATION: Monatium_Citizen_Registry.<br>
+                            > READY_TO_ASSIGN_ROLES...
+                        </div>
+                    </div>
+
+                    <!-- 오른쪽 절반: 픽업 캐릭터 타겟 일러스트 (집중 적성 검사 시 표시) -->
+                    <div id="pickup-right-panel" class="w-1/2 flex flex-col items-center justify-center relative overflow-hidden bg-emerald-950/20 rounded-lg border border-emerald-900/40">
+                        <div class="absolute top-2 left-2 text-[10px] font-mono text-emerald-500">// TARGET_SUBJECT: CANNA</div>
+                        <img id="pickup-img" src="cannatemp.png" alt="칸나" class="max-h-[85%] object-contain drop-shadow-[0_0_12px_rgba(34,197,94,0.4)]" onerror="this.src='https://via.placeholder.com/300x400/092e13/4ade80?text=cannatemp.png'">
+                        <div class="absolute bottom-2 text-center text-xs font-bold text-emerald-300 crt-text bg-emerald-950/80 px-3 py-1 rounded border border-emerald-700">
+                            ★ 픽업 대상: 칸나 (10%) ★
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 대망의 실제 뽑기 화면 (임시 화면: 연회색 배경 + 중앙 이름만 출력) -->
+            <div id="gacha-result-view" class="hidden w-full h-[calc(100%-40px)] bg-gray-300 rounded-xl flex flex-col items-center justify-center p-6 relative z-30 text-gray-900">
+                <div class="text-xs font-mono text-gray-500 mb-2">// TEST_RESULT_OUTCOME</div>
+                <div id="result-content-list" class="flex flex-wrap items-center justify-center gap-4 max-w-3xl">
+                    <!-- 뽑힌 적성 이름이 뜸 -->
+                </div>
+                <button onclick="closeResultView()" class="mt-8 px-6 py-2 bg-gray-800 text-white font-bold text-xs rounded-lg hover:bg-gray-700 transition-colors shadow-lg cursor-pointer">
+                    검사 완료 (확인)
+                </button>
+            </div>
+
+        </div>
+
+        <!-- 하단 컨트롤 / 뽑기 버튼 영역 (브라운관 하단 조작반 느낌) -->
+        <div class="w-full h-[15%] flex items-center justify-between px-6 bg-zinc-900/90 border-2 border-zinc-700 rounded-xl">
+            <a href="loading.html?target=InMonatium.html" class="crt-btn px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer text-decoration-none">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>모나티엄으로 돌아가기</span>
+            </a>
+
+            <div class="flex items-center gap-4">
+                <!-- 1회 검사 버튼 -->
+                <button onclick="executeGacha(1)" class="crt-btn px-5 py-3 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 cursor-pointer">
+                    <span>적성 검사 1회</span>
+                    <span class="text-[10px] font-mono opacity-80">(세계수 잎 30개)</span>
+                </button>
+
+                <!-- 10회 검사 버튼 -->
+                <button onclick="executeGacha(10)" class="crt-btn px-6 py-3 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 cursor-pointer border-emerald-400">
+                    <span class="text-emerald-300">집중 적성 검사 10회</span>
+                    <span class="text-[10px] font-mono text-emerald-400">
+                        (세계수 잎 <span class="line-through text-red-400 decoration-red-500">300</span> 270개)
+                    </span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 저장/메뉴 엔진 불러오기 -->
+    <div id="menu-container"></div>
+
+    <script>
+        // 현재 선택된 탭
+        let currentTab = 'pickup'; // 'pickup' | 'normal'
+
+        // 적성 키 & 이미지 파일 매핑
+        // 각각 (citizen/army/doctor/spy/backsu).png
+        const ROLE_DATA = {
+            citizen: { name: '시민', img: 'citizen.png' },
+            army: { name: '직업 군인', img: 'army.png' },
+            doctor: { name: '연구원', img: 'doctor.png' },
+            spy: { name: '스파이', img: 'spy.png' },
+            backsu: { name: '백수', img: 'backsu.png' },
+            canna: { name: '칸나', img: 'cannatemp.png' }
+        };
+
+        // DOM 요소 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMenuEngine();
+            updateLeafDisplay();
+            renderProbabilityTable();
+        });
+
+        // menu.html 자동 로드
+        function loadMenuEngine() {
+            fetch('menu.html')
+                .then(res => res.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    doc.querySelectorAll('script').forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.head.appendChild(newScript);
+                    });
+                    document.getElementById('menu-container').innerHTML = html;
+                }).catch(e => console.log('menu.html 로드 생략'));
+        }
+
+        // 세계수 잎 자원 표시 업데이트
+        function updateLeafDisplay() {
+            let leafCount = 0;
+            if (window.PLAYER_RESOURCES_DATA) {
+                const leafRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'leaf');
+                if (leafRes) leafCount = leafRes.value || 0;
+            } else {
+                // LocalStorage 직렬화 데이터 예비 확인
+                try {
+                    const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed.resources) {
+                            const leafRes = parsed.resources.find(r => r.id === 'leaf');
+                            if (leafRes) leafCount = leafRes.value || 0;
+                        }
+                    }
+                } catch(e) {}
+            }
+            document.getElementById('leaf-count-val').innerText = leafCount.toLocaleString();
+        }
+
+        // 탭 전환
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabPickup = document.getElementById('tab-pickup');
+            const tabNormal = document.getElementById('tab-normal');
+            const rightPanel = document.getElementById('pickup-right-panel');
+            const viewTitle = document.getElementById('view-title');
+
+            if (tab === 'pickup') {
+                tabPickup.classList.add('active');
+                tabNormal.classList.remove('active');
+                rightPanel.classList.remove('hidden');
+                viewTitle.innerText = "집중 적성 검사 (픽업: 칸나)";
+            } else {
+                tabNormal.classList.add('active');
+                tabPickup.classList.remove('active');
+                rightPanel.classList.add('hidden');
+                viewTitle.innerText = "일반 적성 검사";
+            }
+            renderProbabilityTable();
+        }
+
+        // 확률표 렌더링
+        function renderProbabilityTable() {
+            const tableEl = document.getElementById('probability-table');
+            if (currentTab === 'normal') {
+                tableEl.innerHTML = `
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>직업 군인</span><span>20%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>연구원</span><span>20%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>스파이</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>
+                `;
+            } else {
+                // 집중 적성 검사: 직업 군인을 10%로 낮추고 그 바로 옆에 칸나 10%라고 볼드체로 씀
+                tableEl.innerHTML = `
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>시민</span><span>30%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>직업 군인 10% <b class="text-emerald-300 font-extrabold ml-2">칸나 10%</b></span><span>20%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>연구원</span><span>20%</span></div>
+                    <div class="flex justify-between border-b border-emerald-900/40 pb-1"><span>스파이</span><span>20%</span></div>
+                    <div class="flex justify-between"><span>백수</span><span>10%</span></div>
+                `;
+            }
+        }
+
+        // 가챠 실행 로직
+        function executeGacha(count) {
+            const cost = count === 1 ? 30 : 270;
+            let leafRes = null;
+
+            if (window.PLAYER_RESOURCES_DATA) {
+                leafRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'leaf');
+            }
+
+            if (!leafRes || (leafRes.value || 0) < cost) {
+                alert(`세계수 잎이 부족합니다! (필요: ${cost}개)`);
+                return;
+            }
+
+            // 자원 차감
+            leafRes.value -= cost;
+            if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+            updateLeafDisplay();
+
+            // 저장
+            if (window.saveGameState) window.saveGameState(true);
+
+            // 뽑기 당첨 결과 계산
+            const results = [];
+            for (let i = 0; i < count; i++) {
+                results.push(drawOne());
+            }
+
+            // 결과 모나티엄 적성 추가 처리 및 결과 화면 출력
+            processGachaResults(results);
+        }
+
+        // 1회 뽑기 산출
+        function drawOne() {
+            const rand = Math.random() * 100;
+            let roleKey = 'citizen';
+
+            if (currentTab === 'normal') {
+                // 시민 30%, 직업 군인 20%, 연구원 20%, 스파이 20%, 백수 10%
+                if (rand < 30) roleKey = 'citizen';
+                else if (rand < 50) roleKey = 'army';
+                else if (rand < 70) roleKey = 'doctor';
+                else if (rand < 90) roleKey = 'spy';
+                else roleKey = 'backsu';
+            } else {
+                // 집중: 시민 30%, 직업 군인 10%, 칸나 10%, 연구원 20%, 스파이 20%, 백수 10%
+                if (rand < 30) roleKey = 'citizen';
+                else if (rand < 40) roleKey = 'army';
+                else if (rand < 50) roleKey = 'canna';
+                else if (rand < 70) roleKey = 'doctor';
+                else if (rand < 90) roleKey = 'spy';
+                else roleKey = 'backsu';
+            }
+
+            // 20% 확률로 (상급) 판정
+            const isHighGrade = Math.random() < 0.20;
+
+            return {
+                key: roleKey,
+                name: ROLE_DATA[roleKey].name,
+                img: ROLE_DATA[roleKey].img,
+                isHighGrade: isHighGrade
+            };
+        }
+
+        // 결과 반영 및 모나티엄 적성 진짜 추가
+function processGachaResults(results) {
+    try {
+        const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+        const saveObj = JSON.parse(raw);
+        if (!saveObj.progress) saveObj.progress = {};
+        if (!saveObj.progress.monatiumCitizens) saveObj.progress.monatiumCitizens = [];
+
+        results.forEach(res => {
+            // InMonatium에 뽑힌 적성은 모나티엄에 적성 명칭과 파일명 그대로 추가됩니다.
+            // 각각 (citizen/army/doctor/spy/backsu).png
+            saveObj.progress.monatiumCitizens.push({
+                role: res.key,
+                name: res.name,
+                img: res.img,
+                isHighGrade: res.isHighGrade
+            });
+        });
+
+        localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
+    } catch(e) {
+        console.error("적성 데이터 추가 실패:", e);
+    }
+
+    showTempResultScreen(results);
+}
+
+        // 임시 결과 화면 노출 (연회색 화면 중앙 이름 출력)
+        function showTempResultScreen(results) {
+            const mainView = document.getElementById('gacha-main-view');
+            const resultView = document.getElementById('gacha-result-view');
+            const listEl = document.getElementById('result-content-list');
+
+            listEl.innerHTML = results.map(r => `
+                <div class="px-5 py-4 bg-white rounded-xl shadow-md border-2 border-gray-400 text-center flex flex-col items-center justify-center min-w-[130px] ${r.isHighGrade ? 'high-grade-filter' : ''}">
+                    <span class="text-xs font-bold text-gray-500 mb-1">${r.isHighGrade ? '(상급)' : '일반'}</span>
+                    <span class="text-base font-black text-gray-900">${r.name}</span>
+                </div>
+            `).join('');
+
+            mainView.classList.add('hidden');
+            resultView.classList.remove('hidden');
+        }
+
+        function closeResultView() {
+            document.getElementById('gacha-result-view').classList.add('hidden');
+            document.getElementById('gacha-main-view').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
