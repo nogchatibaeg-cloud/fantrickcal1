@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>특별 엘프 - 엘프 목록</title>
+    <title>엘프 목록 - 엘리아스 어웨이</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,13 +17,12 @@
             background-color: #030a16;
             margin: 0; padding: 0;
             height: 100vh;
-            height: 100dvh; /* 모바일 주소창 대응 */
+            height: 100dvh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
 
-        /* 연파랑 네온 사이버틱 격자 배경 */
         .cyber-grid {
             background-color: #030d1e;
             background-image:
@@ -33,8 +32,6 @@
             box-shadow: inset 0 0 100px rgba(14, 165, 233, 0.2);
         }
 
-        /* ===== 상세 화면 무대(엘프 + 단상) 크기 =====
-           --stage-w 하나로 단상 폭과 엘프 폭을 동시에 결정 → 항상 비슷한 크기 */
         #elf-detail-view {
             --stage-w: clamp(150px, min(36vw, 36vh), 340px);
         }
@@ -45,17 +42,16 @@
             align-items: center;
         }
         .stage-elf {
-            width: 100%;                       /* 단상과 같은 폭 */
+            width: 100%;
             height: auto;
             max-height: calc(var(--stage-w) * 1.7);
             object-fit: contain;
             position: relative;
             z-index: 10;
-            margin-bottom: calc(var(--stage-w) * -0.06);  /* 단상 위에 살짝 겹쳐 서 있는 느낌 */
+            margin-bottom: calc(var(--stage-w) * -0.06);
             filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.5));
         }
 
-        /* 하얀 네온 헤일로 단상 */
         .platform-halo {
             width: 100%;
             aspect-ratio: 220 / 50;
@@ -66,7 +62,6 @@
             position: relative;
         }
 
-        /* 좁은 화면(세로 배치): 위쪽 무대 영역이 화면의 약 55% */
         @media (max-width: 767px) {
             #elf-detail-view { --stage-w: clamp(140px, min(58vw, 30vh), 300px); }
         }
@@ -81,7 +76,7 @@
 <body class="cyber-grid relative flex flex-col w-full h-full">
     <div id="menu-container"></div>
 
-    <!-- 상단 공통 헤더 (InMonatium으로 돌아가기 버튼) -->
+    <!-- 상단 헤더 -->
     <div class="w-full h-14 sm:h-16 border-b border-sky-500/30 bg-slate-950/60 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between gap-2 z-30 flex-shrink-0">
         <div class="flex items-center gap-4 min-w-0">
             <a href="InMonatium.html" class="px-3 sm:px-4 py-2 bg-sky-900/50 hover:bg-sky-800/80 border border-sky-400/50 rounded-xl text-sky-200 text-[11px] sm:text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all shadow-lg whitespace-nowrap">
@@ -89,62 +84,55 @@
                 <span>모나티엄으로 돌아가기</span>
             </a>
         </div>
-        <div id="view-mode-title" class="text-white font-extrabold text-xs sm:text-sm whitespace-nowrap">특별 엘프 목록</div>
-    </div>
+        
+        <div id="view-mode-title" class="text-white font-extrabold text-xs sm:text-sm whitespace-nowrap">엘프 목록</div>
 
-    <!-- 1. 격자형 엘프 목록 화면 (기본 화면) -->
-    <div id="elf-grid-view" class="w-full flex-1 min-h-0 p-4 sm:p-8 overflow-y-auto z-10 flex flex-col items-center">
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6 w-full max-w-6xl">
-            <!-- 칸나 프로필 카드 -->
-            <div onclick="showElfDetail('canna')" class="elf-card bg-slate-900/80 border border-sky-500/40 hover:border-sky-400 rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between cursor-pointer backdrop-blur-md shadow-xl group">
-                <div class="w-full h-36 sm:h-44 flex items-center justify-center relative overflow-hidden rounded-xl bg-slate-950/50 border border-sky-900/50 mb-3">
-                    <img src="cannatemp.png" alt="칸나" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.4)]">
-                </div>
-                <div class="w-full text-center">
-                    <div class="text-white font-black text-sm sm:text-base flex items-center justify-center gap-1">
-                        <span>칸나<span id="grid-canna-dup">(+0)</span></span>
-                        <span id="grid-canna-grade" class="hidden text-[10px] bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-bold">(상급)</span>
-                    </div>
-                </div>
-            </div>
+        <!-- 오른쪽 상단: 엘프 교육권 표시 -->
+        <div class="flex items-center gap-2 bg-amber-500/20 border border-amber-400/40 px-3 py-1.5 rounded-xl shadow-lg">
+            <i class="fa-solid fa-certificate text-amber-400 text-sm sm:text-base"></i>
+            <span class="text-amber-300 font-bold text-xs sm:text-sm">교육권:</span>
+            <span id="education-ticket-count" class="text-white font-black text-xs sm:text-sm">0</span>
         </div>
     </div>
 
-    <!-- 2. 엘프 상세 프로필 화면 (초기 숨김) -->
+    <!-- 1. 격자형 엘프 목록 화면 -->
+    <div id="elf-grid-view" class="w-full flex-1 min-h-0 p-4 sm:p-8 overflow-y-auto z-10 flex flex-col items-center">
+        <div id="elf-grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6 w-full max-w-6xl">
+            <!-- 자바스크립트로 칸나 및 25명 적성 엘프 자동 생성 -->
+        </div>
+    </div>
+
+    <!-- 2. 엘프 상세 프로필 화면 -->
     <div id="elf-detail-view" class="hidden w-full flex-1 min-h-0 flex flex-col md:flex-row relative overflow-hidden z-10">
-        <!-- 좌측(넓은 화면 70%) / 상단(좁은 화면): 단상 및 엘프 일러스트 -->
         <div class="w-full md:w-[70%] h-[55%] md:h-full flex-shrink-0 flex flex-col items-center justify-center relative border-b md:border-b-0 md:border-r border-sky-500/30 px-4 pt-14 pb-4">
             <button onclick="showGridView()" class="absolute top-3 left-3 sm:top-6 sm:left-6 px-3 sm:px-4 py-2 bg-slate-900/60 hover:bg-slate-800 border border-sky-400/40 rounded-xl text-sky-300 text-[11px] sm:text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all shadow-lg cursor-pointer z-20">
                 <i class="fa-solid fa-list"></i>
                 <span>목록으로</span>
             </button>
 
-            <!-- 엘프 일러스트 & 단상: 둘 다 --stage-w 폭이라 크기가 서로 맞음 -->
             <div class="stage">
-                <img id="elf-img" src="cannatemp.png" alt="칸나" class="stage-elf">
+                <img id="elf-img" src="cannatemp.png" alt="엘프" class="stage-elf">
                 <div class="platform-halo"></div>
             </div>
         </div>
 
-        <!-- 우측(넓은 화면 30%) / 하단(좁은 화면): 상태창 전용 영역 -->
         <div class="w-full md:w-[30%] flex-1 min-h-0 md:h-full bg-slate-950/90 backdrop-blur-md p-4 sm:p-6 flex flex-col justify-between border-l-0 md:border-l border-sky-400/20 shadow-2xl overflow-y-auto">
             <div>
-                <!-- 이름 Header 영역 -->
                 <div class="border-b border-sky-500/30 pb-3 sm:pb-4 mb-4 sm:mb-5">
                     <h1 id="elf-name-title" class="text-2xl lg:text-3xl font-black text-white flex items-center gap-2">
-                        <span>칸나<span id="duplicate-status">(+0)</span></span>
+                        <span id="detail-name-text">칸나</span>
+                        <span id="duplicate-status" class="text-sky-400 font-bold">(+0)</span>
                         <span id="grade-badge" class="hidden text-xs bg-amber-400 text-black px-2 py-0.5 rounded-full font-bold">(상급)</span>
                     </h1>
                 </div>
 
-                <!-- 스탯 전용 박스 패널 -->
                 <div class="bg-slate-900/80 border border-sky-500/40 rounded-xl p-3 sm:p-4 space-y-3 shadow-lg">
                     <div class="text-xs font-bold text-sky-400 tracking-wider border-b border-sky-900/60 pb-2 flex items-center gap-2">
                         <i class="fa-solid fa-chart-line"></i>
                         <span>능력치 정보</span>
                     </div>
-                    <div class="text-slate-200 text-sm font-bold leading-relaxed pt-1">
-                        뭔가 엄청난 능력을 가지고 있...나?.
+                    <div id="detail-ability-text" class="text-slate-200 text-sm font-bold leading-relaxed pt-1">
+                        전투력 +25%
                     </div>
                 </div>
             </div>
@@ -156,13 +144,19 @@
     </div>
 
     <script>
+        const ROLE_NAMES = {
+            army: '군인 엘프',
+            backsu: '백수 엘프',
+            doctor: '의사 엘프',
+            spy: '스파이 엘프',
+            citizen: '시민 엘프'
+        };
+
         function loadMenuEngine() {
             fetch('menu.html').then(res => res.text()).then(html => {
                 const container = document.getElementById('menu-container');
                 if (!container) return;
-
                 container.innerHTML = html;
-
                 const scripts = container.querySelectorAll('script');
                 scripts.forEach(oldScript => {
                     const newScript = document.createElement('script');
@@ -175,30 +169,101 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadMenuEngine();
+            renderAllElves();
+        });
+
+        function renderAllElves() {
+            const gridContainer = document.getElementById('elf-grid-container');
+            gridContainer.innerHTML = '';
+
+            let saveObj = {};
             try {
                 const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
-                const saveObj = JSON.parse(raw);
-                const count = (saveObj.progress && saveObj.progress.specialElves && saveObj.progress.specialElves.canna) || 0;
-
-                // 중복 획득 수 반영
-                const bonusCount = Math.max(0, count - 1);
-                const dupText = `(+${bonusCount})`;
-                document.getElementById('duplicate-status').innerText = dupText;
-                document.getElementById('grid-canna-dup').innerText = dupText;
-
-                // 상급 여부 반영
-                const citizens = (saveObj.progress && saveObj.progress.monatiumCitizens) || [];
-                const cannaData = citizens.find(c => c.role === 'canna');
-                if (cannaData && cannaData.isHighGrade) {
-                    document.getElementById('grade-badge').classList.remove('hidden');
-                    document.getElementById('grid-canna-grade').classList.remove('hidden');
-                }
+                saveObj = JSON.parse(raw);
             } catch(e) {
                 console.error(e);
             }
-        });
 
-        function showElfDetail(elfId) {
+            const progress = saveObj.progress || {};
+            const specialElves = progress.specialElves || {};
+            const monatiumCitizens = progress.monatiumCitizens || [];
+            const tickets = progress.elfEducationTickets || 0;
+
+            // 교육권 표시
+            document.getElementById('education-ticket-count').innerText = tickets;
+
+            // 1. 칸나 카드 추가
+            const cannaCount = specialElves.canna || 0;
+            const cannaPlus = Math.max(0, cannaCount - 1);
+            const cannaData = monatiumCitizens.find(c => c.role === 'canna');
+            const cannaHigh = cannaData && cannaData.isHighGrade;
+
+            const cannaCard = document.createElement('div');
+            cannaCard.className = 'elf-card bg-slate-900/80 border border-sky-500/40 hover:border-sky-400 rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between cursor-pointer backdrop-blur-md shadow-xl group';
+            cannaCard.onclick = () => selectElf('canna', '칸나', 'cannatemp.png', '전투력 +25%', cannaPlus, cannaHigh);
+            cannaCard.innerHTML = `
+                <div class="w-full h-36 sm:h-44 flex items-center justify-center relative overflow-hidden rounded-xl bg-slate-950/50 border border-sky-900/50 mb-3">
+                    <img src="cannatemp.png" alt="칸나" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.4)]">
+                </div>
+                <div class="w-full text-center">
+                    <div class="text-white font-black text-sm sm:text-base flex items-center justify-center gap-1">
+                        <span>칸나(+${cannaPlus})</span>
+                        ${cannaHigh ? `<span class="text-[10px] bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-bold">(상급)</span>` : ''}
+                    </div>
+                </div>
+            `;
+            gridContainer.appendChild(cannaCard);
+
+            // 2. 적성 엘프 25명 카드 추가 (5종류 × 5명)
+            const roles = ['army', 'backsu', 'doctor', 'spy', 'citizen'];
+            
+            roles.forEach(role => {
+                const roleList = monatiumCitizens.filter(c => c.role === role);
+                for (let i = 0; i < 5; i++) {
+                    const elf = roleList[i];
+                    const isUnlocked = !!elf;
+                    const name = `${ROLE_NAMES[role]} #${i + 1}`;
+                    const img = `${role}.png`;
+                    const isHigh = elf ? !!elf.isHighGrade : false;
+
+                    const card = document.createElement('div');
+                    card.className = `elf-card bg-slate-900/80 border ${isUnlocked ? 'border-sky-500/40 hover:border-sky-400 cursor-pointer' : 'border-slate-800 opacity-40'} rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between backdrop-blur-md shadow-xl group`;
+                    if (isUnlocked) {
+                        card.onclick = () => selectElf(role, name, img, '적성 일반 능력', 0, isHigh);
+                    }
+                    card.innerHTML = `
+                        <div class="w-full h-36 sm:h-44 flex items-center justify-center relative overflow-hidden rounded-xl bg-slate-950/50 border border-sky-900/50 mb-3">
+                            <img src="${img}" alt="${name}" class="max-h-full max-w-full object-contain ${isUnlocked ? 'group-hover:scale-105' : 'grayscale'} transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.4)]">
+                        </div>
+                        <div class="w-full text-center">
+                            <div class="text-white font-black text-sm sm:text-base flex items-center justify-center gap-1">
+                                <span>${name}</span>
+                                ${isHigh ? `<span class="text-[10px] bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-bold">(상급)</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    gridContainer.appendChild(card);
+                }
+            });
+        }
+
+        function selectElf(id, name, img, abilityText, plusLvl = 0, isHigh = false) {
+            document.getElementById('elf-img').src = img;
+            document.getElementById('detail-name-text').innerText = name;
+            document.getElementById('duplicate-status').innerText = `(+${plusLvl})`;
+            document.getElementById('detail-ability-text').innerText = abilityText;
+
+            const badge = document.getElementById('grade-badge');
+            if (isHigh) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            showElfDetail();
+        }
+
+        function showElfDetail() {
             document.getElementById('elf-grid-view').classList.add('hidden');
             document.getElementById('elf-detail-view').classList.remove('hidden');
             document.getElementById('view-mode-title').innerText = "엘프 프로필 정보";
@@ -207,7 +272,7 @@
         function showGridView() {
             document.getElementById('elf-detail-view').classList.add('hidden');
             document.getElementById('elf-grid-view').classList.remove('hidden');
-            document.getElementById('view-mode-title').innerText = "특별 엘프 목록";
+            document.getElementById('view-mode-title').innerText = "엘프 목록";
         }
     </script>
 </body>
