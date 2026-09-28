@@ -263,12 +263,12 @@
     const citizens = [];
 
     const defaultCitizenImg = new Image();
-    defaultCitizenImg.src = 'citizen.png';
+    defaultCitizenImg.src = 'Citizen.png';
     let isDefaultImgLoaded = false;
     defaultCitizenImg.onload = () => { isDefaultImgLoaded = true; };
 
 class Citizen {
-        constructor(id, imgSrc = 'citizen.png') {
+        constructor(id, imgSrc = 'Citizen.png') {
             this.id = id;
             this.size = 140; // 캔버스 최적화를 위해 크기 유효범위 조정
             // MAP 경계 내부에서 위치하도록 초기 좌표 조정
