@@ -29,8 +29,8 @@
         .crt-btn { background-color: #092e13; border: 2px solid #22c55e; color: #4ade80; transition: all 0.15s ease; }
         .crt-btn:hover { background-color: #22c55e; color: #000000; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
 
-        #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; }
-        
+       #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; pointer-events: none; }
+
         .blinking-cursor { display: inline-block; width: 10px; height: 1.2em; background-color: #22c55e; vertical-align: bottom; animation: blink 0.8s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
@@ -428,7 +428,9 @@
             drawnResults = [];
             for(let i = 0; i < count; i++) drawnResults.push(drawOne());
 
-            document.getElementById('anim-stage').style.display = 'flex';
+            const animStage = document.getElementById('anim-stage');
+            animStage.style.display = 'flex';
+            animStage.style.pointerEvents = 'auto';
             runPhase1Terminal();
         }
 
@@ -458,7 +460,9 @@
                     termText.innerText += "\n검사가 취소되었습니다.";
                     window.onkeydown = null;
                     setTimeout(() => {
-                        document.getElementById('anim-stage').style.display = 'none';
+                        const animStage = document.getElementById('anim-stage');
+                        animStage.style.display = 'none';
+                        animStage.style.pointerEvents = 'none'; // <-- 이 줄 추가
                         isGachaActive = false;
                     }, 800);
                 }
@@ -654,7 +658,10 @@
 
         function finishGachaSequence() {
             document.getElementById('paper-view').classList.add('hidden');
-            document.getElementById('anim-stage').style.display = 'none';
+            
+            const animStage = document.getElementById('anim-stage');
+            animStage.style.display = 'none';
+            animStage.style.pointerEvents = 'none'; // <-- 이 줄 추가
 
             try {
                 const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
@@ -712,6 +719,9 @@
         function closeResultView() {
             document.getElementById('gacha-result-view').classList.add('hidden');
             document.getElementById('gacha-main-view').classList.remove('hidden');
+            
+            const animStage = document.getElementById('anim-stage');
+            animStage.style.pointerEvents = 'none'; // <-- 이 줄 추가
             isGachaActive = false;
         }
     </script>
