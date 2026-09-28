@@ -35,6 +35,7 @@
             pointer-events: auto;
             cursor: grab;
             will-change: contents;
+            touch-action: none;
         }
         #map-canvas:active { cursor: grabbing; }
 
@@ -135,7 +136,7 @@
 
         <div id="resource-module-container" class="fixed bottom-24 left-6 w-36 z-50 pointer-events-auto shadow-2xl"></div>
 
-        <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[30vw] min-w-[320px] max-w-[420px] z-40 flex items-center justify-center">
+        <div id="craft-panel-frame" class="fixed top-6 left-6 bottom-6 w-[min(30vw,calc(100vw-3rem))] min-w-[260px] max-w-[420px] z-40 flex items-center justify-center">
             <iframe id="craft-iframe" src="Craftwiththis.html" class="w-full h-full border-0 rounded-2xl shadow-2xl bg-transparent"></iframe>
         </div>
 
@@ -182,8 +183,13 @@
         <div id="bottom-controls-group" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 pointer-events-auto" onclick="event.stopPropagation()">
             <button id="btn-blueprint" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
                 <i id="blueprint-icon" class="fa-solid fa-drafting-compass text-teal-400 text-sm"></i>
-                <span id="blueprint-text">설계도 UI (격자)</span>
+                <span id="blueprint-text">설계도</span>
             </button>
+
+            <a href="elfgacha.html" class="btn-ui px-5 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-extrabold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2.5 shadow-2xl">
+                <i class="fa-solid fa-users-gear text-purple-400 text-sm"></i>
+                <span>적성 검사기</span>
+            </a>
 
             <button id="btn-reset-cam" class="btn-ui px-4 py-3 bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2 shadow-2xl">
                 <i class="fa-solid fa-compress text-amber-400"></i>
@@ -412,17 +418,19 @@
             ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
         }
 
-        citizens.forEach(citizen => {
-            citizen.update();
-            const half = citizen.size / 2;
-            const visible =
-                citizen.x + half >= -cameraX / scale &&
-                citizen.x - half <= (viewW - cameraX) / scale &&
-                citizen.y + half >= -cameraY / scale &&
-                citizen.y - half <= (viewH - cameraY) / scale;
+        if (!isOuterRegion) {
+            citizens.forEach(citizen => {
+                citizen.update();
+                const half = citizen.size / 2;
+                const visible =
+                    citizen.x + half >= -cameraX / scale &&
+                    citizen.x - half <= (viewW - cameraX) / scale &&
+                    citizen.y + half >= -cameraY / scale &&
+                    citizen.y - half <= (viewH - cameraY) / scale;
 
-            if (visible) citizen.draw(ctx);
-        });
+                if (visible) citizen.draw(ctx);
+            });
+        }
 
         if (currentPlacingBuilding &&
             mouseGridCol >= 0 && mouseGridRow >= 0 &&
@@ -702,6 +710,141 @@
         updateHUDZoom();
     }, { passive: false });
 
+    /* ------------------------------------------------------------------
+     * 터치(모바일/태블릿) 대응: 데스크탑의 마우스 드래그(이동)/휠(확대-축소)/
+     * 클릭(건물 배치) 로직과 동일하게 동작하도록 손가락 입력을 매핑한다.
+     * ------------------------------------------------------------------ */
+    function updateGridHoverFromPoint(clientX, clientY) {
+        const mouseX = clientX - viewportRect.left;
+        const mouseY = clientY - viewportRect.top;
+
+        const worldX = (mouseX - cameraX) / scale;
+        const worldY = (mouseY - cameraY) / scale;
+
+        const newCol = Math.floor(worldX / CELL_SIZE);
+        const newRow = Math.floor(worldY / CELL_SIZE);
+
+        if (newCol !== mouseGridCol || newRow !== mouseGridRow) {
+            mouseGridCol = newCol;
+            mouseGridRow = newRow;
+        }
+    }
+
+    function handleTapOrPanStart(clientX, clientY, targetEl) {
+        if (!targetEl || (!targetEl.closest('#del-or-mov-frame') && !targetEl.closest('.building-iframe-wrapper'))) {
+            closeDelOrMov();
+        }
+
+        updateGridHoverFromPoint(clientX, clientY);
+
+        if (currentPlacingBuilding && mouseGridCol >= 0 && mouseGridRow >= 0) {
+            const ignoreObj = isMovingExistingBuilding ? originalPlacedBuildingData : null;
+            if (!isSpaceOccupied(mouseGridCol, mouseGridRow, 2, 2, ignoreObj)) {
+
+                if (!isMovingExistingBuilding && window.PLAYER_RESOURCES_DATA) {
+                    const potatoRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'potato');
+                    const techRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'tech');
+
+                    if (potatoRes) potatoRes.value -= (currentPlacingBuilding.reqPotato || 0);
+                    if (techRes) techRes.value += 5;
+                    if (window.renderPlayerResourcesUI) window.renderPlayerResourcesUI();
+                }
+
+                const newBuilding = {
+                    col: mouseGridCol,
+                    row: mouseGridRow,
+                    data: currentPlacingBuilding
+                };
+                window.placedBuildings.push(newBuilding);
+
+                addBuildingElement(newBuilding);
+                finishBuildingPlacement();
+            } else {
+                alert("해당 격자에 이미 건물이 있거나 배치할 수 없습니다!");
+            }
+            return true;
+        }
+
+        isPanning = true;
+        startX = clientX - cameraX;
+        startY = clientY - cameraY;
+        return false;
+    }
+
+    let pinchStartDist = null;
+    let pinchStartScale = 1;
+
+    function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    function getTouchMidpoint(touches) {
+        return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+    }
+
+    viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            pinchStartDist = null;
+            const t = e.touches[0];
+            const placed = handleTapOrPanStart(t.clientX, t.clientY, e.target);
+            if (placed && e.cancelable) e.preventDefault();
+        } else if (e.touches.length === 2) {
+            isPanning = false;
+            pinchStartDist = getTouchDistance(e.touches);
+            pinchStartScale = scale;
+        }
+    }, { passive: false });
+
+    viewport.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && pinchStartDist) {
+            e.preventDefault();
+            const mid = getTouchMidpoint(e.touches);
+            const newDist = getTouchDistance(e.touches);
+            const zoomFactor = newDist / pinchStartDist;
+            const newScale = Math.min(Math.max(minScale, pinchStartScale * zoomFactor), maxScale);
+
+            cameraX = mid.x - (mid.x - cameraX) * (newScale / scale);
+            cameraY = mid.y - (mid.y - cameraY) * (newScale / scale);
+            scale = newScale;
+
+            clampCamera();
+            updateHUDZoom();
+        } else if (e.touches.length === 1) {
+            e.preventDefault();
+            const t = e.touches[0];
+            updateGridHoverFromPoint(t.clientX, t.clientY);
+
+            if (isPanning) {
+                cameraX = t.clientX - startX;
+                cameraY = t.clientY - startY;
+                clampCamera();
+            }
+        }
+    }, { passive: false });
+
+    viewport.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            isPanning = false;
+            pinchStartDist = null;
+        } else if (e.touches.length === 1) {
+            pinchStartDist = null;
+            const t = e.touches[0];
+            isPanning = true;
+            startX = t.clientX - cameraX;
+            startY = t.clientY - cameraY;
+        }
+    });
+
+    viewport.addEventListener('touchcancel', () => {
+        isPanning = false;
+        pinchStartDist = null;
+    });
+
     const hideableUiGroup = document.getElementById('hideable-ui-group');
     const bottomControlsGroup = document.getElementById('bottom-controls-group');
     const craftPanelFrame = document.getElementById('craft-panel-frame');
@@ -777,10 +920,14 @@
     function updateResourceContainerPosition() {
         if (!isBlueprintMode) return;
         const craftRect = craftPanelFrame.getBoundingClientRect();
-        
+        const resWidth = resourceContainer.offsetWidth || 144;
+        const margin = 12;
+        // 화면 폭이 좁은 기기(모바일/태블릿)에서 자원 패널이 화면 밖으로 밀려나지 않도록 위치를 clamp 처리
+        const maxLeft = Math.max(margin, window.innerWidth - resWidth - margin);
+
         resourceContainer.style.top = 'auto';
         resourceContainer.style.bottom = '6rem';
-        resourceContainer.style.left = `${craftRect.right + 20}px`;
+        resourceContainer.style.left = `${Math.min(craftRect.right + 20, maxLeft)}px`;
     }
 
     function setResourceCollapsedState(collapsed) {
@@ -799,7 +946,7 @@
         if (isBlueprintMode) {
             btnBlueprint.classList.add('bg-teal-600', 'text-white', 'border-teal-400');
             btnBlueprint.classList.remove('bg-slate-900/95', 'text-slate-200');
-            blueprintText.innerText = '설계도 UI (격자 ON)';
+            blueprintText.innerText = '설계도 (ON)';
             blueprintIcon.className = 'fa-solid fa-border-all text-white text-sm';
 
             hideableUiGroup.style.display = 'none';
@@ -817,7 +964,7 @@
         } else {
             btnBlueprint.classList.remove('bg-teal-600', 'text-white', 'border-teal-400');
             btnBlueprint.classList.add('bg-slate-900/95', 'text-slate-200');
-            blueprintText.innerText = '설계도 UI (격자)';
+            blueprintText.innerText = '설계도';
             blueprintIcon.className = 'fa-solid fa-drafting-compass text-teal-400 text-sm';
 
             hideableUiGroup.style.display = 'block';
