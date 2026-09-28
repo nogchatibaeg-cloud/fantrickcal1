@@ -29,8 +29,8 @@
         .crt-btn { background-color: #092e13; border: 2px solid #22c55e; color: #4ade80; transition: all 0.15s ease; }
         .crt-btn:hover { background-color: #22c55e; color: #000000; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
 
-        /* 가챠 애니메이션 씬 오버레이 레이어 */
-        #anim-stage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: #000; display: none; }
+        /* 가챠 애니메이션 씬 오버레이 레이어 (전체 화면으로 변경) */
+        #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; }
         
         /* 깜빡이는 커서 */
         .blinking-cursor { display: inline-block; width: 10px; height: 1.2em; background-color: #22c55e; vertical-align: bottom; animation: blink 0.8s infinite; }
@@ -42,7 +42,7 @@
         @keyframes sparkle { 0% { transform: scale(0.2); opacity: 0.3; } 100% { transform: scale(1.4); opacity: 1; } }
 
         /* 도장 스탬프 스타일 */
-.stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
+        .stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
         @keyframes stampIn { to { transform: rotate(-12deg) scale(1); } }
     </style>
 </head>
@@ -109,105 +109,6 @@
                 </div>
             </div>
 
-            <!-- ================= 가챠 애니메이션 전용 스테이지 ================= -->
-            <div id="anim-stage" class="flex flex-col justify-center items-center relative overflow-hidden">
-                <!-- PHASE 1: 터미널 Y/N 타이핑 화면 -->
-                <div id="terminal-view" class="w-full h-full p-8 font-mono text-emerald-400 text-lg flex flex-col justify-start items-start bg-black z-30">
-                    <div id="term-text" class="leading-relaxed whitespace-pre-line crt-text"></div>
-                    <div class="mt-2 flex items-center">
-                        <span id="typed-input" class="text-white font-bold text-xl"></span>
-                        <span class="blinking-cursor"></span>
-                    </div>
-                </div>
-
-                <!-- PHASE 2: 엘레나 집무실 3D 패스펙티브 캔버스 -->
-                <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
-                    <!-- 하늘 & 창밖 배경 -->
-                    <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-all duration-1000 origin-center">
-                        <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a]"></div>
-                        <!-- 창밖 나무 꼭대기 -->
-                        <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
-                            <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
-                            <div class="w-24 h-20 bg-emerald-800 rounded-full -mb-8"></div>
-                            <div class="w-20 h-16 bg-emerald-600 rounded-full -mb-6"></div>
-                        </div>
-                    </div>
-
-                    <!-- 격자 창문 & 커튼 & 깃발 -->
-                    <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative">
-                        <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 pointer-events-none">
-                            <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                            <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                            <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                            <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
-                        </div>
-                        <!-- 빨간 망토 커튼 -->
-                        <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
-                        <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
-                        <!-- 연노랑 베이지 깃발 -->
-                        <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
-                    </div>
-
-                    <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
-                    <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
-                        <!-- 회색 브라운관 CD 컴퓨터 (좌측 80도 각도) -->
-                        <div class="absolute left-8 bottom-28 w-44 h-40 bg-zinc-400 border-4 border-zinc-600 rounded-lg shadow-2xl transform rotate-6 flex flex-col p-2">
-                            <div class="w-full h-24 bg-black border-2 border-zinc-700 rounded p-1 text-[8px] font-mono text-green-400 overflow-hidden">
-                                APTITUDE_TEST<br>READY_
-                            </div>
-                            <div class="mt-2 w-full h-3 bg-zinc-700 rounded-full flex items-center justify-end px-2">
-                                <div id="pc-slot" class="w-16 h-1 bg-black"></div>
-                            </div>
-                        </div>
-
-                        <!-- 중앙 엘레나 -->
-                        <div class="absolute left-1/2 -translate-x-1/2 bottom-24 w-72 h-80 flex items-end justify-center">
-                            <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
-                        </div>
-
-                        <!-- 오른쪽 쌓인 서류들 -->
-                        <div class="absolute right-12 bottom-24 w-36 h-48 bg-amber-100 border-2 border-amber-300 shadow-2xl flex flex-col justify-end p-1 transform -rotate-2">
-                            <div class="w-full h-full bg-amber-50 border border-amber-200 shadow-sm transform rotate-3"></div>
-                        </div>
-
-                        <!-- 나무 재질 승인 도장 -->
-                        <div id="desk-stamp" class="absolute left-[38%] bottom-20 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1">
-                            <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
-                        </div>
-
-                        <!-- 뜨거운 아이스 아메리카노 (드래그 대상) -->
-                        <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-12 h-16 bg-amber-900/80 border-2 border-cyan-200 rounded-b-xl shadow-2xl cursor-grab flex flex-col items-center justify-between p-1 z-40 active:cursor-grabbing">
-                            <div class="w-10 h-2 bg-white/80 rounded-full"></div>
-                            <span class="text-[9px] font-bold text-white tracking-tighter">HOT ICE</span>
-                            <div class="w-1 h-6 bg-red-500 rounded-full"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PHASE 3: 1인칭 서류 결재 무대 -->
-                <div id="paper-view" class="w-full h-full relative hidden bg-amber-900/90 flex flex-col items-center justify-center overflow-hidden cursor-none">
-                    <!-- 서류가 출력되는 책상 정면 -->
-                    <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center">
-                        <!-- JS Dynamic Document Render -->
-                    </div>
-
-                    <!-- 치비 4손가락 도장 손 (마우스 커서 추적) -->
-                    <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75">
-                        <div class="relative w-20 h-24 flex flex-col items-center justify-end">
-                            <!-- 치비 손가락 4개 -->
-                            <div class="flex gap-1 -mb-2">
-                                <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                                <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                                <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                                <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                            </div>
-                            <!-- 도장 손잡이 -->
-                            <div class="w-8 h-12 bg-amber-800 border-2 border-amber-950 rounded-t-full"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- 결과 최종 팝업 화면 -->
             <div id="gacha-result-view" class="hidden w-full h-[calc(100%-40px)] bg-slate-900/95 border-2 border-emerald-500 rounded-xl flex flex-col items-center justify-between p-6 relative z-50 text-white">
                 <div class="text-sm font-bold text-emerald-400 mb-2 crt-text">// MONATIUM_APTITUDE_TEST_FINAL_REPORT</div>
@@ -237,6 +138,105 @@
                         (세계수 잎 <span class="line-through text-red-400 decoration-red-500">300</span> 270개)
                     </span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 가챠 애니메이션 전용 전체화면 스테이지 ================= -->
+    <div id="anim-stage" class="flex flex-col justify-center items-center relative overflow-hidden">
+        <!-- PHASE 1: 터미널 Y/N 타이핑 화면 -->
+        <div id="terminal-view" class="w-full h-full p-8 font-mono text-emerald-400 text-lg flex flex-col justify-start items-start bg-black z-30">
+            <div id="term-text" class="leading-relaxed whitespace-pre-line crt-text"></div>
+            <div class="mt-2 flex items-center">
+                <span id="typed-input" class="text-white font-bold text-xl"></span>
+                <span class="blinking-cursor"></span>
+            </div>
+        </div>
+
+        <!-- PHASE 2: 엘레나 집무실 3D 패스펙티브 캔버스 -->
+        <div id="office-view" class="w-full h-full relative hidden overflow-hidden bg-slate-900">
+            <!-- 하늘 & 창밖 배경 -->
+            <div id="sky-bg" class="absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000">
+                <div id="sun-moon" class="absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000"></div>
+                <!-- 창밖 나무 꼭대기 -->
+                <div class="absolute bottom-0 w-full h-12 flex justify-around opacity-80">
+                    <div class="w-16 h-16 bg-emerald-700 rounded-full -mb-6"></div>
+                    <div class="w-24 h-20 bg-emerald-800 rounded-full -mb-8"></div>
+                    <div class="w-20 h-16 bg-emerald-600 rounded-full -mb-6"></div>
+                </div>
+            </div>
+
+            <!-- 격자 창문 & 커튼 & 깃발 -->
+            <div class="absolute top-0 left-0 w-full h-[65%] border-b-[20px] border-amber-900 bg-transparent flex relative">
+                <div class="w-full h-full border-8 border-amber-950/80 grid grid-cols-6 grid-rows-2 gap-2 pointer-events-none">
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                    <div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div><div class="border border-amber-900/40"></div>
+                </div>
+                <!-- 빨간 망토 커튼 -->
+                <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
+                <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
+                <!-- 연노랑 베이지 깃발 -->
+                <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
+            </div>
+
+            <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
+            <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
+                <!-- 회색 브라운관 CD 컴퓨터 (좌측 80도 각도) -->
+                <div class="absolute left-8 bottom-28 w-44 h-40 bg-zinc-400 border-4 border-zinc-600 rounded-lg shadow-2xl transform rotate-6 flex flex-col p-2">
+                    <div class="w-full h-24 bg-black border-2 border-zinc-700 rounded p-1 text-[8px] font-mono text-green-400 overflow-hidden">
+                        APTITUDE_TEST<br>READY_
+                    </div>
+                    <div class="mt-2 w-full h-3 bg-zinc-700 rounded-full flex items-center justify-end px-2">
+                        <div id="pc-slot" class="w-16 h-1 bg-black"></div>
+                    </div>
+                </div>
+
+                <!-- 중앙 엘레나 -->
+                <div class="absolute left-1/2 -translate-x-1/2 bottom-24 w-72 h-80 flex items-end justify-center">
+                    <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
+                </div>
+
+                <!-- 오른쪽 쌓인 서류들 -->
+                <div class="absolute right-12 bottom-24 w-36 h-48 bg-amber-100 border-2 border-amber-300 shadow-2xl flex flex-col justify-end p-1 transform -rotate-2">
+                    <div class="w-full h-full bg-amber-50 border border-amber-200 shadow-sm transform rotate-3"></div>
+                </div>
+
+                <!-- 나무 재질 승인 도장 -->
+                <div id="desk-stamp" class="absolute left-[38%] bottom-20 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1">
+                    <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
+                </div>
+
+                <!-- 뜨거운 아이스 아메리카노 (드래그 대상) -->
+                <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-12 h-16 bg-amber-900/80 border-2 border-cyan-200 rounded-b-xl shadow-2xl cursor-grab flex flex-col items-center justify-between p-1 z-40 active:cursor-grabbing">
+                    <div class="w-10 h-2 bg-white/80 rounded-full"></div>
+                    <span class="text-[9px] font-bold text-white tracking-tighter">HOT ICE</span>
+                    <div class="w-1 h-6 bg-red-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3: 1인칭 서류 결재 무대 -->
+        <div id="paper-view" class="w-full h-full relative hidden bg-amber-900/90 flex flex-col items-center justify-center overflow-hidden cursor-none">
+            <!-- 서류가 출력되는 책상 정면 -->
+            <div id="paper-stack" class="relative w-[360px] h-[500px] flex items-center justify-center">
+                <!-- JS Dynamic Document Render -->
+            </div>
+
+            <!-- 치비 4손가락 도장 손 (마우스 커서 위치 수정) -->
+            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full transition-transform duration-75">
+                <div class="relative w-20 h-24 flex flex-col items-center justify-end">
+                    <!-- 치비 손가락 4개 -->
+                    <div class="flex gap-1 -mb-2">
+                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
+                    </div>
+                    <!-- 도장 손잡이 -->
+                    <div class="w-8 h-12 bg-amber-800 border-2 border-amber-950 rounded-t-full"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -328,8 +328,8 @@
             return { key: key, name: ROLE_DATA[key].name, img: ROLE_DATA[key].img, desc: ROLE_DATA[key].desc, isHighGrade: Math.random() < 0.2 };
         }
 
-        // ================= 애니메이션 및 흐름 컨트롤 =================
-        function startAnimationGacha(count) {
+        // 재화 확인
+        function checkLeafBalance(count) {
             const cost = count === 1 ? 30 : 270;
             let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
             let saveObj = {};
@@ -340,25 +340,36 @@
                 const leafRes = saveObj.resources.find(r => r.id === 'leaf');
                 if (leafRes) leafVal = leafRes.value || 0;
             }
+            return { hasEnough: leafVal >= cost, cost: cost, current: leafVal };
+        }
 
-            if (leafVal < cost) {
-                alert(`세계수 잎이 부족합니다! (현재: ${leafVal}개 / 필요: ${cost}개)`);
-                return;
-            }
+        // y 입력 시 실제 재화 차감
+        function deductLeaves(cost) {
+            let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
+            let saveObj = {};
+            try { saveObj = JSON.parse(raw); } catch(e) {}
 
-            // 자원 차감
             if (saveObj.resources) {
                 const leafRes = saveObj.resources.find(r => r.id === 'leaf');
                 if (leafRes) leafRes.value -= cost;
             }
             localStorage.setItem('ELIAS_AWAY_SAVE_DATA_V1', JSON.stringify(saveObj));
             updateLeafDisplay();
+        }
+
+        // ================= 애니메이션 및 흐름 컨트롤 =================
+        function startAnimationGacha(count) {
+            const check = checkLeafBalance(count);
+            if (!check.hasEnough) {
+                alert(`세계수 잎이 부족합니다! (현재: ${check.current}개 / 필요: ${check.cost}개)`);
+                return;
+            }
 
             pendingDrawCount = count;
             drawnResults = [];
             for(let i = 0; i < count; i++) drawnResults.push(drawOne());
 
-            // 가챠 스테이지 노출 및 Phase 1 시작
+            // 가챠 스테이지 노출 및 Phase 1 시작 (아직 차감 안함)
             document.getElementById('anim-stage').style.display = 'flex';
             runPhase1Terminal();
         }
@@ -379,6 +390,11 @@
                 if (key === 'y') {
                     typedInput.innerText = 'y';
                     window.onkeydown = null;
+
+                    // y를 눌렀을 때만 세계수 잎 차감
+                    const cost = pendingDrawCount === 1 ? 30 : 270;
+                    deductLeaves(cost);
+
                     setTimeout(() => runPhase2Office(), 500);
                 } else if (key === 'n') {
                     typedInput.innerText = 'n';
@@ -398,8 +414,10 @@
 
             // 기본 상태 복원
             document.getElementById('elena-img').src = 'elenatemp.png';
-            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-all duration-1000 origin-center";
-            document.getElementById('sun-moon').className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a]";
+            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000";
+            
+            const sunMoon = document.getElementById('sun-moon');
+            sunMoon.className = "absolute top-8 right-24 w-16 h-16 bg-yellow-300 rounded-full shadow-[0_0_30px_#fef08a] transition-all duration-1000";
             
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
@@ -456,8 +474,10 @@
                         const hasPickup = drawnResults.some(r => r.key === 'canna');
 
                         if (hasHigh) {
-                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-all duration-1000 origin-center rotate-180";
-                            document.getElementById('sun-moon').className = "absolute top-8 right-24 w-12 h-12 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950";
+                            // 회전 없이 해가 지고 밤하늘로 변경
+                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000";
+                            const sunMoon = document.getElementById('sun-moon');
+                            sunMoon.className = "absolute top-36 right-24 w-12 h-12 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 transition-all duration-1000";
                         }
                         if (hasPickup) {
                             elena.src = 'elenawowtemp.png';
@@ -534,7 +554,7 @@
             e.stopPropagation();
             const target = e.currentTarget;
             
-            // 도장 자국 생성
+            // 도장 자국 생성 (클릭 위치 정밀 배치)
             const stamp = document.createElement('div');
             stamp.className = 'stamp-mark';
             stamp.innerText = '승인';
@@ -542,10 +562,10 @@
 
             // 손 누르는 애니메이션 연출
             const hand = document.getElementById('chibi-hand-stamp');
-            hand.style.transform = 'translate(-50%, -50%) scale(0.85)';
+            hand.style.transform = 'translate(-50%, -100%) scale(0.85)';
 
             setTimeout(() => {
-                hand.style.transform = 'translate(-50%, -50%) scale(1)';
+                hand.style.transform = 'translate(-50%, -100%) scale(1)';
                 currentPaperIndex++;
                 setTimeout(() => renderPaperStack(), 200);
             }, 150);
