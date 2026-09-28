@@ -229,7 +229,6 @@
                 </div>
                 <div class="absolute top-0 left-0 w-16 h-full bg-red-800 border-r-4 border-red-950 shadow-2xl"></div>
                 <div class="absolute top-0 right-0 w-16 h-full bg-red-800 border-l-4 border-red-950 shadow-2xl"></div>
-                <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
             </div>
 
             <div id="office-room" class="absolute inset-0 transition-all duration-700 ease-out origin-center z-20 pointer-events-none">
@@ -486,6 +485,7 @@
             coffee.style.bottom = '16px';
             coffee.style.top = '';
             coffee.style.pointerEvents = 'auto';
+            document.getElementById('elena-img').style.filter = '';
         }
 
         function setupCoffeeDrag() {
@@ -546,7 +546,7 @@
                                 elena.src = 'elenawowtemp.png';
                             }
 
-                            setTimeout(() => runPhase3Paper(), 1200);
+                            setTimeout(() => runPhase3Paper(), hasHigh ? 3200 : 1800);
                         }, 500);
                     }
                 };
@@ -661,7 +661,9 @@
             
             const animStage = document.getElementById('anim-stage');
             animStage.style.display = 'none';
-            animStage.style.pointerEvents = 'none'; // <-- 이 줄 추가
+            animStage.style.pointerEvents = 'none';
+            isGachaActive = false;
+            window.onkeydown = null;
 
             try {
                 const raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
