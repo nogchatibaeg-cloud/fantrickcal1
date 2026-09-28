@@ -49,7 +49,6 @@
             animation: paperFlyIn 0.15s ease-out forwards;
         }
 
-        /* 1. 도장 위치를 축(Standard: bottom-right)으로 서류 기울이기 설정 */
         .stamp-pivot-paper {
             transform-origin: 85% 85% !important;
         }
@@ -233,39 +232,30 @@
                 <div class="absolute top-4 left-20 w-8 h-32 bg-amber-100/80 border border-amber-300 shadow-md transform -rotate-3"></div>
             </div>
 
-            <!-- 실내 오피스 객체 레이어 분리 -->
             <div id="office-room" class="absolute inset-0 transition-all duration-700 ease-out origin-center z-20 pointer-events-none">
-                
-                <!-- 실내 벽지 배경 (높이 절반 조정: h-[35%]) -->
                 <div class="absolute bottom-0 left-0 w-full h-[35%] bg-[#f5e6d3] border-t-8 border-amber-950/40 -z-10 shadow-inner"></div>
 
-                <!-- 2. 엘레나 캐릭터 (y좌표를 상단으로 조정: bottom-32 적용) -->
                 <div class="absolute left-1/2 -translate-x-1/2 bottom-32 w-72 h-80 flex items-end justify-center z-10 pointer-events-auto mb-4">
                     <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
                 </div>
 
-                <!-- 책상 레이어 및 하위 집기류 (독립 레이어: z-20) -->
                 <div class="absolute bottom-0 left-0 w-full h-[30%] bg-[#5c3a21] border-t-8 border-[#3d2413] shadow-2xl flex items-start justify-center z-20">
                     <div class="w-full h-3 bg-[#6e4629] border-b border-[#3d2413]/50"></div>
 
-                    <!-- 회색 큐브 PC -->
                     <div class="absolute left-12 bottom-8 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded pointer-events-auto">
                         <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
                     </div>
 
-                    <!-- A4용지 더미 -->
                     <div class="absolute right-16 bottom-4 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right pointer-events-auto">
                         <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
                         <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
                         <div class="absolute inset-0 bg-stone-300/80 border border-stone-400 shadow-sm transform -rotate-3 rounded-sm -z-20 translate-y-2"></div>
                     </div>
 
-                    <!-- 승인 도장 -->
                     <div id="desk-stamp" class="absolute left-[38%] bottom-8 w-10 h-14 bg-amber-800 border-2 border-amber-950 rounded-t-full shadow-xl flex items-end justify-center pb-1 pointer-events-auto">
                         <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
                     </div>
 
-                    <!-- 커피 드래그 객체 -->
                     <div id="draggable-coffee" class="absolute left-[45%] bottom-4 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center pointer-events-auto">
                         <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
                     </div>
@@ -288,7 +278,7 @@
         let pendingDrawCount = 1;
         let drawnResults = [];
         let currentPaperIndex = 0;
-        let isGachaActive = false; // 4. 뽑기 진행 상태 플래그
+        let isGachaActive = false;
 
         const ROLE_DATA = {
             citizen: { name: '시민', img: 'citizen.png', desc: '총 효율성 +15' },
@@ -308,7 +298,6 @@
             setupGlobalInteractionLock();
         });
 
-        // 4. 뽑기 진행 중 다른 모든 상호작용 및 키 조작 차단
         function setupGlobalInteractionLock() {
             window.addEventListener('click', (e) => {
                 if (isGachaActive) {
@@ -322,7 +311,6 @@
 
             window.addEventListener('keydown', (e) => {
                 if (isGachaActive && document.getElementById('terminal-view').classList.contains('hidden')) {
-                    // 터미널 입력 단계가 지난 가챠 연출 도중에는 모든 키 입력 완전 무시
                     e.stopPropagation();
                     e.preventDefault();
                 }
@@ -435,7 +423,7 @@
                 return;
             }
 
-            isGachaActive = true; // 가챠 상호작용 차단 시작
+            isGachaActive = true;
             pendingDrawCount = count;
             drawnResults = [];
             for(let i = 0; i < count; i++) drawnResults.push(drawOne());
@@ -457,7 +445,6 @@
             window.onkeydown = (e) => {
                 const key = e.key.toLowerCase();
                 
-                // 4. y 뿐만 아니라 엔터(Enter) 키 입력으로도 즉시 빠른 시작 가능
                 if (key === 'y' || key === 'enter') {
                     typedInput.innerText = key === 'enter' ? 'y (ENTER)' : 'y';
                     window.onkeydown = null;
@@ -489,10 +476,12 @@
             document.getElementById('sun-obj').className = "celestial-obj sun-pos bg-yellow-300 shadow-[0_0_35px_#fef08a]";
             document.getElementById('moon-obj').className = "celestial-obj moon-pos bg-amber-100 shadow-[0_0_25px_#fef08a] border-r-8 border-slate-950";
 
+            // 커피 위치 및 스타일 완전히 리셋
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
             coffee.style.bottom = '16px';
-            coffee.style.top = 'auto';
+            coffee.style.top = '';
+            coffee.style.pointerEvents = 'auto';
         }
 
         function setupCoffeeDrag() {
@@ -505,53 +494,61 @@
                 isDragging = true;
                 offsetX = e.clientX - coffee.offsetLeft;
                 offsetY = e.clientY - coffee.offsetTop;
-            };
 
-            window.onmousemove = (e) => {
-                if (!isDragging) return;
-                coffee.style.left = `${e.clientX - offsetX}px`;
-                coffee.style.top = `${e.clientY - offsetY}px`;
+                const onMouseMove = (moveEv) => {
+                    if (!isDragging) return;
+                    coffee.style.left = `${moveEv.clientX - offsetX}px`;
+                    coffee.style.top = `${moveEv.clientY - offsetY}px`;
 
-                const cRect = coffee.getBoundingClientRect();
-                const eRect = elena.getBoundingClientRect();
+                    const cRect = coffee.getBoundingClientRect();
+                    const eRect = elena.getBoundingClientRect();
 
-                if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
-                    elena.style.filter = "drop-shadow(0 0 15px rgba(255,255,255,0.9))";
-                } else {
-                    elena.style.filter = "drop-shadow(0 0 0px transparent)";
-                }
-            };
+                    if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
+                        elena.style.filter = "drop-shadow(0 0 15px rgba(255,255,255,0.9))";
+                    } else {
+                        elena.style.filter = "drop-shadow(0 0 0px transparent)";
+                    }
+                };
 
-            window.onmouseup = () => {
-                if (!isDragging) return;
-                isDragging = false;
-                const cRect = coffee.getBoundingClientRect();
-                const eRect = elena.getBoundingClientRect();
+                const onMouseUp = () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    
+                    // 이벤트 등록 해제 (이벤트 중복 및 누수 방지)
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
 
-                if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
-                    elena.src = 'elenanicetemp.png';
+                    const cRect = coffee.getBoundingClientRect();
+                    const eRect = elena.getBoundingClientRect();
 
-                    // 3. 중간 줌인 - 줌아웃 효과(scale 변환) 제거 완료
-                    setTimeout(() => {
-                        elena.src = 'elenawakeuptemp.png';
+                    if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
+                        coffee.style.pointerEvents = 'none'; // 드래그 중복 전달 차단
+                        elena.src = 'elenanicetemp.png';
 
-                        const hasHigh = drawnResults.some(r => r.isHighGrade);
-                        const hasPickup = drawnResults.some(r => r.key === 'canna');
+                        setTimeout(() => {
+                            elena.src = 'elenawakeuptemp.png';
 
-                        if (hasHigh) {
-                            document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000 z-0";
-                            document.getElementById('office-room').classList.add('night-mode');
-                            
-                            document.getElementById('sun-obj').classList.add('night');
-                            document.getElementById('moon-obj').classList.add('night');
-                        }
-                        if (hasPickup) {
-                            elena.src = 'elenawowtemp.png';
-                        }
+                            const hasHigh = drawnResults.some(r => r.isHighGrade);
+                            const hasPickup = drawnResults.some(r => r.key === 'canna');
 
-                        setTimeout(() => runPhase3Paper(), 1200);
-                    }, 500);
-                }
+                            if (hasHigh) {
+                                document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000 z-0";
+                                document.getElementById('office-room').classList.add('night-mode');
+                                
+                                document.getElementById('sun-obj').classList.add('night');
+                                document.getElementById('moon-obj').classList.add('night');
+                            }
+                            if (hasPickup) {
+                                elena.src = 'elenawowtemp.png';
+                            }
+
+                            setTimeout(() => runPhase3Paper(), 1200);
+                        }, 500);
+                    }
+                };
+
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
             };
         }
 
@@ -581,7 +578,6 @@
 
                 const paper = document.createElement('div');
                 paper.id = `paper-item-${idx}`;
-                // 1. 도장 위치를 축으로 미세하게 회전하도록 stamp-pivot-paper 클래스 적용
                 paper.className = `stamp-pivot-paper absolute w-full h-full bg-amber-50 border-2 border-amber-300 rounded-lg p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 paper-fly-anim ${res.isHighGrade ? 'gold-paper' : ''}`;
                 paper.style.transform = `rotate(${rot}deg)`;
                 paper.style.zIndex = total - idx;
@@ -638,7 +634,6 @@
                 
                 const curPaper = document.getElementById(`paper-item-${currentPaperIndex}`);
                 if (curPaper) {
-                    // 1. 도장 축(우측 하단)을 기준으로 위쪽으로 약간 들려 올라가듯 넘어감
                     curPaper.style.transform = 'translateY(-100vh) rotate(-18deg)';
                     curPaper.style.opacity = '0';
                 }
@@ -717,7 +712,7 @@
         function closeResultView() {
             document.getElementById('gacha-result-view').classList.add('hidden');
             document.getElementById('gacha-main-view').classList.remove('hidden');
-            isGachaActive = false; // 가챠 상호작용 차단 해제
+            isGachaActive = false;
         }
     </script>
 </body>
