@@ -279,13 +279,14 @@
             fetch('menu.html')
                 .then(res => res.text())
                 .then(html => {
+                    // 메뉴 UI(HTML)를 먼저 붙인 뒤 스크립트를 실행해야 버튼 이벤트가 연결된다
+                    document.getElementById('menu-container').innerHTML = html;
                     const doc = new DOMParser().parseFromString(html, 'text/html');
                     doc.querySelectorAll('script').forEach(script => {
                         const newScript = document.createElement('script');
                         newScript.textContent = script.textContent;
                         document.head.appendChild(newScript);
                     });
-                    document.getElementById('menu-container').innerHTML = html;
                 }).catch(e => console.log('menu.html 로드 생략'));
         }
 
@@ -354,6 +355,21 @@
                     <div class="flex justify-between"><span>백수</span><span>10%</span></div>
                 `;
             }
+        }
+
+        // 적성 1회 추첨 (확률표와 동일: 상급 20%)
+        function drawOne() {
+            const table = currentTab === 'pickup'
+                ? [['citizen', 30], ['canna', 10], ['army', 10], ['doctor', 20], ['spy', 20], ['backsu', 10]]
+                : [['citizen', 30], ['army', 20], ['doctor', 20], ['spy', 20], ['backsu', 10]];
+            let roll = Math.random() * 100;
+            let key = table[table.length - 1][0];
+            for (const [k, weight] of table) {
+                if (roll < weight) { key = k; break; }
+                roll -= weight;
+            }
+            const info = ROLE_DATA[key];
+            return { key: key, name: info.name, img: info.img, isHighGrade: Math.random() < 0.2 };
         }
 
         // 가챠 실행 로직

@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>제작 시설 - Craftwiththis</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { user-select: none; font-family: 'Gothic A1', sans-serif; box-sizing: border-box; }
+        html { height: 100%; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -133,13 +134,31 @@
                 frameTop = fRect.top;
             }
 
-            const left = frameLeft + rect.right + 12;
-            const top = frameTop + rect.top + (rect.height / 2);
+            let left = frameLeft + rect.right + 12;
+            let top = frameTop + rect.top + (rect.height / 2);
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
             tooltip.style.transform = 'translateY(-50%)';
             tooltip.classList.remove('hidden');
+
+            // 화면 경계를 벗어나지 않도록 보정 (좁은 화면/기기에서 툴팁이 잘리는 문제 방지)
+            const winView = targetDoc.defaultView || window;
+            const padding = 12;
+            let tooltipRect = tooltip.getBoundingClientRect();
+
+            if (tooltipRect.right > winView.innerWidth - padding) {
+                left = frameLeft + rect.left - tooltipRect.width - 12;
+                tooltip.style.left = `${left}px`;
+                tooltipRect = tooltip.getBoundingClientRect();
+            }
+            if (tooltipRect.top < padding) {
+                top += (padding - tooltipRect.top);
+                tooltip.style.top = `${top}px`;
+            } else if (tooltipRect.bottom > winView.innerHeight - padding) {
+                top -= (tooltipRect.bottom - (winView.innerHeight - padding));
+                tooltip.style.top = `${top}px`;
+            }
         }
 
         function hideTooltip() {
