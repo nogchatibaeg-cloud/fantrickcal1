@@ -267,8 +267,8 @@
     let isDefaultImgLoaded = false;
     defaultCitizenImg.onload = () => { isDefaultImgLoaded = true; };
 
-class Citizen {
-        constructor(id, imgSrc = 'Citizen.png') {
+    class Citizen {
+        constructor(id, imgSrc = 'Citizen.png', isHighGrade = false) {
             this.id = id;
             this.size = 140; // 캔버스 최적화를 위해 크기 유효범위 조정
             // MAP 경계 내부에서 위치하도록 초기 좌표 조정
@@ -277,6 +277,7 @@ class Citizen {
             this.vx = (Math.random() - 0.5) * 1.5;
             this.vy = (Math.random() - 0.5) * 1.5;
             this.changeDirTimer = 0;
+            this.isHighGrade = isHighGrade;
             
             this.img = new Image();
             this.img.src = imgSrc;
@@ -304,10 +305,28 @@ class Citizen {
 
         draw(ctx) {
             ctx.save();
-            if (this.isLoaded) {
-                ctx.drawImage(this.img, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
-            } else if (isDefaultImgLoaded) {
-                ctx.drawImage(defaultCitizenImg, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            const drawX = this.x - this.size / 2;
+            const drawY = this.y - this.size / 2;
+
+            if (this.isLoaded || isDefaultImgLoaded) {
+                const currentImg = this.isLoaded ? this.img : defaultCitizenImg;
+
+                if (this.isHighGrade) {
+                    // 상급 엘프: 오프스크린 캔버스를 통해 이미지 알파 투명 영역을 유지하면서 노란색 필터 합성
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = this.size;
+                    offCanvas.height = this.size;
+                    const offCtx = offCanvas.getContext('2d');
+
+                    offCtx.drawImage(currentImg, 0, 0, this.size, this.size);
+                    offCtx.globalCompositeOperation = 'source-atop';
+                    offCtx.fillStyle = 'rgba(250, 204, 21, 0.55)';
+                    offCtx.fillRect(0, 0, this.size, this.size);
+
+                    ctx.drawImage(offCanvas, drawX, drawY, this.size, this.size);
+                } else {
+                    ctx.drawImage(currentImg, drawX, drawY, this.size, this.size);
+                }
             } else {
                 ctx.fillStyle = '#fde047';
                 ctx.beginPath();
@@ -329,7 +348,7 @@ class Citizen {
                     parsed.progress.monatiumCitizens.forEach((c, idx) => {
                         // 각각 (citizen/army/doctor/spy/backsu).png 및 적성별 이미지 지정
                         const imgSrc = c.img || `${c.role || 'citizen'}.png`;
-                        citizens.push(new Citizen(idx, imgSrc));
+                        citizens.push(new Citizen(idx, imgSrc, !!c.isHighGrade));
                     });
                 }
             }
