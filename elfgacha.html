@@ -29,7 +29,7 @@
         .crt-btn { background-color: #092e13; border: 2px solid #22c55e; color: #4ade80; transition: all 0.15s ease; }
         .crt-btn:hover { background-color: #22c55e; color: #000000; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
 
-        /* 가챠 애니메이션 씬 오버레이 레이어 (전체 화면으로 변경) */
+        /* 가챠 애니메이션 씬 오버레이 레이어 */
         #anim-stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; display: none; }
         
         /* 깜빡이는 커서 */
@@ -44,6 +44,15 @@
         /* 도장 스탬프 스타일 */
         .stamp-mark { position: absolute; width: 70px; height: 70px; border: 4px solid #dc2626; border-radius: 50%; color: #dc2626; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-12deg) scale(0); animation: stampIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; font-size: 18px; }
         @keyframes stampIn { to { transform: rotate(-12deg) scale(1); } }
+
+        /* 서류가 오른쪽에서 빠르게 파바박 날아오는 애니메이션 */
+        @keyframes paperFlyIn {
+            0% { transform: translate(100vw, -200px) rotate(25deg); opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .paper-fly-anim {
+            animation: paperFlyIn 0.15s ease-out forwards;
+        }
     </style>
 </head>
 <body>
@@ -183,14 +192,9 @@
 
             <!-- 엘레나 집무실 책상 & 오브젝트 스테이지 -->
             <div id="office-room" class="absolute inset-0 transition-transform duration-700 ease-out origin-center">
-                <!-- 회색 브라운관 CD 컴퓨터 (좌측 80도 각도) -->
-                <div class="absolute left-8 bottom-28 w-44 h-40 bg-zinc-400 border-4 border-zinc-600 rounded-lg shadow-2xl transform rotate-6 flex flex-col p-2">
-                    <div class="w-full h-24 bg-black border-2 border-zinc-700 rounded p-1 text-[8px] font-mono text-green-400 overflow-hidden">
-                        APTITUDE_TEST<br>READY_
-                    </div>
-                    <div class="mt-2 w-full h-3 bg-zinc-700 rounded-full flex items-center justify-end px-2">
-                        <div id="pc-slot" class="w-16 h-1 bg-black"></div>
-                    </div>
+                <!-- [수정 2] 시계 방향으로 10도 틀어져 있는 정사각형 회색 큐브 -->
+                <div class="absolute left-12 bottom-28 w-32 h-32 bg-zinc-500 border-4 border-zinc-600 shadow-2xl transform rotate-10 flex items-center justify-center rounded">
+                    <div class="text-[10px] font-mono text-zinc-300 font-bold opacity-40">CUBE_PC</div>
                 </div>
 
                 <!-- 중앙 엘레나 -->
@@ -198,9 +202,11 @@
                     <img id="elena-img" src="elenatemp.png" class="max-h-full object-contain drop-shadow-2xl transition-all duration-300" onerror="this.src='https://via.placeholder.com/300x400/000000/ffffff?text=elenatemp.png'">
                 </div>
 
-                <!-- 오른쪽 쌓인 서류들 -->
-                <div class="absolute right-12 bottom-24 w-36 h-48 bg-amber-100 border-2 border-amber-300 shadow-2xl flex flex-col justify-end p-1 transform -rotate-2">
-                    <div class="w-full h-full bg-amber-50 border border-amber-200 shadow-sm transform rotate-3"></div>
+                <!-- [수정 3] 완전히 눕혀져 있는 A4용지 더미 (정면 바라보지 않음) -->
+                <div class="absolute right-16 bottom-16 w-48 h-32 bg-stone-200 border border-stone-400 shadow-xl transform rotate-12 flex flex-col justify-end p-2 rounded-sm origin-bottom-right">
+                    <div class="w-full h-full bg-amber-50/90 border border-stone-300 shadow-inner transform -rotate-2 rounded-sm"></div>
+                    <div class="absolute inset-0 bg-stone-100/80 border border-stone-300 shadow-md transform rotate-1 rounded-sm -z-10 translate-y-1"></div>
+                    <div class="absolute inset-0 bg-stone-300/80 border border-stone-400 shadow-sm transform -rotate-3 rounded-sm -z-20 translate-y-2"></div>
                 </div>
 
                 <!-- 나무 재질 승인 도장 -->
@@ -208,11 +214,9 @@
                     <div class="w-8 h-3 bg-amber-900 rounded-sm"></div>
                 </div>
 
-                <!-- 뜨거운 아이스 아메리카노 (드래그 대상) -->
-                <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-12 h-16 bg-amber-900/80 border-2 border-cyan-200 rounded-b-xl shadow-2xl cursor-grab flex flex-col items-center justify-between p-1 z-40 active:cursor-grabbing">
-                    <div class="w-10 h-2 bg-white/80 rounded-full"></div>
-                    <span class="text-[9px] font-bold text-white tracking-tighter">HOT ICE</span>
-                    <div class="w-1 h-6 bg-red-500 rounded-full"></div>
+                <!-- [수정 1] 유저가 들어야하는 커피를 hoticecafe.png로 수정 -->
+                <div id="draggable-coffee" class="absolute left-[45%] bottom-12 w-14 h-20 cursor-grab z-40 active:cursor-grabbing flex items-center justify-center">
+                    <img src="hoticecafe.png" alt="Hot Ice Cafe" class="w-full h-full object-contain drop-shadow-lg pointer-events-none" onerror="this.src='https://via.placeholder.com/60x80/000000/ffffff?text=Coffee'">
                 </div>
             </div>
         </div>
@@ -224,19 +228,9 @@
                 <!-- JS Dynamic Document Render -->
             </div>
 
-            <!-- 치비 4손가락 도장 손 (마우스 커서 위치 수정) -->
-            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full transition-transform duration-75">
-                <div class="relative w-20 h-24 flex flex-col items-center justify-end">
-                    <!-- 치비 손가락 4개 -->
-                    <div class="flex gap-1 -mb-2">
-                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                        <div class="w-4 h-7 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                        <div class="w-4 h-6 bg-amber-200 border-2 border-amber-400 rounded-t-full"></div>
-                    </div>
-                    <!-- 도장 손잡이 -->
-                    <div class="w-8 h-12 bg-amber-800 border-2 border-amber-950 rounded-t-full"></div>
-                </div>
+            <!-- [수정 4] 엘레나가 도장을 찍어줄 때 손과 도장은 elfstamp가 20도 오른쪽으로 누운 모습 -->
+            <div id="chibi-hand-stamp" class="absolute pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full transition-transform duration-75 rotate-20">
+                <img src="elfstamp.png" alt="Stamp Hand" class="w-32 h-32 object-contain drop-shadow-2xl" onerror="this.src='https://via.placeholder.com/128/transparent/ff0000?text=Stamp'">
             </div>
         </div>
     </div>
@@ -339,7 +333,6 @@
             return { key: key, name: ROLE_DATA[key].name, img: ROLE_DATA[key].img, desc: ROLE_DATA[key].desc, isHighGrade: Math.random() < 0.2 };
         }
 
-        // 재화 확인
         function checkLeafBalance(count) {
             const cost = count === 1 ? 30 : 270;
             let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
@@ -354,7 +347,6 @@
             return { hasEnough: leafVal >= cost, cost: cost, current: leafVal };
         }
 
-        // y 입력 시 실제 재화 차감
         function deductLeaves(cost) {
             let raw = localStorage.getItem('ELIAS_AWAY_SAVE_DATA_V1') || '{}';
             let saveObj = {};
@@ -381,7 +373,6 @@
             drawnResults = [];
             for(let i = 0; i < count; i++) drawnResults.push(drawOne());
 
-            // 가챠 스테이지 노출 및 Phase 1 시작 (아직 차감 안함)
             document.getElementById('anim-stage').style.display = 'flex';
             runPhase1Terminal();
         }
@@ -403,7 +394,6 @@
                     typedInput.innerText = 'y';
                     window.onkeydown = null;
 
-                    // y를 눌렀을 때만 세계수 잎 차감
                     const cost = pendingDrawCount === 1 ? 30 : 270;
                     deductLeaves(cost);
 
@@ -419,12 +409,11 @@
             };
         }
 
-        // Phase 2: Office (엘레나 집무실)
+        // Phase 2: Office
         function runPhase2Office() {
             document.getElementById('terminal-view').classList.add('hidden');
             document.getElementById('office-view').classList.remove('hidden');
 
-            // 기본 상태 복원
             document.getElementById('elena-img').src = 'elenatemp.png';
             document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-sky-300 transition-colors duration-1000";
             
@@ -434,6 +423,7 @@
             const coffee = document.getElementById('draggable-coffee');
             coffee.style.left = '45%';
             coffee.style.bottom = '12px';
+            coffee.style.top = 'auto';
         }
 
         // 커피 드래그 & 드롭 기능
@@ -455,7 +445,6 @@
                 coffee.style.left = `${e.clientX - offsetX}px`;
                 coffee.style.top = `${e.clientY - offsetY}px`;
 
-                // 엘레나 충돌 감지
                 const cRect = coffee.getBoundingClientRect();
                 const eRect = elena.getBoundingClientRect();
 
@@ -473,7 +462,6 @@
                 const eRect = elena.getBoundingClientRect();
 
                 if (!(cRect.right < eRect.left || cRect.left > eRect.right || cRect.bottom < eRect.top || cRect.top > eRect.bottom)) {
-                    // 전달 완료 연출
                     elena.src = 'elenanicetemp.png';
                     room.style.transform = 'scale(1.15)';
 
@@ -481,12 +469,10 @@
                         elena.src = 'elenawakeuptemp.png';
                         room.style.transform = 'scale(1)';
 
-                        // 상급/픽업 연출 체크
                         const hasHigh = drawnResults.some(r => r.isHighGrade);
                         const hasPickup = drawnResults.some(r => r.key === 'canna');
 
                         if (hasHigh) {
-                            // 회전 없이 해가 지고 밤하늘로 변경
                             document.getElementById('sky-bg').className = "absolute top-0 left-0 w-full h-[65%] bg-slate-950 transition-colors duration-1000";
                             const sunMoon = document.getElementById('sun-moon');
                             sunMoon.className = "absolute top-36 right-24 w-12 h-12 bg-amber-100 rounded-full shadow-[0_0_30px_#fef08a] border-r-8 border-slate-950 transition-all duration-1000";
@@ -507,37 +493,32 @@
             document.getElementById('paper-view').classList.remove('hidden');
 
             currentPaperIndex = 0;
-            renderPaperStack();
+            animatePaperStackIn();
         }
 
-        function setupStampCursor() {
-            const paperView = document.getElementById('paper-view');
-            const hand = document.getElementById('chibi-hand-stamp');
-
-            paperView.onmousemove = (e) => {
-                hand.style.left = `${e.clientX}px`;
-                hand.style.top = `${e.clientY}px`;
-            };
-        }
-
-        function renderPaperStack() {
+        // [수정 5, 6] 1인칭 시점이 되자마자 오른쪽에서 0.05초(50ms) 간격으로 파바박 날아와 정갈하게 쌓임 (오차 2deg 이내)
+        function animatePaperStackIn() {
             const stackEl = document.getElementById('paper-stack');
             stackEl.innerHTML = '';
 
-            if (currentPaperIndex >= drawnResults.length) {
-                finishGachaSequence();
-                return;
-            }
+            const total = drawnResults.length;
+            let idx = total - 1;
 
-            // 남은 서류들 쌓인 형태로 출력
-            for (let i = drawnResults.length - 1; i >= currentPaperIndex; i--) {
-                const res = drawnResults[i];
-                const isCurrent = (i === currentPaperIndex);
-                const rot = (i * 3 - 5) % 8;
+            const flyInterval = setInterval(() => {
+                if (idx < 0) {
+                    clearInterval(flyInterval);
+                    return;
+                }
+
+                const res = drawnResults[idx];
+                // [수정 6] 중앙 위치 고정, 오차범위 2deg 이내 무작위
+                const rot = (Math.random() * 4 - 2); 
 
                 const paper = document.createElement('div');
-                paper.className = `absolute w-full h-full bg-amber-50 border-2 border-amber-300 rounded-lg p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 ${res.isHighGrade ? 'gold-paper' : ''}`;
-                paper.style.transform = `rotate(${rot}deg) translate(${i * 2}px, ${i * 2}px)`;
+                paper.id = `paper-item-${idx}`;
+                paper.className = `absolute w-full h-full bg-amber-50 border-2 border-amber-300 rounded-lg p-6 flex flex-col justify-between shadow-2xl transition-transform duration-100 paper-fly-anim ${res.isHighGrade ? 'gold-paper' : ''}`;
+                paper.style.transform = `rotate(${rot}deg)`;
+                paper.style.zIndex = total - idx;
 
                 if (res.isHighGrade) {
                     paper.innerHTML += `<div class="gold-sparkle" style="top:10%;left:10%"></div><div class="gold-sparkle" style="top:80%;left:70%"></div>`;
@@ -555,31 +536,60 @@
                     <div class="text-xs text-amber-800/80 leading-relaxed font-mono">상기 엘프는 모나티엄 공식 적성 검사를 이수하였음을 승인함.</div>
                     <div class="flex justify-end items-center mt-4 pt-2 border-t border-amber-800/20 relative">
                         <span class="font-bold text-amber-950 mr-4 text-sm">(인)</span>
-                        ${isCurrent ? `<div class="w-16 h-16 border-2 border-dashed border-red-400/60 rounded-full flex items-center justify-center text-[10px] text-red-400 font-bold cursor-pointer hover:bg-red-500/10" onclick="stampCurrentPaper(event)">도장 클릭</div>` : ''}
+                        <div class="stamp-slot-btn w-16 h-16 border-2 border-dashed border-red-400/60 rounded-full flex items-center justify-center text-[10px] text-red-400 font-bold cursor-pointer hover:bg-red-500/10 ${idx === 0 ? '' : 'hidden'}" onclick="stampCurrentPaper(event)">도장 클릭</div>
                     </div>
                 `;
+
                 stackEl.appendChild(paper);
-            }
+                idx--;
+            }, 50); // 0.05초 간격으로 날아옴
+        }
+
+        function setupStampCursor() {
+            const paperView = document.getElementById('paper-view');
+            const hand = document.getElementById('chibi-hand-stamp');
+
+            paperView.onmousemove = (e) => {
+                hand.style.left = `${e.clientX}px`;
+                hand.style.top = `${e.clientY}px`;
+            };
         }
 
         function stampCurrentPaper(e) {
             e.stopPropagation();
             const target = e.currentTarget;
             
-            // 도장 자국 생성 (클릭 위치 정밀 배치)
             const stamp = document.createElement('div');
             stamp.className = 'stamp-mark';
             stamp.innerText = '승인';
             target.parentElement.appendChild(stamp);
 
-            // 손 누르는 애니메이션 연출
             const hand = document.getElementById('chibi-hand-stamp');
-            hand.style.transform = 'translate(-50%, -100%) scale(0.85)';
+            // 도장 찍는 연출 (rotate-20을 유지하면서 클릭 감)
+            hand.style.transform = 'translate(-50%, -100%) rotate(20deg) scale(0.85)';
 
             setTimeout(() => {
-                hand.style.transform = 'translate(-50%, -100%) scale(1)';
+                hand.style.transform = 'translate(-50%, -100%) rotate(20deg) scale(1)';
+                
+                // 현재 서류 치우기
+                const curPaper = document.getElementById(`paper-item-${currentPaperIndex}`);
+                if (curPaper) {
+                    curPaper.style.transform += ' translateY(-100vh) rotate(15deg)';
+                    curPaper.style.opacity = '0';
+                }
+
                 currentPaperIndex++;
-                setTimeout(() => renderPaperStack(), 200);
+
+                if (currentPaperIndex >= drawnResults.length) {
+                    setTimeout(() => finishGachaSequence(), 300);
+                } else {
+                    // 다음 서류의 도장버튼 활성화
+                    const nextPaper = document.getElementById(`paper-item-${currentPaperIndex}`);
+                    if (nextPaper) {
+                        const slotBtn = nextPaper.querySelector('.stamp-slot-btn');
+                        if (slotBtn) slotBtn.classList.remove('hidden');
+                    }
+                }
             }, 150);
         }
 
@@ -595,7 +605,6 @@
                 if (!saveObj.progress.monatiumCitizens) saveObj.progress.monatiumCitizens = [];
                 if (!saveObj.progress.epicElfTrainingTickets) saveObj.progress.epicElfTrainingTickets = {};
 
-                // 적성별 카운트 세기
                 const roleCounts = {};
                 saveObj.progress.monatiumCitizens.forEach(c => {
                     roleCounts[c.role] = (roleCounts[c.role] || 0) + 1;
@@ -604,7 +613,6 @@
                 drawnResults.forEach(res => {
                     const currentRoleCount = roleCounts[res.key] || 0;
 
-                    // 5명 초과 시 적성 교육권 재료로 변환
                     if (currentRoleCount >= 5 && res.key !== 'canna') {
                         saveObj.progress.epicElfTrainingTickets[res.key] = (saveObj.progress.epicElfTrainingTickets[res.key] || 0) + 1;
                         res.isConvertedToTicket = true;
