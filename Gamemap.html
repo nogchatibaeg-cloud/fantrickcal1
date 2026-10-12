@@ -32,19 +32,6 @@
             stroke-width: 6 !important;
         }
 
-        .map-region.region-good {
-            filter: brightness(2.0) drop-shadow(0 0 12px rgba(52, 211, 153, 1)) drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)) !important;
-            stroke: #34d399 !important;
-            stroke-width: 6 !important;
-            opacity: 1 !important;
-            z-index: 10;
-        }
-
-        .map-region.region-bad {
-            filter: brightness(0.35) contrast(1.1) !important;
-            opacity: 0.5 !important;
-        }
-
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
@@ -71,17 +58,7 @@
             transform-origin: center;
         }
 
-        .resource-item { position: relative; }
-        .resource-item .tooltip-content {
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-        }
-        .resource-item:hover .tooltip-content {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
+            </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
 
@@ -95,7 +72,7 @@
                 <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">지도</span>
                 <span id="header-day-count" class="text-xs px-3 py-1 rounded-lg font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Day 1</span>
                 <button id="btn-next-day" class="px-3 py-1 text-xs font-black rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-md transition-all flex items-center gap-1">
-                    <i class="fa-solid fa-sun"></i> 내일로 (<span id="header-expedition-count">5/5</span>)
+                    <i class="fa-solid fa-sun"></i> 다음주로 (<span id="header-expedition-count">7/7</span>)
                 </button>
             </div>
         </div>
@@ -134,7 +111,6 @@
                     <div class="space-y-1 text-[11px] font-bold" id="legend-list"></div>
                 </div>
 
-                <div id="resource-module-container"></div>
             </div>
 
             <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-1.5 text-[11px] text-slate-300 font-mono flex items-center gap-3 shadow-xl z-10" onclick="event.stopPropagation()">
@@ -244,7 +220,7 @@
                 </div>
             </div>
 
-            <div class="p-4 bg-slate-950 border-t border-slate-800">
+            <div id="dispatch-footer" class="p-4 bg-slate-950 border-t border-slate-800">
                 <button id="btn-dispatch" class="btn-action w-full py-3 bg-slate-800 text-slate-500 font-black text-sm rounded-xl cursor-not-allowed flex items-center justify-center gap-2" disabled>
                     <i id="btn-dispatch-icon" class="fa-solid fa-paper-plane"></i>
                     <span id="btn-dispatch-text">지역을 선택해 주세요</span>
@@ -265,28 +241,17 @@
             ghost: { id: "ghost", name: "유령", regionName: "유령 늪", factionBadge: "Phantom Marsh", factionBadgeColor: "bg-rose-500/20 text-rose-300 border-rose-500/30", icon: "fa-solid fa-ghost", color: "#f43f5e", commanderName: "셰이디 (혼돈의 유령)", specialty: "차원문", probabilities: { hostile: 90, friendly: 30 }, notes: "<b>맨날 사고치고 튀는 종족</b>.<br><br>이거 수인쪽에다 적어야 하지 않아요? - 로네", center: { x: 1300, y: 640 }, friendlyPoints: 100, hostilePoints: 100, hostileDays: 0, isWar: false, isOccupied: false, consecutiveWarSuccesses: 0, selectedMissionType: "friendly" }
         };
 
-        window.highlightRegionsByResource = function(goodRegions = [], badRegions = []) {
-            document.querySelectorAll('.map-region').forEach(el => {
-                const regionId = el.dataset.id;
-                el.classList.remove('region-good', 'region-bad');
-
-                if (goodRegions.includes(regionId)) {
-                    el.classList.add('region-good');
-                } else if (badRegions.includes(regionId)) {
-                    el.classList.add('region-bad');
-                }
-            });
-        };
-
-        window.resetRegionHighlights = function() {
-            document.querySelectorAll('.map-region').forEach(el => {
-                el.classList.remove('region-good', 'region-bad', 'region-dim');
-            });
-        };
-
         const DOM = {};
+        const EXPEDITIONS_PER_WEEK = 7;      // 한 번의 '다음주로' 사이에 할 수 있는 외교 횟수
+        const DAYS_PER_ADVANCE = 7;          // '다음주로' 한 번에 흐르는 일수
+        const TOTAL_AFFINITY = 200;          // 지역별 우호 + 적대 합계
+        const SUPPORT_MAX = 100;             // 지지율 실질값 (표시는 100 + 실질값 %)
+        const SUPPORT_LOSS_PER_POLICY = 1;   // 지지율이 깎이는 정책 1회당 감소량
+        const FULL_ALLY_REQUIRED = 4;        // 지지율 감소 방향이 뒤집히는 완전 협력 지역 수
+
         let currentDay = 1;
-        let expeditionsLeft = 5;
+        let expeditionsLeft = EXPEDITIONS_PER_WEEK;
+        let monatiumSupport = SUPPORT_MAX;
         let currentRegionId = null;
         let isPanelOpen = false;
         
@@ -358,6 +323,7 @@
             DOM.btnDispatchText = document.getElementById('btn-dispatch-text');
             DOM.btnDispatchIcon = document.getElementById('btn-dispatch-icon');
             DOM.btnResetView = document.getElementById('btn-reset-view');
+            DOM.dispatchFooter = document.getElementById('dispatch-footer');
         }
 
         function renderLegend() {
@@ -468,7 +434,7 @@
                 updateDispatchButtonText();
             });
 
-            DOM.btnDispatch.addEventListener('click', handleButtonClick);
+            DOM.btnDispatch.addEventListener('click', executeExpedition);
             DOM.btnResetView.addEventListener('click', resetView);
             DOM.btnNextDay.addEventListener('click', advanceDay);
 
@@ -639,6 +605,7 @@
 
             DOM.panelNotes.innerText = "지도 상의 지역이나 좌측 범례에서 세력을 선택하면 상세 정보가 표시됩니다.";
 
+            DOM.dispatchFooter.classList.remove('hidden');
             DOM.btnDispatch.disabled = true;
             DOM.btnDispatchIcon.className = "fa-solid fa-paper-plane";
             DOM.btnDispatchText.innerText = "지역을 선택해 주세요";
@@ -648,110 +615,34 @@
             DOM.hudY.innerText = "-";
         }
 
-        function handleButtonClick() {
-            if (!currentRegionId) return;
-            const region = REGIONS_DATA[currentRegionId];
-
-            // 지역 진입/외부 파일 이동은 제거하고, 현재 지도 안의 교류만 실행한다.
-            executeExpedition();
-        }
-
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-        function addResource(id, amount) {
-            if (!window.PLAYER_RESOURCES_DATA) return;
-            const res = window.PLAYER_RESOURCES_DATA.find(r => r.id === id);
-            if (!res) return;
-            if (id === 'food' || id === 'mineral') {
-                res.rawValue += amount;
-            } else {
-                res.value += amount;
+        // 호감도 상승량: 5~10 사이 값을 (성공확률 ÷ 10)번 굴려 가장 높은 값만 적용
+        function rollAffinityGain(successProbability) {
+            const rolls = Math.max(1, Math.round(successProbability / 10));
+            let best = 0;
+            for (let i = 0; i < rolls; i++) {
+                best = Math.max(best, getRandomInt(5, 10));
             }
-            if (window.renderPlayerResourcesUI) {
-                window.renderPlayerResourcesUI();
-            }
-            if (window.notifyResourceGain) {
-                window.notifyResourceGain(id, amount);
-            }
+            return best;
         }
 
-        function processTradeRewards(region, missionType, isMax = false) {
-            const dayMult = Math.pow(2, Math.floor((currentDay - 1) / 50));
-            
-            let actionMult = 1.0;
-            if (isMax) {
-                actionMult = 1.0;
-            } else if (missionType === 'friendly') {
-                actionMult = 1.3;
-            } else if (missionType === 'hostile') {
-                let addProbRoll = Math.random();
-                let extraMult = 0.0;
-                for (let i = 1; i <= 10; i++) {
-                    if (addProbRoll < (i * 0.1)) {
-                        extraMult = i * 0.1;
-                        break;
-                    }
-                }
-                actionMult = 1.0 + extraMult;
-            }
-
-            const totalMult = dayMult * actionMult;
-
-            if (Math.random() < 0.3) {
-                const techBonusCount = 1 + Math.floor(currentDay / 100);
-                addResource('tech', Math.floor(techBonusCount * totalMult));
-            }
-
-            if (region.id === 'beast') {
-                const amount = isMax ? 6 : getRandomInt(3, 6);
-                addResource('food', Math.floor(amount * totalMult));
-            } else if (['fairy', 'witch', 'dragon'].includes(region.id)) {
-                const amount = isMax ? 4 : getRandomInt(1, 4);
-                addResource('food', Math.floor(amount * totalMult));
-            }
-
-            if (['fairy', 'witch'].includes(region.id)) {
-                addResource('leaf', Math.floor(1 * totalMult));
-            } else if (region.id !== 'ghost' && region.id !== 'elf') {
-                if (isMax || Math.random() < 0.5) {
-                    addResource('leaf', Math.floor(1 * totalMult));
-                }
-            }
-
-            if (region.id === 'witch') {
-                const amount = isMax ? 2 : (Math.random() < 0.5 ? 1 : 2);
-                addResource('mana', Math.floor(amount * totalMult));
-            } else if (region.id !== 'beast' && region.id !== 'elf') {
-                if (isMax) {
-                    addResource('mana', Math.floor(2 * totalMult));
-                } else {
-                    const roll = Math.random();
-                    if (roll < 0.25) addResource('mana', Math.floor(1 * totalMult));
-                    else if (roll < 0.50) addResource('mana', Math.floor(2 * totalMult));
-                }
-            }
-
-            if (region.id === 'dragon') {
-                const amount = isMax ? 6 : getRandomInt(3, 6);
-                addResource('mineral', Math.floor(amount * totalMult));
-            } else if (region.id !== 'fairy' && region.id !== 'elf') {
-                const amount = isMax ? 4 : getRandomInt(1, 4);
-                addResource('mineral', Math.floor(amount * totalMult));
-            }
-
-            if (region.id === 'spirit') {
-                addResource('energy', Math.floor(1 * totalMult));
-            }
-
-            if (region.id === 'ghost') {
-                addResource('efficiency', Math.floor(1 * totalMult));
-            }
-
-            const goldAmount = isMax ? 50000 : getRandomInt(50, 100);
-            addResource('gold', Math.floor(goldAmount * totalMult));
+        // 우호 + 적대 = 200 을 항상 유지 (우호가 오르면 적대가 내려가고, 그 반대도 마찬가지)
+        function setFriendlyPoints(region, value) {
+            region.friendlyPoints = Math.min(TOTAL_AFFINITY, Math.max(0, value));
+            region.hostilePoints = TOTAL_AFFINITY - region.friendlyPoints;
         }
+
+        function countFullyFriendlyRegions() {
+            return Object.values(REGIONS_DATA).filter(r => r.id !== 'elf' && !r.isOccupied && r.friendlyPoints >= TOTAL_AFFINITY).length;
+        }
+
+        window.updateHeaderCounters = function() {
+            DOM.headerDayCount.innerText = `Day ${currentDay}`;
+            DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/${EXPEDITIONS_PER_WEEK}`;
+        };
 
         function selectRegion(regionId) {
             currentRegionId = regionId;
@@ -804,7 +695,7 @@
             DOM.panelAffinityPercent.innerText = `우호 ${friendlyText} | 적대 ${hostileText}`;
 
             if (region.id === 'elf') {
-                DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-flag"></i> 플레이어 세력 본부`;
+                DOM.panelGovernanceStatus.innerHTML = `<i class="fa-solid fa-flag"></i> 플레이어 세력 본부 <span class="text-xs font-bold text-slate-300 ml-1">지지율 ${SUPPORT_MAX + monatiumSupport}%</span>`;
                 DOM.panelGovernanceStatus.className = "text-sm font-black text-teal-400 flex items-center gap-2";
                 DOM.panelHostileDaysInfo.classList.add('hidden');
 
@@ -913,28 +804,13 @@
             if (!currentRegionId) return;
             const region = REGIONS_DATA[currentRegionId];
 
+            // 모나티엄/점령 지역은 더 이상 이동하지 않으므로 버튼 영역 자체를 숨긴다.
+            if (region.id === 'elf' || region.isOccupied) {
+                DOM.dispatchFooter.classList.add('hidden');
+                return;
+            }
+            DOM.dispatchFooter.classList.remove('hidden');
             DOM.btnDispatch.disabled = false;
-
-            if (region.id === 'elf') {
-                DOM.btnDispatchText.innerText = "모나티엄으로 이동";
-                DOM.btnDispatchIcon.className = "fa-solid fa-right-to-bracket";
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/40 cursor-pointer";
-                return;
-            }
-
-            if (region.isOccupied) {
-                DOM.btnDispatchText.innerText = `${region.regionName}(으)로 이동`;
-                DOM.btnDispatchIcon.className = "fa-solid fa-crown";
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/40 cursor-pointer";
-                return;
-            }
-
-            if (region.friendlyPoints >= 200) {
-                DOM.btnDispatchText.innerText = `${region.regionName}(으)로 이동`;
-                DOM.btnDispatchIcon.className = "fa-solid fa-handshake";
-                DOM.btnDispatch.className = "btn-action w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 cursor-pointer";
-                return;
-            }
 
             if (expeditionsLeft <= 0) {
                 DOM.btnDispatch.disabled = true;
@@ -964,12 +840,19 @@
             }
         }
 
+        function saveNow() {
+            if (window.EliasSave && typeof window.EliasSave.save === 'function') {
+                window.EliasSave.save(true);
+            }
+        }
+
         function executeExpedition() {
             if (!currentRegionId || expeditionsLeft <= 0) return;
             const region = REGIONS_DATA[currentRegionId];
+            if (region.id === 'elf' || region.isOccupied) return;
 
             expeditionsLeft--;
-            DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/5`;
+            DOM.headerExpeditionCount.innerText = `${expeditionsLeft}/${EXPEDITIONS_PER_WEEK}`;
 
             if (region.isWar) {
                 const successRate = calculateWarSuccessRate(region);
@@ -991,48 +874,52 @@
                 }
             } else {
                 const missionType = DOM.selectMissionType.value;
-                const successRate = missionType === 'friendly' ? region.probabilities.friendly : region.probabilities.hostile;
-                const roll = Math.random() * 100;
+                const gain = rollAffinityGain(region.probabilities[missionType]);
+                const before = region.friendlyPoints;
+                // 지지율 감소 방향은 작전 실행 전의 완전 협력 지역 수로 결정한다.
+                const supportReversed = countFullyFriendlyRegions() >= FULL_ALLY_REQUIRED;
 
-                if (roll <= successRate) {
-                    const pointGain = Math.floor(Math.random() * 6) + 10;
-
-                    if (missionType === 'friendly') {
-                        region.friendlyPoints = Math.min(200, region.friendlyPoints + pointGain);
-                        showRegionToast(region, `🤝 우호 작전 성공! 우호도 +${pointGain}`);
-                    } else {
-                        region.hostilePoints = Math.min(200, region.hostilePoints + pointGain);
-                        showRegionToast(region, `⚔️ 적대 작전 성공! 적대도 +${pointGain}`);
-                    }
-
-                    processTradeRewards(region, missionType, false);
+                if (missionType === 'friendly') {
+                    setFriendlyPoints(region, before + gain);
+                    showRegionToast(region, `🤝 우호 작전 성공! 우호도 +${region.friendlyPoints - before}`);
                 } else {
-                    showRegionToast(region, `❌ 작전 실패...`);
+                    setFriendlyPoints(region, before - gain);
+                    showRegionToast(region, `⚔️ 적대 작전 성공! 적대도 +${before - region.friendlyPoints}`);
+                }
+
+                // 기본: 우호 정책 시 지지율 감소 / 4곳 이상 완전 협력 시: 적대 정책 시 지지율 감소
+                if ((missionType === 'friendly') !== supportReversed) {
+                    monatiumSupport = Math.max(0, monatiumSupport - SUPPORT_LOSS_PER_POLICY);
                 }
             }
 
             renderStatusBadges();
             updateRegionDiplomacyUI(region);
             updateDispatchButtonText();
-
-            // 저장 처리 후 일일 계산 로직 실행
-            if (window.EliasSave && typeof window.EliasSave.save === 'function') {
-                window.EliasSave.save(true);
-            }
-            if (window.EliasSave && typeof window.EliasSave.runDayTick === 'function') {
-                window.EliasSave.runDayTick();
-            }
+            saveNow();
         }
 
         function advanceDay() {
-            currentDay++;
-            expeditionsLeft = 5;
+            currentDay += DAYS_PER_ADVANCE;
+            expeditionsLeft = EXPEDITIONS_PER_WEEK;
+            window.updateHeaderCounters();
 
-            DOM.headerDayCount.innerText = `Day ${currentDay}`;
-            DOM.headerExpeditionCount.innerText = `5/5`;
-
-            // 원본 Gamemap.html 의 2일 주기 자원 지급 및 외교 상태 수동 갱신 로직 제거
-            // (SaveEngine 의 tickRegionsForOneDay 에 통합되어 소급 처리됨)
+            // 적대 상태(우호-적대 차이 -100 이하)가 한 주 지속되면 전쟁 발발
+            Object.values(REGIONS_DATA).forEach(region => {
+                if (region.id === 'elf' || region.isOccupied) return;
+                const diff = region.friendlyPoints - region.hostilePoints;
+                if (diff <= -100) {
+                    region.hostileDays = Math.min(7, (region.hostileDays || 0) + DAYS_PER_ADVANCE);
+                    if (region.hostileDays >= 7 && !region.isWar) {
+                        region.isWar = true;
+                        region.consecutiveWarSuccesses = 0;
+                    }
+                } else {
+                    region.hostileDays = 0;
+                    region.isWar = false;
+                    region.consecutiveWarSuccesses = 0;
+                }
+            });
 
             renderStatusBadges();
 
@@ -1044,13 +931,7 @@
                 }
             }
 
-            // 저장 처리 후 일일 계산 로직 실행
-            if (window.EliasSave && typeof window.EliasSave.save === 'function') {
-                window.EliasSave.save(true);
-            }
-            if (window.EliasSave && typeof window.EliasSave.runDayTick === 'function') {
-                window.EliasSave.runDayTick();
-            }
+            saveNow();
         }
 
         function showRegionToast(region, message) {
@@ -1082,6 +963,25 @@
                 updateDispatchButtonText();
             }
         };
+    </script>
+    <div id="save-module-container"></div>
+    <script>
+        fetch('menu.html')
+            .then(response => response.text())
+            .then(html => {
+                const container = document.getElementById('save-module-container');
+                container.innerHTML = html;
+
+                // 불러온 HTML 내의 <script> 태그를 실행시키기 위한 처리
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            })
+            .catch(err => console.error('menu.html 로드 실패:', err));
     </script>
 </body>
 </html>

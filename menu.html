@@ -173,20 +173,24 @@
     const SAVE_KEY = 'ELIAS_AWAY_SAVE_DATA_V1';          
     const BACKUP_KEY = 'ELIAS_AWAY_SAVE_BACKUP_V1';      
     const STAGE_KEY = 'ELIAS_AWAY_SAVE_STAGE_V1';        
-    const SCHEMA_VERSION = 2;
+    const SCHEMA_VERSION = 3;
     const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;          
     const SHOW_AUTOSAVE_TOAST = true;
     const IS_LOADING_PAGE = window.location.pathname.includes('loading.html');
 
+    // Gamemap.html 의 지역 데이터 중 저장해야 하는 가변 필드
     const REGION_DYNAMIC_FIELDS = [
         'friendlyPoints', 'hostilePoints', 'hostileDays',
         'isWar', 'isOccupied', 'consecutiveWarSuccesses', 'selectedMissionType'
     ];
+    const TOTAL_AFFINITY = 200;      // 지역별 우호 + 적대 합계
+    const SUPPORT_MAX = 100;         // 모나티엄 지지율 실질값 상한 (표시는 100 + 실질값 %)
+    const DEFAULT_EXPEDITIONS = 7;
 
     let suppressPersist = false;   
     let leavingPage = false;       
     let pendingSave = null;        
-    const ready = { resources: false, map: false, buildings: false };  
+    const ready = { map: false };  
 
     function pageName() {
         const last = window.location.pathname.split('/').pop();
@@ -222,8 +226,6 @@
 
     function isValidSave(obj) {
         if (!isPlainObject(obj)) return false;
-        if (obj.resources != null && !Array.isArray(obj.resources)) return false;
-        if (obj.buildings != null && !Array.isArray(obj.buildings)) return false;
         if (obj.mapData != null && !isPlainObject(obj.mapData)) return false;
         return true;
     }
@@ -240,11 +242,6 @@
             if (isValidSave(parsed)) return { data: parsed, source: 'backup', raw: rawBackup };
         }
         return { data: null, source: null, raw: null };
-    }
-
-    function isPlacingBuilding() {
-        try { return typeof currentPlacingBuilding !== 'undefined' && !!currentPlacingBuilding; }
-        catch (e) { return false; }
     }
 
     function showSaveToast(msg) {
@@ -271,7 +268,8 @@
             return {
                 regions: REGIONS_DATA,
                 currentDay: (typeof currentDay !== 'undefined') ? currentDay : undefined,
-                expeditionsLeft: (typeof expeditionsLeft !== 'undefined') ? expeditionsLeft : undefined
+                expeditionsLeft: (typeof expeditionsLeft !== 'undefined') ? expeditionsLeft : undefined,
+                monatiumSupport: (typeof monatiumSupport !== 'undefined') ? monatiumSupport : undefined
             };
         } catch (e) {
             return null;
@@ -284,363 +282,35 @@
         return out;
     }
 
-    function collectLiveBuildings() {
-        const list = window.placedBuildings.slice();
-        try {
-            if (typeof isMovingExistingBuilding !== 'undefined' && isMovingExistingBuilding &&
-                typeof originalPlacedBuildingData !== 'undefined' && originalPlacedBuildingData &&
-                list.indexOf(originalPlacedBuildingData) === -1) {
-                list.push(originalPlacedBuildingData);
-            }
-        } catch (e) { /* ignore */ }
-        return list.map(b => ({ col: b.col, row: b.row, data: b.data }));
-    }
-
-    /* ---------------------------------------------------------------
-     *  4.5 하루 경과 처리 엔진 ("보이지 않는 곳에서도 일하는 건물/공물")
-     *      - 저장 데이터(mapData.currentDay)만을 근거로 동작하므로,
-     *        플레이어가 Gamemap.html / InMonatium.html 어디에도 있지 않아도
-     *        (심지어 이 게임에 접속조차 하지 않은 사이에도) 다음 접속 시
-     *        지나간 날짜만큼 건물 생산과 지역 공물을 소급 적용한다.
-     *      - mapData.lastProcessedDay 로 "어디까지 처리했는지"를 기록한다.
-     * --------------------------------------------------------------- */
-    const TRIBUTE_REGION_IDS = ['elf', 'fairy', 'witch', 'spirit', 'dragon', 'beast', 'ghost'];
-
-    function countBuildingsById(buildings, id) {
-        if (!Array.isArray(buildings)) return 0;
-        let count = 0;
-        buildings.forEach(b => { if (b && b.data && b.data.id === id) count++; });
-        return count;
-    }
-
-    function findOrCreateResource(resources, id) {
-        let r = resources.find(x => x && x.id === id);
-        if (!r) {
-            r = { id: id, value: 0, rawValue: 0, processedValue: 0 };
-            resources.push(r);
-        }
-        return r;
-    }
-
-    // 식량/자재는 "미가공" 자원이므로 rawValue 로, 그 외는 value 로 적립한다.
-    // (Gamemap.html 의 addResource() 와 동일한 규칙)
-    function tickAddResource(resources, id, amount) {
-        if (!amount) return;
-        const r = findOrCreateResource(resources, id);
-        if (id === 'food' || id === 'mineral') {
-            r.rawValue = (r.rawValue || 0) + amount;
-        } else {
-            r.value = (r.value || 0) + amount;
-        }
-    }
-
-    function tickRandomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    // Gamemap.html 의 processTradeRewards() 를 저장 데이터 기준으로 이식한 버전.
-    // (일일 자동 공물 계산에는 항상 isMax=true 로 호출된다)
-    function tickRegionTradeRewards(resources, regionId, dayNumber, missionType, isMax) {
-        const dayMult = Math.pow(2, Math.floor((dayNumber - 1) / 50));
-        let actionMult = 1.0;
-        if (!isMax) {
-            if (missionType === 'friendly') {
-                actionMult = 1.3;
-            } else if (missionType === 'hostile') {
-                let addProbRoll = Math.random();
-                let extraMult = 0.0;
-                for (let i = 1; i <= 10; i++) {
-                    if (addProbRoll < (i * 0.1)) { extraMult = i * 0.1; break; }
-                }
-                actionMult = 1.0 + extraMult;
-            }
-        }
-        const totalMult = dayMult * actionMult;
-
-        if (Math.random() < 0.3) {
-            const techBonusCount = 1 + Math.floor(dayNumber / 100);
-            tickAddResource(resources, 'tech', Math.floor(techBonusCount * totalMult));
-        }
-
-        if (regionId === 'beast') {
-            tickAddResource(resources, 'food', Math.floor((isMax ? 6 : tickRandomInt(3, 6)) * totalMult));
-        } else if (['fairy', 'witch', 'dragon'].includes(regionId)) {
-            tickAddResource(resources, 'food', Math.floor((isMax ? 4 : tickRandomInt(1, 4)) * totalMult));
-        }
-
-        if (regionId === 'witch') {
-            tickAddResource(resources, 'mana', Math.floor((isMax ? 2 : (Math.random() < 0.5 ? 1 : 2)) * totalMult));
-        } else if (regionId !== 'beast' && regionId !== 'elf') {
-            if (isMax) {
-                tickAddResource(resources, 'mana', Math.floor(2 * totalMult));
-            } else {
-                const roll = Math.random();
-                if (roll < 0.25) tickAddResource(resources, 'mana', Math.floor(1 * totalMult));
-                else if (roll < 0.50) tickAddResource(resources, 'mana', Math.floor(2 * totalMult));
-            }
-        }
-
-        if (regionId === 'dragon') {
-            tickAddResource(resources, 'mineral', Math.floor((isMax ? 6 : tickRandomInt(3, 6)) * totalMult));
-        } else if (regionId !== 'fairy' && regionId !== 'elf') {
-            tickAddResource(resources, 'mineral', Math.floor((isMax ? 4 : tickRandomInt(1, 4)) * totalMult));
-        }
-
-        if (regionId === 'spirit') tickAddResource(resources, 'energy', Math.floor(1 * totalMult));
-        if (regionId === 'ghost') tickAddResource(resources, 'efficiency', Math.floor(1 * totalMult));
-
-        const goldAmount = isMax ? 50000 : tickRandomInt(50, 100);
-        tickAddResource(resources, 'gold', Math.floor(goldAmount * totalMult));
-    }
-
-    // 정복/동맹 지역의 하루치 자동 공물 + 전쟁 상태 갱신 (Gamemap.html advanceDay() 이식)
-    function tickRegionsForOneDay(regions, dayNumber, resources) {
-        if (!isPlainObject(regions)) return;
-        TRIBUTE_REGION_IDS.forEach(id => {
-            if (id === 'elf') return;
-            const region = regions[id];
-            if (!isPlainObject(region)) return;
-
-            if (dayNumber % 2 === 0) {
-                if ((region.friendlyPoints || 0) >= 200) {
-                    tickRegionTradeRewards(resources, id, dayNumber, 'friendly', true);
-                    tickRegionTradeRewards(resources, id, dayNumber, 'friendly', true);
-                } else if (region.isOccupied) {
-                    tickRegionTradeRewards(resources, id, dayNumber, 'hostile', true);
-                }
-            }
-
-            if (region.isOccupied) return;
-
-            const diff = (region.friendlyPoints || 0) - (region.hostilePoints || 0);
-            if (diff <= -100) {
-                region.hostileDays = (region.hostileDays || 0) + 1;
-                if (region.hostileDays >= 7 && !region.isWar) {
-                    region.isWar = true;
-                    region.consecutiveWarSuccesses = 0;
-                }
-            } else {
-                region.hostileDays = 0;
-                region.isWar = false;
-                region.consecutiveWarSuccesses = 0;
-            }
-        });
-    }
-
-    // 감자 시설(potato1~5) 하루치 가동 (Craftwiththis.html 명세에 맞춘 정식 구현)
-    // - 임시로 붙여두었던 "매일 전력 +10W" 땜빵 로직은 이 함수로 완전히 대체되어 제거된다.
-    function tickBuildingsForOneDay(buildings, resources, dayNumber) {
-        if (!Array.isArray(buildings) || buildings.length === 0) return;
-
-        const potatoRes = findOrCreateResource(resources, 'potato');
-        const powerRes = findOrCreateResource(resources, 'power');
-
-        // potato4 = 감자 배터리: 건물당 전력 최대 저장 용량 +50 (일일 감자 소모 없음, 수동적 효과)
-        powerRes.max = countBuildingsById(buildings, 'potato4') * 50;
-
-        buildings.forEach(b => {
-            if (!b || !b.data || !b.data.id) return;
-            const bId = b.data.id;
-
-            if (bId === 'potato1') {
-                // 감자 가공소: 감자 10만 개 → 가공된 자재 10개
-                if ((potatoRes.value || 0) >= 100000) {
-                    potatoRes.value -= 100000;
-                    const mineralRes = findOrCreateResource(resources, 'mineral');
-                    mineralRes.processedValue = (mineralRes.processedValue || 0) + 10;
-                } else {
-                    // 감자 부족 시: 미가공 자재 1개를 가공 자재로 전환
-                    const mineralRes = findOrCreateResource(resources, 'mineral');
-                    if ((mineralRes.rawValue || 0) >= 1) {
-                        mineralRes.rawValue -= 1;
-                        mineralRes.processedValue = (mineralRes.processedValue || 0) + 1;
-                    }
-                }
-            } else if (bId === 'potato2') {
-                // 감자 발전기: 감자 10만 개 → 에너지 10
-                if ((potatoRes.value || 0) >= 100000) {
-                    potatoRes.value -= 100000;
-                    const energyRes = findOrCreateResource(resources, 'energy');
-                    energyRes.value = (energyRes.value || 0) + 10;
-                } else if (dayNumber % 7 === 0) {
-                    // 감자 부족 시: 7일마다 에너지 1 자동 생산
-                    const energyRes = findOrCreateResource(resources, 'energy');
-                    energyRes.value = (energyRes.value || 0) + 1;
-                }
-            } else if (bId === 'potato3') {
-                // 감자 에너지-전력 변환기: 감자 10만 개 → 에너지 1을 전력 1로 변환 (전력 최대치 한도 내)
-                const energyRes = findOrCreateResource(resources, 'energy');
-                const maxVal = powerRes.max || 0;
-                const curVal = powerRes.value || 0;
-                if ((potatoRes.value || 0) >= 100000 && (energyRes.value || 0) >= 1 && curVal < maxVal) {
-                    potatoRes.value -= 100000;
-                    energyRes.value -= 1;
-                    powerRes.value = curVal + 1;
-                }
-            } else if (bId === 'potato5') {
-                // 감자 조리시설: 감자 5만 개 → 가공된 식량 5개
-                if ((potatoRes.value || 0) >= 50000) {
-                    potatoRes.value -= 50000;
-                    const foodRes = findOrCreateResource(resources, 'food');
-                    foodRes.processedValue = (foodRes.processedValue || 0) + 5;
-                } else {
-                    // 감자 부족 시: 미가공 식량 1개를 가공 식량으로 전환
-                    const foodRes = findOrCreateResource(resources, 'food');
-                    if ((foodRes.rawValue || 0) >= 1) {
-                        foodRes.rawValue -= 1;
-                        foodRes.processedValue = (foodRes.processedValue || 0) + 1;
-                    }
-                }
-            }
-            // potato4 는 위에서 이미 수동적으로 처리됨 (일일 개별 동작 없음)
-        });
-    }
-
-    // 저장 데이터의 currentDay 와 lastProcessedDay 사이의 차이만큼 하루씩 재생(replay)한다.
-    // 어떤 페이지에서 currentDay 가 올라갔는지와 무관하게, 저장된 데이터만 보고 동작한다.
-    function runDayTickOnSaveData(saveData) {
-        if (!isPlainObject(saveData) || !isPlainObject(saveData.mapData)) return saveData;
-
-        const currentDayVal = Number.isFinite(saveData.mapData.currentDay) ? saveData.mapData.currentDay : 1;
-        let lastProcessed = Number.isFinite(saveData.mapData.lastProcessedDay)
-            ? saveData.mapData.lastProcessedDay
-            : currentDayVal;
-
-        if (!Array.isArray(saveData.resources)) saveData.resources = [];
-        const resources = saveData.resources;
-        const buildings = Array.isArray(saveData.buildings) ? saveData.buildings : [];
-        const regions = isPlainObject(saveData.mapData.regions) ? saveData.mapData.regions : null;
-
-        if (lastProcessed < currentDayVal) {
-            for (let d = lastProcessed + 1; d <= currentDayVal; d++) {
-                tickBuildingsForOneDay(buildings, resources, d);
-                tickRegionsForOneDay(regions, d, resources);
-            }
-        } else {
-            // 날짜가 늘지 않았어도 배터리(potato4) 증설/철거는 즉시 반영되어야 하므로 용량만 갱신
-            const powerRes = findOrCreateResource(resources, 'power');
-            powerRes.max = countBuildingsById(buildings, 'potato4') * 50;
-        }
-
-        saveData.mapData.lastProcessedDay = currentDayVal;
-        return saveData;
-    }
-
-    // 저장 데이터에서 계산된 최신 자원/지역 상태를, 현재 페이지에 살아있는 객체(있다면)에도 즉시 반영한다.
-    function applyResourcesToLiveState(savedResources) {
-        if (!Array.isArray(savedResources) || !Array.isArray(window.PLAYER_RESOURCES_DATA)) return;
-        savedResources.forEach(savedRes => {
-            if (!savedRes) return;
-            const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
-            if (!target) return;
-            if (savedRes.value != null) target.value = savedRes.value;
-            if (savedRes.rawValue != null) target.rawValue = savedRes.rawValue;
-            if (savedRes.processedValue != null) target.processedValue = savedRes.processedValue;
-            if (savedRes.max != null) target.max = savedRes.max;
-        });
-        if (typeof window.renderPlayerResourcesUI === 'function') window.renderPlayerResourcesUI();
-        refreshCraftPanel();
-    }
-
-    function applyRegionsToLiveState(savedRegions) {
-        const live = getLiveMap();
-        if (!live || !isPlainObject(savedRegions)) return;
-        Object.keys(savedRegions).forEach(id => {
-            const target = live.regions[id];
-            const src = savedRegions[id];
-            if (!target || !isPlainObject(src)) return;
-            REGION_DYNAMIC_FIELDS.forEach(k => {
-                const v = src[k];
-                if (v === undefined || v === null) return;
-                if (k === 'isWar' || k === 'isOccupied') {
-                    if (typeof v === 'boolean') target[k] = v;
-                } else if (k === 'selectedMissionType') {
-                    if (v === 'friendly' || v === 'hostile') target[k] = v;
-                } else if (Number.isFinite(v)) {
-                    target[k] = v;
-                }
-            });
-        });
-        if (typeof window.updateAllRegionsState === 'function') window.updateAllRegionsState();
-    }
-
-    // 외부(Gamemap.html 등)에서 "오늘 날짜가 올라갔다"는 사실을 저장한 직후 호출하는 공개 API.
-    // 저장 데이터를 기준으로 하루 처리 엔진을 실행하고, 결과를 다시 커밋 + 현재 페이지 화면에 반영한다.
-    function runDayTickPublic() {
-        if (suppressPersist) return null;
-        try {
-            const best = readBestSave();
-            if (!best.data) return null;
-            const updated = runDayTickOnSaveData(best.data);
-            commitPayload(JSON.stringify(updated));
-            pendingSave = updated;
-            applyResourcesToLiveState(updated.resources);
-            applyRegionsToLiveState(updated.mapData ? updated.mapData.regions : null);
-            return updated;
-        } catch (err) {
-            console.error('[SaveEngine] 하루 처리 오류:', err);
-            return null;
-        }
-    }
-
     window.collectAllGameData = function() {
         const existing = readBestSave().data || {};
 
-        let resources = Array.isArray(existing.resources) ? existing.resources : null;
-        if (ready.resources && Array.isArray(window.PLAYER_RESOURCES_DATA)) {
-            resources = window.PLAYER_RESOURCES_DATA.map(r => ({
-                id: r.id,
-                value: r.value,
-                rawValue: r.rawValue,
-                processedValue: r.processedValue,
-                max: r.max
-            }));
-        }
-
         const mapData = isPlainObject(existing.mapData)
             ? Object.assign({}, existing.mapData)
-            : { currentDay: 1, expeditionsLeft: 5, regions: null };
+            : { currentDay: 1, expeditionsLeft: DEFAULT_EXPEDITIONS, monatiumSupport: SUPPORT_MAX, regions: null };
         const live = ready.map ? getLiveMap() : null;
         if (live) {
             if (live.currentDay !== undefined) mapData.currentDay = live.currentDay;
             if (live.expeditionsLeft !== undefined) mapData.expeditionsLeft = live.expeditionsLeft;
+            if (live.monatiumSupport !== undefined) mapData.monatiumSupport = live.monatiumSupport;
             const regions = {};
             Object.keys(live.regions).forEach(id => { regions[id] = pickRegionDynamic(live.regions[id]); });
             mapData.regions = regions;
         }
 
-        let buildings = Array.isArray(existing.buildings) ? existing.buildings : [];
-        if (ready.buildings && Array.isArray(window.placedBuildings)) {
-            buildings = collectLiveBuildings();
-        }
-
-        const progress = isPlainObject(existing.progress) ? Object.assign({}, existing.progress) : {};
-        progress.visited = Object.assign({}, progress.visited);
+        const oldProgress = isPlainObject(existing.progress) ? existing.progress : {};
+        const progress = { visited: Object.assign({}, oldProgress.visited) };
+        if (oldProgress.lastPage) progress.lastPage = oldProgress.lastPage;
         if (!IS_LOADING_PAGE) {
             progress.lastPage = pageName();
             progress.visited[pageName()] = true;
-        }
-
-        if (typeof window.monatiumCitizens !== 'undefined' && Array.isArray(window.monatiumCitizens)) {
-            progress.monatiumCitizens = window.monatiumCitizens;
-        }
-
-        if (typeof window.monatiumStats !== 'undefined' && isPlainObject(window.monatiumStats)) {
-            progress.monatiumStats = window.monatiumStats;
-        }
-
-        if (typeof window.specialElves !== 'undefined' && isPlainObject(window.specialElves)) {
-            progress.specialElves = window.specialElves;
         }
 
         return {
             schemaVersion: SCHEMA_VERSION,
             saveTime: new Date().toISOString(),
             savedAtMs: Date.now(),
-            lastTickTime: existing.lastTickTime || Date.now(),
-            resources: resources,
             mapData: mapData,
-            buildings: buildings,
             progress: progress
         };
     };
@@ -870,8 +540,7 @@
         navigate: navigateWithSave,
         finalizeForNavigation: finalizeForNavigation,
         recoverOrphanStage: recoverOrphanStage,
-        isReady: function() { return Object.assign({}, ready); },
-        runDayTick: runDayTickPublic
+        isReady: function() { return Object.assign({}, ready); }
     };
 
     if (IS_LOADING_PAGE) {
@@ -880,42 +549,6 @@
         if (drawer) drawer.style.display = 'none';
         if (toggleBtn) toggleBtn.style.display = 'none';
         return;
-    }
-
-    function refreshCraftPanel() {
-        try {
-            const frame = document.getElementById('craft-iframe');
-            if (frame && frame.contentWindow && typeof frame.contentWindow.renderCraftList === 'function') {
-                frame.contentWindow.renderCraftList();
-            }
-        } catch (e) { /* ignore */ }
-    }
-
-    function tryRestoreResources() {
-        if (ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) return;
-        const saved = pendingSave && Array.isArray(pendingSave.resources) ? pendingSave.resources : null;
-        if (saved) {
-            saved.forEach(savedRes => {
-                if (!savedRes) return;
-                const target = window.PLAYER_RESOURCES_DATA.find(r => r.id === savedRes.id);
-                if (!target) return;
-                if (savedRes.value != null) target.value = savedRes.value;
-                if (savedRes.rawValue != null) target.rawValue = savedRes.rawValue;
-                if (savedRes.processedValue != null) target.processedValue = savedRes.processedValue;
-                if (savedRes.max != null) target.max = savedRes.max;
-            });
-        }
-
-        // 전력 최대 저장 용량 보정 (potato4 = 감자 배터리 건물 수 기준, 건물당 +50)
-        const buildings = (pendingSave && Array.isArray(pendingSave.buildings)) ? pendingSave.buildings : (window.placedBuildings || []);
-        const powerRes = window.PLAYER_RESOURCES_DATA.find(r => r.id === 'power');
-        if (powerRes) {
-            powerRes.max = countBuildingsById(buildings, 'potato4') * 50;
-        }
-
-        ready.resources = true;
-        if (typeof window.renderPlayerResourcesUI === 'function') window.renderPlayerResourcesUI();
-        refreshCraftPanel();
     }
 
     function tryRestoreMap() {
@@ -928,8 +561,14 @@
 
         const md = pendingSave && isPlainObject(pendingSave.mapData) ? pendingSave.mapData : null;
         if (md) {
-            if (Number.isFinite(md.currentDay) && typeof currentDay !== 'undefined') currentDay = md.currentDay;
-            if (Number.isFinite(md.expeditionsLeft) && typeof expeditionsLeft !== 'undefined') expeditionsLeft = md.expeditionsLeft;
+            if (Number.isFinite(md.currentDay) && typeof currentDay !== 'undefined') currentDay = Math.max(1, md.currentDay);
+            if (Number.isFinite(md.expeditionsLeft) && typeof expeditionsLeft !== 'undefined') {
+                const maxExp = (typeof EXPEDITIONS_PER_WEEK !== 'undefined') ? EXPEDITIONS_PER_WEEK : DEFAULT_EXPEDITIONS;
+                expeditionsLeft = Math.min(maxExp, Math.max(0, md.expeditionsLeft));
+            }
+            if (Number.isFinite(md.monatiumSupport) && typeof monatiumSupport !== 'undefined') {
+                monatiumSupport = Math.min(SUPPORT_MAX, Math.max(0, md.monatiumSupport));
+            }
 
             if (isPlainObject(md.regions)) {
                 Object.keys(md.regions).forEach(id => {
@@ -947,13 +586,15 @@
                             target[k] = v;
                         }
                     });
+                    // 우호 + 적대 = 200 규칙 보정 (이전 저장본 호환)
+                    if (id !== 'elf' && Number.isFinite(target.friendlyPoints)) {
+                        target.friendlyPoints = Math.min(TOTAL_AFFINITY, Math.max(0, target.friendlyPoints));
+                        target.hostilePoints = TOTAL_AFFINITY - target.friendlyPoints;
+                    }
                 });
             }
 
-            const dayEl = document.getElementById('header-day-count');
-            if (dayEl && typeof currentDay !== 'undefined') dayEl.innerText = 'Day ' + currentDay;
-            const expEl = document.getElementById('header-expedition-count');
-            if (expEl && typeof expeditionsLeft !== 'undefined') expEl.innerText = expeditionsLeft + '/5';
+            if (typeof window.updateHeaderCounters === 'function') window.updateHeaderCounters();
             if (typeof window.renderStatusBadges === 'function') window.renderStatusBadges();
             if (typeof window.updateAllRegionsState === 'function') window.updateAllRegionsState();
             try {
@@ -963,79 +604,6 @@
             } catch (e) { /* ignore */ }
         }
         ready.map = true;
-    }
-
-    function tryRestoreBuildings() {
-        if (ready.buildings) return;
-        if (!Array.isArray(window.placedBuildings) || typeof window.addBuildingElement !== 'function') return;
-        const layer = document.getElementById('building-html-layer');
-        if (!layer) return;
-
-        const saved = pendingSave && Array.isArray(pendingSave.buildings) ? pendingSave.buildings : null;
-        if (saved) {
-            window.placedBuildings.length = 0;
-            layer.innerHTML = '';
-            saved.forEach(b => {
-                if (!b || !Number.isFinite(b.col) || !Number.isFinite(b.row) || !b.data) return;
-                const restored = { col: b.col, row: b.row, data: b.data };
-                window.placedBuildings.push(restored);
-                window.addBuildingElement(restored);
-            });
-        }
-        ready.buildings = true;
-    }
-
-    function tryRestoreAll() {
-        [tryRestoreResources, tryRestoreMap, tryRestoreBuildings].forEach(fn => {
-            try { fn(); } catch (e) { console.error('[SaveEngine] 로드 오류:', e); }
-        });
-    }
-
-    window.loadGameState = function() {
-        try {
-            const best = readBestSave();
-            let data = best.data;
-            if (data) {
-                data = runDayTickOnSaveData(data);
-                commitPayload(JSON.stringify(data));
-            }
-            pendingSave = data;
-            ready.resources = ready.map = ready.buildings = false;
-            tryRestoreAll();
-            return data;
-        } catch (err) {
-            console.error('[SaveEngine] 로드 오류:', err);
-            return null;
-        }
-    };
-
-    /* ---------------------------------------------------------------
-     *  5. 백그라운드 엔진 ("독립 메인 서버")
-     *     실시간 전력 1초당 1W 상승하는 버그성 자동 보정을 제거
-     * --------------------------------------------------------------- */
-    function runBackgroundServerTick() {
-        if (suppressPersist) return;
-
-        tryRestoreAll();
-
-        if (!ready.resources || !Array.isArray(window.PLAYER_RESOURCES_DATA)) {
-            return;
-        }
-
-        try {
-            const now = Date.now();
-            const currentData = window.collectAllGameData();
-            currentData.lastTickTime = now;
-
-            commitPayload(JSON.stringify(currentData));
-
-            if (typeof window.renderPlayerResourcesUI === 'function') {
-                window.renderPlayerResourcesUI();
-            }
-
-        } catch (error) {
-            console.error('[SaveEngine] 백그라운드 저장 오류:', error);
-        }
     }
 
     function setupMenuEvents() {
@@ -1096,8 +664,7 @@
                 reader.onload = function(event) {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        const looksLikeSave = isValidSave(parsed) &&
-                            (Array.isArray(parsed.resources) || isPlainObject(parsed.mapData) || Array.isArray(parsed.buildings));
+                        const looksLikeSave = isValidSave(parsed) && isPlainObject(parsed.mapData);
                         if (!looksLikeSave) throw new Error('invalid save');
 
                         suppressPersist = true;
@@ -1168,37 +735,24 @@
     }
     pendingSave = best.data;
 
-    // 페이지 종류와 무관하게: 저장된 currentDay 가 마지막으로 처리한 날짜보다 앞서 있다면
-    // (다른 화면에서, 혹은 접속하지 않은 사이 Day 가 진행되었다면) 그 차이만큼 건물 생산과
-    // 지역 공물을 여기서 소급 적용한다. 이렇게 하면 InMonatium 등 특정 화면에 있지 않아도
-    // 건물들이 계속 일하고, 정복/동맹 지역의 공물도 계속 들어온다.
-    if (pendingSave) {
-        try {
-            pendingSave = runDayTickOnSaveData(pendingSave);
-            commitPayload(JSON.stringify(pendingSave));
-        } catch (e) {
-            console.error('[SaveEngine] 하루 처리(초기 로드) 오류:', e);
-        }
-    }
-
     updateLastSaveLabel(pendingSave && pendingSave.savedAtMs);
 
-    tryRestoreAll();
+    function safeRestore() {
+        try { tryRestoreMap(); } catch (e) { console.error('[SaveEngine] 로드 오류:', e); }
+    }
+    safeRestore();
     let restorePollCount = 0;
     const restorePoll = setInterval(() => {
-        tryRestoreAll();
-        if (++restorePollCount >= 150) clearInterval(restorePoll);   
+        safeRestore();
+        if (ready.map || ++restorePollCount >= 150) clearInterval(restorePoll);   
     }, 100);
-
-    setInterval(runBackgroundServerTick, 1000);
-    runBackgroundServerTick();   
 
     let nextAutoSaveAt = Date.now() + AUTOSAVE_INTERVAL_MS;
     setInterval(() => {
         if (suppressPersist || Date.now() < nextAutoSaveAt) return;
         nextAutoSaveAt = Date.now() + AUTOSAVE_INTERVAL_MS;
         const ok = window.saveGameState(true);
-        if (ok && SHOW_AUTOSAVE_TOAST && !isPlacingBuilding()) showSaveToast('자동 저장되었습니다.');
+        if (ok && SHOW_AUTOSAVE_TOAST) showSaveToast('자동 저장되었습니다.');
     }, 5000);
 
     window.addEventListener('beforeunload', () => { flushOnLeave('beforeunload'); });
