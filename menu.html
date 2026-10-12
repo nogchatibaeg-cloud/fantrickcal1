@@ -368,14 +368,6 @@
             tickAddResource(resources, 'food', Math.floor((isMax ? 4 : tickRandomInt(1, 4)) * totalMult));
         }
 
-        if (['fairy', 'witch'].includes(regionId)) {
-            tickAddResource(resources, 'leaf', Math.floor(1 * totalMult));
-        } else if (regionId !== 'ghost' && regionId !== 'elf') {
-            if (isMax || Math.random() < 0.5) {
-                tickAddResource(resources, 'leaf', Math.floor(1 * totalMult));
-            }
-        }
-
         if (regionId === 'witch') {
             tickAddResource(resources, 'mana', Math.floor((isMax ? 2 : (Math.random() < 0.5 ? 1 : 2)) * totalMult));
         } else if (regionId !== 'beast' && regionId !== 'elf') {
